@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:docs.bmad-method.org)",
+      "Bash(go mod tidy)",
+      "Bash(go build ./cmd/api/)",
+      "Bash(ls -laR \"/Users/hahoi83/Documents/sangiagao/admin/src/app/\\(admin\\)/\")",
+      "Bash(ls /Users/hahoi83/Documents/sangiagao/backend/internal/service/*_test.go)",
+      "Bash(chmod +x /Users/hahoi83/Documents/sangiagao/infras/scripts/seed.sh)",
+      "Bash(PGPASSWORD=\"rice_secret_dev\" psql -h localhost -p 5435 -U rice_user -d rice_marketplace -c \"SELECT COUNT\\(*\\) as current_users FROM users;\")",
+      "Bash(docker ps --format '{{.Names}}')",
+      "Bash(docker exec rice_postgres psql -U rice_user -d rice_marketplace -c \"SELECT COUNT\\(*\\) as current_users FROM users;\")",
+      "Bash(docker cp /Users/hahoi83/Documents/sangiagao/infras/scripts/seed.sql rice_postgres:/tmp/seed.sql)",
+      "Bash(docker exec rice_postgres psql -U rice_user -d rice_marketplace -f /tmp/seed.sql)",
+      "Bash(docker exec rice_postgres psql -U rice_user -d rice_marketplace -c \"SELECT phone, role, name FROM users ORDER BY phone;\")",
+      "Bash(docker exec rice_postgres psql -U rice_user -d rice_marketplace -c \":*)",
+      "Bash(docker exec rice_postgres psql -U rice_user -d rice_marketplace -t -c \":*)",
+      "Bash(pgrep -fl \"go run.*cmd/api\")",
+      "Bash(pgrep -fl \"rice-marketplace\")",
+      "Bash(pgrep -fl \"main.*8080\")",
+      "Bash(curl -s http://localhost:8080/health)",
+      "Bash(python3 -c ':*)",
+      "Bash(go build ./cmd/api)",
+      "Bash(go test ./internal/handler/ -run TestSubAdmin -v)",
+      "Bash(flutter doctor)",
+      "Bash(docker exec rice_postgres psql -U postgres -d rice_marketplace -c \"ALTER TABLE users ADD COLUMN IF NOT EXISTS district VARCHAR\\(100\\); ALTER TABLE users ADD COLUMN IF NOT EXISTS ward VARCHAR\\(100\\);\")",
+      "Bash(docker exec rice_postgres psql -U rice_user -d rice_marketplace -c \"ALTER TABLE users ADD COLUMN IF NOT EXISTS district VARCHAR\\(100\\); ALTER TABLE users ADD COLUMN IF NOT EXISTS ward VARCHAR\\(100\\);\")",
+      "Bash(curl -s http://localhost:8080/api/v1/health)",
+      "Bash(docker compose restart backend)",
+      "Bash(lsof -i :8080 -t)",
+      "Bash(lsof -i :3000 -t)",
+      "Bash(npx tsc --noEmit)"
+    ],
+    "additionalDirectories": [
+      "/Users/hahoi83/Documents/sangiagao/admin/src/app/(admin)/users"
+    ]
+  }
+}

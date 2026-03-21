@@ -1,0 +1,44 @@
+# Environment (KHÔNG commit secrets)
+.env
+.env.local
+.env.production
+infras/.env
+!infras/.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Backend (Golang)
+backend/tmp/
+backend/vendor/
+
+# Chat (Elixir/Phoenix)
+chat/_build/
+chat/deps/
+chat/.elixir_ls/
+
+# Mobile (Flutter)
+mobile/.dart_tool/
+mobile/.packages
+mobile/build/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/ios/Pods/
+mobile/ios/.symlinks/
+mobile/android/.gradle/
+mobile/android/app/build/
+
+# Admin (Next.js)
+admin/node_modules/
+admin/.next/
+admin/out/
+
+# Docker
+*.log

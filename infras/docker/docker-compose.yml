@@ -1,0 +1,114 @@
+##############################################
+# Rice Marketplace - Local Development Stack
+##############################################
+# Chạy: cd infras/docker && docker compose --env-file ../.env up -d
+# Dừng: docker compose --env-file ../.env down
+# Xóa sạch data: docker compose --env-file ../.env down -v
+
+services:
+  # ========================
+  # PostgreSQL - Database chính
+  # ========================
+  postgres:
+    image: postgres:16-alpine
+    container_name: rice_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rice_marketplace}
+      POSTGRES_USER: ${POSTGRES_USER:-rice_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rice_secret_dev}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../configs/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rice_user -d rice_marketplace"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+    restart: unless-stopped
+
+  # ========================
+  # Redis - Cache & Sessions
+  # ========================
+  redis:
+    image: redis:7-alpine
+    container_name: rice_redis
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 1gb --maxmemory-policy volatile-lru --requirepass ${REDIS_PASSWORD:-r1c3_r3d1s_s3cur3_d3v}
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-r1c3_r3d1s_s3cur3_d3v}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+    restart: unless-stopped
+
+  # ========================
+  # MongoDB - Chat Messages
+  # ========================
+  mongodb:
+    image: mongo:7
+    container_name: rice_mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-rice_user}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-rice_secret_dev}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-rice_chat}
+    ports:
+      - "127.0.0.1:${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongo_data:/data/db
+      - ../configs/mongodb/init.js:/docker-entrypoint-initdb.d/01-init.js:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+    restart: unless-stopped
+
+  # ========================
+  # MinIO - Object Storage (Ảnh)
+  # ========================
+  minio:
+    image: minio/minio:latest
+    container_name: rice_minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-rice_minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-rice_minio_secret_dev}
+    ports:
+      - "127.0.0.1:${MINIO_API_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+    restart: unless-stopped
+
+networks:
+  backend:
+    name: rice_backend
+    driver: bridge
+
+volumes:
+  postgres_data:
+    name: rice_postgres_data
+  redis_data:
+    name: rice_redis_data
+  mongo_data:
+    name: rice_mongo_data
+  minio_data:
+    name: rice_minio_data

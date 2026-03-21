@@ -1,0 +1,15 @@
+DROP TRIGGER IF EXISTS listings_updated_at ON listings;
+DROP TRIGGER IF EXISTS users_updated_at ON users;
+DROP TRIGGER IF EXISTS listings_search_trigger ON listings;
+DROP FUNCTION IF EXISTS update_updated_at();
+DROP FUNCTION IF EXISTS listings_search_update();
+DROP TABLE IF EXISTS otp_requests;
+DROP TABLE IF EXISTS device_tokens;
+DROP TABLE IF EXISTS notifications;
+DROP TABLE IF EXISTS reports;
+DROP TABLE IF EXISTS ratings;
+DROP TABLE IF EXISTS listings;
+DROP TABLE IF EXISTS subscriptions;
+DROP TABLE IF EXISTS users;
+DROP EXTENSION IF EXISTS "pg_trgm";
+DROP EXTENSION IF EXISTS "uuid-ossp";

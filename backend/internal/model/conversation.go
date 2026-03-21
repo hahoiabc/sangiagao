@@ -1,0 +1,36 @@
+package model
+
+import "time"
+
+type Conversation struct {
+	ID            string     `json:"id"`
+	BuyerID       string     `json:"buyer_id"`
+	SellerID      string     `json:"seller_id"`
+	ListingID     *string    `json:"listing_id,omitempty"`
+	LastMessageAt time.Time  `json:"last_message_at"`
+	CreatedAt     time.Time  `json:"created_at"`
+	// Joined fields
+	OtherUser     *PublicProfile `json:"other_user,omitempty"`
+	LastMessage   *Message       `json:"last_message,omitempty"`
+	UnreadCount   int            `json:"unread_count"`
+}
+
+type Message struct {
+	ID             string     `json:"id"`
+	ConversationID string     `json:"conversation_id"`
+	SenderID       string     `json:"sender_id"`
+	Content        string     `json:"content"`
+	Type           string     `json:"type"`
+	ReadAt         *time.Time `json:"read_at,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+}
+
+type CreateConversationRequest struct {
+	SellerID  string  `json:"seller_id" binding:"required"`
+	ListingID *string `json:"listing_id"`
+}
+
+type SendMessageRequest struct {
+	Content string `json:"content" binding:"required"`
+	Type    string `json:"type"`
+}

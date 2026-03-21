@@ -1,0 +1,187 @@
+package service
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"fmt"
+	"image"
+	"image/jpeg"
+	_ "image/png"
+	"io"
+	"log"
+	"path/filepath"
+	"strings"
+
+	"github.com/google/uuid"
+	"github.com/sangiagao/rice-marketplace/pkg/storage"
+	"golang.org/x/image/draw"
+	_ "golang.org/x/image/webp"
+)
+
+var (
+	ErrInvalidFileType  = errors.New("chỉ chấp nhận file ảnh JPEG, PNG hoặc WebP")
+	ErrInvalidAudioType = errors.New("chỉ chấp nhận file âm thanh AAC, MP4, OGG hoặc WAV")
+	ErrFileTooLarge     = errors.New("file không được vượt quá 5MB")
+)
+
+const MaxImageSize = 5 * 1024 * 1024  // 5MB
+const MaxAudioSize = 10 * 1024 * 1024 // 10MB
+
+const thumbnailMaxDim = 300
+const thumbnailJPEGQuality = 80
+
+var allowedImageTypes = map[string]bool{
+	"image/jpeg": true,
+	"image/png":  true,
+	"image/webp": true,
+}
+
+var allowedAudioTypes = map[string]bool{
+	"audio/aac":              true,
+	"audio/mp4":              true,
+	"audio/m4a":              true,
+	"audio/x-m4a":            true,
+	"audio/mpeg":             true,
+	"audio/ogg":              true,
+	"audio/wav":              true,
+	"audio/x-wav":            true,
+	"application/octet-stream": true,
+}
+
+// ImageUploadResult holds URLs for the original and thumbnail images.
+type ImageUploadResult struct {
+	URL          string `json:"url"`
+	ThumbnailURL string `json:"thumbnail_url"`
+}
+
+type UploadService struct {
+	storage storage.Client
+}
+
+func NewUploadService(storageClient storage.Client) *UploadService {
+	return &UploadService{storage: storageClient}
+}
+
+func (s *UploadService) UploadImage(ctx context.Context, folder string, file io.Reader, size int64, contentType, originalFilename string) (*ImageUploadResult, error) {
+	if size > MaxImageSize {
+		return nil, ErrFileTooLarge
+	}
+
+	if !allowedImageTypes[contentType] {
+		return nil, ErrInvalidFileType
+	}
+
+	ext := strings.ToLower(filepath.Ext(originalFilename))
+	if ext == "" {
+		switch contentType {
+		case "image/jpeg":
+			ext = ".jpg"
+		case "image/png":
+			ext = ".png"
+		case "image/webp":
+			ext = ".webp"
+		}
+	}
+
+	// Read the entire file into memory so we can use it for both original upload and thumbnail generation.
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		return nil, fmt.Errorf("reading file: %w", err)
+	}
+
+	uniqueName := fmt.Sprintf("%s%s", uuid.New().String(), ext)
+
+	// Upload original image.
+	result, err := s.storage.Upload(ctx, folder, uniqueName, bytes.NewReader(fileBytes), int64(len(fileBytes)), contentType)
+	if err != nil {
+		return nil, fmt.Errorf("upload failed: %w", err)
+	}
+
+	uploadResult := &ImageUploadResult{
+		URL: result.URL,
+	}
+
+	// Generate and upload thumbnail. If this fails, we still return the original URL.
+	thumbURL, err := s.generateAndUploadThumbnail(ctx, folder, uniqueName, fileBytes)
+	if err != nil {
+		log.Printf("thumbnail generation failed for %s/%s: %v", folder, uniqueName, err)
+	} else {
+		uploadResult.ThumbnailURL = thumbURL
+	}
+
+	return uploadResult, nil
+}
+
+// generateAndUploadThumbnail decodes the image, resizes it to fit within 300x300
+// preserving aspect ratio, encodes as JPEG, and uploads with a thumb_ prefix.
+func (s *UploadService) generateAndUploadThumbnail(ctx context.Context, folder, originalName string, imgData []byte) (string, error) {
+	src, _, err := image.Decode(bytes.NewReader(imgData))
+	if err != nil {
+		return "", fmt.Errorf("decoding image: %w", err)
+	}
+
+	bounds := src.Bounds()
+	origW := bounds.Dx()
+	origH := bounds.Dy()
+
+	// Calculate new dimensions preserving aspect ratio.
+	newW, newH := origW, origH
+	if origW > thumbnailMaxDim || origH > thumbnailMaxDim {
+		if origW >= origH {
+			newW = thumbnailMaxDim
+			newH = origH * thumbnailMaxDim / origW
+		} else {
+			newH = thumbnailMaxDim
+			newW = origW * thumbnailMaxDim / origH
+		}
+	}
+
+	if newW < 1 {
+		newW = 1
+	}
+	if newH < 1 {
+		newH = 1
+	}
+
+	dst := image.NewRGBA(image.Rect(0, 0, newW, newH))
+	draw.CatmullRom.Scale(dst, dst.Bounds(), src, bounds, draw.Over, nil)
+
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, dst, &jpeg.Options{Quality: thumbnailJPEGQuality}); err != nil {
+		return "", fmt.Errorf("encoding thumbnail: %w", err)
+	}
+
+	thumbName := "thumb_" + strings.TrimSuffix(originalName, filepath.Ext(originalName)) + ".jpg"
+
+	thumbResult, err := s.storage.Upload(ctx, folder, thumbName, &buf, int64(buf.Len()), "image/jpeg")
+	if err != nil {
+		return "", fmt.Errorf("uploading thumbnail: %w", err)
+	}
+
+	return thumbResult.URL, nil
+}
+
+func (s *UploadService) UploadAudio(ctx context.Context, file io.Reader, size int64, contentType, originalFilename string) (string, error) {
+	if size > MaxAudioSize {
+		return "", ErrFileTooLarge
+	}
+
+	if !allowedAudioTypes[contentType] {
+		return "", ErrInvalidAudioType
+	}
+
+	ext := strings.ToLower(filepath.Ext(originalFilename))
+	if ext == "" {
+		ext = ".m4a"
+	}
+
+	uniqueName := fmt.Sprintf("%s%s", uuid.New().String(), ext)
+
+	result, err := s.storage.Upload(ctx, "audio", uniqueName, file, size, contentType)
+	if err != nil {
+		return "", fmt.Errorf("upload failed: %w", err)
+	}
+
+	return result.URL, nil
+}
