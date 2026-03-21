@@ -371,14 +371,12 @@ func (s *AuthService) ResetPassword(ctx context.Context, phone, code, newPasswor
 }
 
 func generateOTP() string {
+	if os.Getenv("SMS_PROVIDER") == "mock" {
+		return "123456"
+	}
 	n, err := rand.Int(rand.Reader, big.NewInt(1000000))
 	if err != nil {
-		// Fallback: should never happen with crypto/rand
 		n = big.NewInt(123456)
 	}
-	code := fmt.Sprintf("%06d", n.Int64())
-	if os.Getenv("APP_ENV") != "production" {
-		fmt.Printf("[DEV] OTP code: %s\n", code)
-	}
-	return code
+	return fmt.Sprintf("%06d", n.Int64())
 }
