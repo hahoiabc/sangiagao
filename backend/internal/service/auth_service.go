@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
 	"os"
 	"regexp"
@@ -266,6 +267,12 @@ func (s *AuthService) CompleteRegister(ctx context.Context, phone, code, name, p
 	user, err := s.userRepo.CreateWithPassword(ctx, phone, name, string(hashedPassword), province, ward, address)
 	if err != nil {
 		return nil, fmt.Errorf("create user: %w", err)
+	}
+
+	// Trial 30 ngày miễn phí cho tài khoản mới
+	_, err = s.subRepo.ActivateByUserID(ctx, user.ID, 30, 1, 0)
+	if err != nil {
+		log.Printf("Failed to create trial subscription for user %s: %v", user.ID, err)
 	}
 
 	tokens, err := s.jwtManager.GenerateTokenPair(user.ID, user.Role)
