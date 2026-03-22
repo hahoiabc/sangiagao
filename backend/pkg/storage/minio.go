@@ -71,7 +71,7 @@ func (m *MinIOClient) Upload(ctx context.Context, folder, filename string, reade
 	if err != nil {
 		return nil, fmt.Errorf("upload object: %w", err)
 	}
-	url := fmt.Sprintf("%s/%s/%s", m.publicURL, m.bucketName, key)
+	url := fmt.Sprintf("%s/%s", m.publicURL, key)
 	return &UploadResult{Key: key, URL: url}, nil
 }
 
