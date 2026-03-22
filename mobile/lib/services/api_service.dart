@@ -8,7 +8,7 @@ import '../models/price_board.dart';
 import '../models/product_catalog.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://192.168.2.228:8080/api/v1';
+  static const String baseUrl = 'https://sangiagao.vn/api/v1';
 
   final Dio _dio;
   final FlutterSecureStorage _storage;

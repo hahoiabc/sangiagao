@@ -20,7 +20,7 @@ void main() {
     test('copyWith updates user', () {
       const state = AuthState(status: AuthStatus.authenticated);
       final user = User(
-        id: 'u1', phone: '0901234567', role: 'buyer',
+        id: 'u1', phone: '0901234567', role: 'member',
         createdAt: '2024-01-01T00:00:00Z',
       );
       final updated = state.copyWith(user: user);

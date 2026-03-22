@@ -9,7 +9,7 @@ CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     phone VARCHAR(15) NOT NULL UNIQUE,
-    role VARCHAR(10) NOT NULL CHECK (role IN ('buyer', 'seller', 'admin', 'editor', 'member', 'owner')),
+    role VARCHAR(10) NOT NULL CHECK (role IN ('member', 'admin', 'editor', 'owner')),
     name VARCHAR(100),
     avatar_url TEXT,
     address TEXT,

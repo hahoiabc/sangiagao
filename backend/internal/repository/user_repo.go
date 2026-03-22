@@ -78,7 +78,7 @@ func (r *UserRepo) CreateWithPassword(ctx context.Context, phone, name, password
 	}
 	row := r.pool.QueryRow(ctx,
 		`INSERT INTO users (phone, role, name, password_hash, province, ward, address, accepted_tos_at, phone_hash, phone_encrypt)
-		 VALUES ($1, 'buyer', $2, $3, $4, $5, $6, NOW(), $7, $8)
+		 VALUES ($1, 'member', $2, $3, $4, $5, $6, NOW(), $7, $8)
 		 RETURNING `+userColumns,
 		phone, name, passwordHash, province, ward, address, phoneHash, phoneEnc,
 	)

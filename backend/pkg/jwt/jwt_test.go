@@ -15,7 +15,7 @@ func newTestManager() *Manager {
 func TestGenerateTokenPair(t *testing.T) {
 	m := newTestManager()
 
-	pair, err := m.GenerateTokenPair("user-123", "buyer")
+	pair, err := m.GenerateTokenPair("user-123", "member")
 	require.NoError(t, err)
 	assert.NotEmpty(t, pair.AccessToken)
 	assert.NotEmpty(t, pair.RefreshToken)
@@ -39,7 +39,7 @@ func TestValidateToken_Valid(t *testing.T) {
 func TestValidateToken_RefreshToken(t *testing.T) {
 	m := newTestManager()
 
-	pair, err := m.GenerateTokenPair("user-456", "buyer")
+	pair, err := m.GenerateTokenPair("user-456", "member")
 	require.NoError(t, err)
 
 	claims, err := m.ValidateToken(pair.RefreshToken)
@@ -50,7 +50,7 @@ func TestValidateToken_RefreshToken(t *testing.T) {
 func TestValidateToken_Expired(t *testing.T) {
 	m := NewManager("test-secret-at-least-32-chars-long", -1*time.Second, -1*time.Second)
 
-	pair, err := m.GenerateTokenPair("user-123", "buyer")
+	pair, err := m.GenerateTokenPair("user-123", "member")
 	require.NoError(t, err)
 
 	_, err = m.ValidateToken(pair.AccessToken)
@@ -61,7 +61,7 @@ func TestValidateToken_WrongSecret(t *testing.T) {
 	m1 := NewManager("secret-one-at-least-32-chars-long", 15*time.Minute, 720*time.Hour)
 	m2 := NewManager("secret-two-at-least-32-chars-long", 15*time.Minute, 720*time.Hour)
 
-	pair, err := m1.GenerateTokenPair("user-123", "buyer")
+	pair, err := m1.GenerateTokenPair("user-123", "member")
 	require.NoError(t, err)
 
 	_, err = m2.ValidateToken(pair.AccessToken)

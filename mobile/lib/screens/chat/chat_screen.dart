@@ -70,7 +70,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final Map<String, ListingDetail?> _listingCache = {};
 
   // Phoenix chat service URL
-  static const String _phoenixWsUrl = 'ws://192.168.2.228:4000/socket/websocket';
+  static const String _phoenixWsUrl = 'wss://sangiagao.vn/socket/websocket';
 
   @override
   void initState() {

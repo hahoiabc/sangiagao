@@ -37,7 +37,7 @@ void main() {
       final json = {
         'id': 'u2',
         'phone': '0909999999',
-        'role': 'buyer',
+        'role': 'member',
         'created_at': '2024-06-01T00:00:00Z',
       };
 
@@ -54,7 +54,7 @@ void main() {
 
     test('hasAcceptedTos returns true when acceptedTosAt is not null', () {
       final user = User(
-        id: 'u1', phone: '0901234567', role: 'buyer',
+        id: 'u1', phone: '0901234567', role: 'member',
         acceptedTosAt: '2024-01-01T00:00:00Z', createdAt: '2024-01-01T00:00:00Z',
       );
       expect(user.hasAcceptedTos, true);
@@ -62,7 +62,7 @@ void main() {
 
     test('hasAcceptedTos returns false when acceptedTosAt is null', () {
       final user = User(
-        id: 'u1', phone: '0901234567', role: 'buyer',
+        id: 'u1', phone: '0901234567', role: 'member',
         createdAt: '2024-01-01T00:00:00Z',
       );
       expect(user.hasAcceptedTos, false);
@@ -79,7 +79,7 @@ void main() {
 
     test('isBuyer returns true for buyer role', () {
       final user = User(
-        id: 'u1', phone: '0901234567', role: 'buyer',
+        id: 'u1', phone: '0901234567', role: 'member',
         createdAt: '2024-01-01T00:00:00Z',
       );
       expect(user.isBuyer, true);
@@ -90,7 +90,7 @@ void main() {
       final json = {
         'id': 'u1',
         'phone': '0901234567',
-        'role': 'buyer',
+        'role': 'member',
         'created_at': '2024-01-01T00:00:00Z',
       };
       final user = User.fromJson(json);
@@ -101,7 +101,7 @@ void main() {
       final json = {
         'id': 'u1',
         'phone': '0901234567',
-        'role': 'buyer',
+        'role': 'member',
         'is_blocked': true,
         'created_at': '2024-01-01T00:00:00Z',
       };
@@ -138,7 +138,7 @@ void main() {
     test('fromJson handles nullable fields', () {
       final json = {
         'id': 'u2',
-        'role': 'buyer',
+        'role': 'member',
         'created_at': '2024-03-01T00:00:00Z',
       };
 

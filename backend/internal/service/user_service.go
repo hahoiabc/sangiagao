@@ -9,7 +9,7 @@ import (
 
 var (
 	ErrRoleAlreadySet  = errors.New("role can only be changed during onboarding")
-	ErrInvalidRole     = errors.New("role must be 'buyer' or 'seller'")
+	ErrInvalidRole     = errors.New("role must be 'member'")
 )
 
 type UserService struct {
