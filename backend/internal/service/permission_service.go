@@ -103,9 +103,11 @@ func (s *PermissionService) SaveAll(ctx context.Context, perms map[string]map[st
 	s.mu.Unlock()
 
 	// Update Redis cache
-	data, err := json.Marshal(perms)
-	if err == nil {
-		_ = s.cache.Set(ctx, permissionCacheKey, data, permissionCacheTTL)
+	if s.cache != nil {
+		data, err := json.Marshal(perms)
+		if err == nil {
+			_ = s.cache.Set(ctx, permissionCacheKey, data, permissionCacheTTL)
+		}
 	}
 
 	return nil
@@ -114,14 +116,16 @@ func (s *PermissionService) SaveAll(ctx context.Context, perms map[string]map[st
 // loadMatrix loads the permission matrix from Redis cache or DB.
 func (s *PermissionService) loadMatrix(ctx context.Context) error {
 	// Try Redis first
-	data, err := s.cache.Get(ctx, permissionCacheKey)
-	if err == nil && data != nil {
-		var matrix map[string]map[string]bool
-		if json.Unmarshal(data, &matrix) == nil {
-			s.mu.Lock()
-			s.matrix = matrix
-			s.mu.Unlock()
-			return nil
+	if s.cache != nil {
+		data, err := s.cache.Get(ctx, permissionCacheKey)
+		if err == nil && data != nil {
+			var matrix map[string]map[string]bool
+			if json.Unmarshal(data, &matrix) == nil {
+				s.mu.Lock()
+				s.matrix = matrix
+				s.mu.Unlock()
+				return nil
+			}
 		}
 	}
 
@@ -136,9 +140,11 @@ func (s *PermissionService) loadMatrix(ctx context.Context) error {
 	s.mu.Unlock()
 
 	// Cache to Redis
-	data, err = json.Marshal(matrix)
-	if err == nil {
-		_ = s.cache.Set(ctx, permissionCacheKey, data, permissionCacheTTL)
+	if s.cache != nil {
+		data, err := json.Marshal(matrix)
+		if err == nil {
+			_ = s.cache.Set(ctx, permissionCacheKey, data, permissionCacheTTL)
+		}
 	}
 
 	return nil
