@@ -100,6 +100,7 @@ func main() {
 	feedbackRepo := repository.NewFeedbackRepo(pgPool)
 	catalogRepo := repository.NewCatalogRepo(pgPool)
 	planRepo := repository.NewPlanRepo(pgPool)
+	permissionRepo := repository.NewPermissionRepo(pgPool)
 
 	// --- Services ---
 	authService := service.NewAuthService(userRepo, otpRepo, subRepo, jwtManager, smsSender)
@@ -122,6 +123,7 @@ func main() {
 	sponsorService := service.NewSponsorService(sponsorRepo)
 	feedbackService := service.NewFeedbackService(feedbackRepo)
 	catalogService := service.NewCatalogService(catalogRepo)
+	permissionService := service.NewPermissionService(permissionRepo, appCache)
 	var uploadService *service.UploadService
 	if storageClient != nil {
 		uploadService = service.NewUploadService(storageClient)
@@ -143,6 +145,7 @@ func main() {
 	adminHandler := handler.NewAdminHandler(adminService)
 	convHandler := handler.NewConversationHandler(chatService, notifService)
 	sponsorHandler := handler.NewSponsorHandler(sponsorService)
+	permissionHandler := handler.NewPermissionHandler(permissionService)
 	feedbackHandler := handler.NewFeedbackHandler(feedbackService, notifService)
 	systemHandler := handler.NewSystemHandler(appCache)
 	wsHandler := handler.NewWSHandler(wsHub, jwtManager, chatService, cfg.CORSOrigins)
@@ -219,6 +222,11 @@ func main() {
 			protected.GET("/users/me", userHandler.GetMe)
 			protected.PUT("/users/me", userHandler.UpdateMe)
 			protected.POST("/users/me/avatar", userHandler.UploadAvatar)
+			protected.POST("/users/me/password", userHandler.ChangePassword)
+			protected.POST("/users/me/phone", userHandler.ChangePhone)
+
+			// Permissions (for current user)
+			protected.GET("/permissions/me", permissionHandler.GetMyPermissions)
 
 			// Listing routes
 			listings := protected.Group("/listings")
@@ -313,6 +321,10 @@ func main() {
 
 				// System monitoring — admin + editor
 				admin.GET("/system/stats", systemHandler.GetStats)
+
+				// Permissions management — owner + admin only
+				admin.GET("/permissions", permissionHandler.GetPermissions)
+				admin.PUT("/permissions", permissionHandler.SavePermissions)
 
 				// User management — admin only
 				adminOnly := admin.Group("")

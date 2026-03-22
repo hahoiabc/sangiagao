@@ -26,6 +26,8 @@ type UserServiceInterface interface {
 	GetPublicProfile(ctx context.Context, userID string) (*model.PublicProfile, error)
 	UpdateProfile(ctx context.Context, userID string, req *model.UpdateProfileRequest) (*model.User, error)
 	UpdateAvatar(ctx context.Context, userID, avatarURL string) (*model.User, error)
+	ChangePassword(ctx context.Context, userID, currentPassword, newPassword string) error
+	ChangePhone(ctx context.Context, userID, newPhone string) (*model.User, error)
 }
 
 type ListingServiceInterface interface {
@@ -109,6 +111,12 @@ type FeedbackServiceInterface interface {
 	ListAll(ctx context.Context, page, limit int) ([]*model.Feedback, int, error)
 	Reply(ctx context.Context, id, reply string) (*model.Feedback, error)
 	CountUnreplied(ctx context.Context) (int, error)
+}
+
+type PermissionServiceInterface interface {
+	HasPermission(role, permissionKey string) bool
+	GetAll(ctx context.Context) (map[string]map[string]bool, error)
+	SaveAll(ctx context.Context, perms map[string]map[string]bool) error
 }
 
 type CatalogServiceInterface interface {

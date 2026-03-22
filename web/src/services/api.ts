@@ -285,6 +285,23 @@ export async function resetPassword(phone: string, code: string, new_password: s
   });
 }
 
+// --- Account ---
+export async function changePassword(token: string, currentPassword: string, newPassword: string) {
+  return request<{ message: string }>("/users/me/password", {
+    token,
+    method: "POST",
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  });
+}
+
+export async function changePhone(token: string, newPhone: string, code: string) {
+  return request<User>("/users/me/phone", {
+    token,
+    method: "POST",
+    body: JSON.stringify({ new_phone: newPhone, code }),
+  });
+}
+
 // --- Public ---
 export async function getPriceBoard() {
   return request<PriceBoardResponse>("/marketplace/price-board");
@@ -496,4 +513,11 @@ export async function createFeedback(token: string, content: string) {
 export async function getMyFeedbacks(token: string, page: number, limit: number) {
   const params = new URLSearchParams({ page: String(page), limit: String(limit) });
   return request<PaginatedResponse<Feedback>>(`/feedbacks/my?${params}`, { token });
+}
+
+// --- Permissions ---
+export type PermissionMap = Record<string, boolean>;
+
+export async function getMyPermissions(token: string): Promise<{ role: string; permissions: PermissionMap }> {
+  return request<{ role: string; permissions: PermissionMap }>("/permissions/me", { token });
 }

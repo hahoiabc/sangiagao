@@ -133,3 +133,27 @@ class UnreadCountNotifier extends StateNotifier<int> {
 final unreadCountProvider = StateNotifierProvider<UnreadCountNotifier, int>(
   (ref) => UnreadCountNotifier(ref.read(apiServiceProvider)),
 );
+
+// Permission state
+class PermissionNotifier extends StateNotifier<Map<String, bool>> {
+  final ApiService _api;
+
+  PermissionNotifier(this._api) : super({});
+
+  Future<void> load() async {
+    try {
+      final perms = await _api.getMyPermissions();
+      state = perms;
+    } catch (_) {
+      state = {};
+    }
+  }
+
+  bool hasPermission(String key) => state[key] == true;
+
+  void clear() => state = {};
+}
+
+final permissionProvider = StateNotifierProvider<PermissionNotifier, Map<String, bool>>(
+  (ref) => PermissionNotifier(ref.read(apiServiceProvider)),
+);

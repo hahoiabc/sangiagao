@@ -17,7 +17,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { MoreHorizontal, Eye, ShieldBan, ShieldCheck, CreditCard, UserCog, Users, Shield, Check, X, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
-import { listUsers, blockUser, unblockUser, activateSubscription, changeUserRole, type User } from "@/services/api";
+import { listUsers, blockUser, unblockUser, activateSubscription, changeUserRole, getPermissions, savePermissions, type User, type PermissionMatrix } from "@/services/api";
 import { cn } from "@/lib/utils";
 
 // ── Roles ──
@@ -123,9 +123,11 @@ const permissionGroups: PermissionGroup[] = [
 
 // ── Role Permission Tab component ──
 function RolePermissionsTab() {
+  const { token } = useAuth();
+
   // Build initial state from defaults
-  const buildInitialPerms = () => {
-    const perms: Record<string, Record<string, boolean>> = {};
+  const buildInitialPerms = (): PermissionMatrix => {
+    const perms: PermissionMatrix = {};
     for (const role of permissionRoles) {
       perms[role] = {};
       for (const g of permissionGroups) {
@@ -137,13 +139,38 @@ function RolePermissionsTab() {
     return perms;
   };
 
-  const [perms, setPerms] = useState(buildInitialPerms);
+  const [perms, setPerms] = useState<PermissionMatrix>(buildInitialPerms);
+  const [savedPerms, setSavedPerms] = useState<PermissionMatrix>(buildInitialPerms);
   const [hasChanges, setHasChanges] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  // Load permissions from API
+  useEffect(() => {
+    if (!token) return;
+    setLoading(true);
+    getPermissions(token)
+      .then((matrix) => {
+        // Merge API data with defaults (ensure all keys exist)
+        const merged = buildInitialPerms();
+        for (const role of permissionRoles) {
+          if (matrix[role]) {
+            for (const key of Object.keys(matrix[role])) {
+              merged[role][key] = matrix[role][key];
+            }
+          }
+        }
+        setPerms(merged);
+        setSavedPerms(merged);
+      })
+      .catch(() => {
+        toast.error("Không thể tải cấu hình quyền hạn");
+      })
+      .finally(() => setLoading(false));
+  }, [token]);
 
   function togglePerm(role: string, key: string) {
-    // Owner always has all permissions, guest is fixed
     if (role === "owner" || role === "guest") return;
-    // Locked permissions can't be changed
     const perm = permissionGroups.flatMap(g => g.permissions).find(p => p.key === key);
     if (perm?.locked) return;
 
@@ -154,14 +181,23 @@ function RolePermissionsTab() {
     setHasChanges(true);
   }
 
-  function handleSave() {
-    // TODO: Save to backend API when endpoint is ready
-    toast.success("Đã lưu cấu hình quyền hạn");
-    setHasChanges(false);
+  async function handleSave() {
+    if (!token) return;
+    setSaving(true);
+    try {
+      await savePermissions(token, perms);
+      setSavedPerms(perms);
+      toast.success("Đã lưu cấu hình quyền hạn");
+      setHasChanges(false);
+    } catch {
+      toast.error("Không thể lưu cấu hình quyền hạn");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleReset() {
-    setPerms(buildInitialPerms());
+    setPerms(savedPerms);
     setHasChanges(false);
   }
 
@@ -193,12 +229,18 @@ function RolePermissionsTab() {
           {hasChanges && (
             <Button size="sm" variant="outline" onClick={handleReset}>Hoàn tác</Button>
           )}
-          <Button size="sm" onClick={handleSave} disabled={!hasChanges}>
-            Lưu thay đổi
+          <Button size="sm" onClick={handleSave} disabled={!hasChanges || saving}>
+            {saving ? "Đang lưu..." : "Lưu thay đổi"}
           </Button>
         </div>
       </div>
 
+      {loading ? (
+        <div className="flex items-center justify-center py-12 text-muted-foreground">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-3" />
+          Đang tải cấu hình quyền hạn...
+        </div>
+      ) : (
       <div className="rounded-lg border shadow-sm bg-card overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -264,6 +306,7 @@ function RolePermissionsTab() {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }

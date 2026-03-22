@@ -27,6 +27,7 @@ class _MainShellState extends ConsumerState<MainShell> {
     super.initState();
     _checkSubscription();
     ref.read(unreadCountProvider.notifier).refresh();
+    ref.read(permissionProvider.notifier).load();
     _unreadPollTimer = Timer.periodic(
       const Duration(seconds: 10),
       (_) => ref.read(unreadCountProvider.notifier).refresh(),

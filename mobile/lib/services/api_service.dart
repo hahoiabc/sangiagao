@@ -358,6 +358,30 @@ class ApiService {
       if (description != null) 'description': description,
     });
   }
+
+  // --- Account ---
+  Future<void> changePasswordAuth(String currentPassword, String newPassword) async {
+    await _dio.post('/users/me/password', data: {
+      'current_password': currentPassword,
+      'new_password': newPassword,
+    });
+  }
+
+  Future<Map<String, dynamic>> changePhoneAuth(String newPhone, String code) async {
+    final response = await _dio.post('/users/me/phone', data: {
+      'new_phone': newPhone,
+      'code': code,
+    });
+    return response.data as Map<String, dynamic>;
+  }
+
+  // --- Permissions ---
+  Future<Map<String, bool>> getMyPermissions() async {
+    final response = await _dio.get('/permissions/me');
+    final perms = response.data['permissions'] as Map<String, dynamic>?;
+    if (perms == null) return {};
+    return perms.map((key, value) => MapEntry(key, value == true));
+  }
 }
 
 class PaginatedResult<T> {

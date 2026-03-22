@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
+import { getMyPermissions, type PermissionMap } from "@/services/api";
 
 interface AuthUser {
   id: string;
@@ -13,6 +14,8 @@ interface AuthUser {
 interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
+  permissions: PermissionMap;
+  hasPermission: (key: string) => boolean;
   login: (user: AuthUser, accessToken: string, refreshToken: string) => void;
   logout: () => void;
   isLoading: boolean;
@@ -23,7 +26,19 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [permissions, setPermissions] = useState<PermissionMap>({});
   const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch permissions when token is available
+  useEffect(() => {
+    if (!token) {
+      setPermissions({});
+      return;
+    }
+    getMyPermissions(token)
+      .then((res) => setPermissions(res.permissions))
+      .catch(() => setPermissions({}));
+  }, [token]);
 
   useEffect(() => {
     const savedUser = localStorage.getItem("web_user");
@@ -58,11 +73,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("web_refresh_token");
     setUser(null);
     setToken(null);
+    setPermissions({});
     window.location.href = "/dang-nhap";
   }, []);
 
+  const hasPermission = useCallback(
+    (key: string) => {
+      if (!user) return false;
+      // Owner always has all permissions
+      if (user.role === "owner") return true;
+      return permissions[key] === true;
+    },
+    [user, permissions]
+  );
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token, permissions, hasPermission, login, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

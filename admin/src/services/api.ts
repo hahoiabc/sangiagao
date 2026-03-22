@@ -589,3 +589,19 @@ export interface SystemStats {
 export async function getSystemStats(token: string): Promise<SystemStats> {
   return request<SystemStats>("/admin/system/stats", { token });
 }
+
+// --- Permissions ---
+export type PermissionMatrix = Record<string, Record<string, boolean>>;
+
+export async function getPermissions(token: string): Promise<PermissionMatrix> {
+  const res = await request<{ permissions: PermissionMatrix }>("/admin/permissions", { token });
+  return res.permissions;
+}
+
+export async function savePermissions(token: string, permissions: PermissionMatrix): Promise<void> {
+  await request<{ message: string }>("/admin/permissions", {
+    token,
+    method: "PUT",
+    body: JSON.stringify({ permissions }),
+  });
+}

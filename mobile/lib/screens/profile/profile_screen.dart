@@ -267,6 +267,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   onTap: () => context.push('/subscription'),
                 ),
               ListTile(
+                leading: const Icon(Icons.lock_outline),
+                title: const Text('Đổi mật khẩu'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/change-password'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.phone),
+                title: const Text('Đổi số điện thoại'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/change-phone'),
+              ),
+              ListTile(
                 leading: const Icon(Icons.feedback_outlined),
                 title: const Text('Góp ý cho nhà phát triển'),
                 trailing: const Icon(Icons.chevron_right),

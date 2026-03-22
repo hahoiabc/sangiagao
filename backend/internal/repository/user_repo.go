@@ -216,6 +216,60 @@ func (r *UserRepo) UpdatePassword(ctx context.Context, phone, passwordHash strin
 	return nil
 }
 
+func (r *UserRepo) GetPasswordHashByID(ctx context.Context, userID string) (string, error) {
+	var hash *string
+	err := r.pool.QueryRow(ctx,
+		`SELECT password_hash FROM users WHERE id = $1`, userID,
+	).Scan(&hash)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrUserNotFound
+	}
+	if err != nil {
+		return "", err
+	}
+	if hash == nil || *hash == "" {
+		return "", nil
+	}
+	return *hash, nil
+}
+
+func (r *UserRepo) UpdatePasswordByID(ctx context.Context, userID, passwordHash string) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE users SET password_hash = $2, updated_at = NOW() WHERE id = $1`,
+		userID, passwordHash,
+	)
+	return err
+}
+
+func (r *UserRepo) UpdatePhone(ctx context.Context, userID, newPhone string) (*model.User, error) {
+	phoneHash := r.crypto.Hash(newPhone)
+	phoneEnc, err := r.crypto.Encrypt(newPhone)
+	if err != nil {
+		return nil, err
+	}
+	row := r.pool.QueryRow(ctx,
+		`UPDATE users SET phone = $2, phone_hash = $3, phone_encrypt = $4, updated_at = NOW()
+		 WHERE id = $1 RETURNING `+userColumns,
+		userID, newPhone, phoneHash, phoneEnc,
+	)
+	return r.scanUser(row)
+}
+
+func (r *UserRepo) PhoneExists(ctx context.Context, phone string) (bool, error) {
+	phoneHash := r.crypto.Hash(phone)
+	var exists bool
+	err := r.pool.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM users WHERE phone_hash = $1)`, phoneHash,
+	).Scan(&exists)
+	if err != nil {
+		// Fallback: try plaintext phone
+		err = r.pool.QueryRow(ctx,
+			`SELECT EXISTS(SELECT 1 FROM users WHERE phone = $1 AND phone_hash IS NULL)`, phone,
+		).Scan(&exists)
+	}
+	return exists, err
+}
+
 // --- Admin methods ---
 
 func (r *UserRepo) BlockUser(ctx context.Context, id, reason string) (*model.User, error) {

@@ -75,7 +75,12 @@ export default function LoginPage() {
             {loading ? "Đang đăng nhập..." : "Đăng nhập"}
           </Button>
         </form>
-        <div className="mt-4 text-center text-sm space-y-1">
+        <div className="mt-4 text-center text-sm space-y-2">
+          <p>
+            <Link href="/quen-mat-khau" className="text-muted-foreground hover:text-primary hover:underline">
+              Quên mật khẩu?
+            </Link>
+          </p>
           <p>
             <Link href="/dang-ky" className="text-primary hover:underline">
               Chưa có tài khoản? Đăng ký

@@ -3,8 +3,10 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/sangiagao/rice-marketplace/internal/model"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -73,4 +75,51 @@ func (s *UserService) UpdateProfile(ctx context.Context, userID string, req *mod
 
 func (s *UserService) UpdateAvatar(ctx context.Context, userID, avatarURL string) (*model.User, error) {
 	return s.userRepo.UpdateAvatar(ctx, userID, avatarURL)
+}
+
+// ChangePassword changes the password for a logged-in user.
+func (s *UserService) ChangePassword(ctx context.Context, userID, currentPassword, newPassword string) error {
+	// Get current password hash
+	hash, err := s.userRepo.GetPasswordHashByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("get password: %w", err)
+	}
+
+	// If user has a password, verify current password
+	if hash != "" {
+		if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(currentPassword)); err != nil {
+			return ErrWrongPassword
+		}
+	}
+
+	// Validate new password
+	if err := validatePassword(newPassword); err != nil {
+		return err
+	}
+
+	// Hash new password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("hash password: %w", err)
+	}
+
+	return s.userRepo.UpdatePasswordByID(ctx, userID, string(hashedPassword))
+}
+
+// ChangePhone changes the phone number for a logged-in user (after OTP verification).
+func (s *UserService) ChangePhone(ctx context.Context, userID, newPhone string) (*model.User, error) {
+	if !phoneRegex.MatchString(newPhone) {
+		return nil, ErrInvalidPhone
+	}
+
+	// Check if phone is already taken
+	exists, err := s.userRepo.PhoneExists(ctx, newPhone)
+	if err != nil {
+		return nil, fmt.Errorf("check phone: %w", err)
+	}
+	if exists {
+		return nil, ErrPhoneExists
+	}
+
+	return s.userRepo.UpdatePhone(ctx, userID, newPhone)
 }

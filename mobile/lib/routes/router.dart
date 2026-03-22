@@ -16,6 +16,8 @@ import '../screens/chat/chat_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/profile/seller_profile_screen.dart';
 import '../screens/profile/subscription_screen.dart';
+import '../screens/profile/change_password_screen.dart';
+import '../screens/profile/change_phone_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
 import '../screens/feedback/feedback_screen.dart';
 import '../screens/feedback/feedback_history_screen.dart';
@@ -84,6 +86,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (_, state) => SellerProfileScreen(sellerId: state.pathParameters['id']!),
           ),
           GoRoute(path: '/subscription', builder: (_, __) => const SubscriptionScreen()),
+          GoRoute(path: '/change-password', builder: (_, __) => const ChangePasswordScreen()),
+          GoRoute(path: '/change-phone', builder: (_, __) => const ChangePhoneScreen()),
           GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
           GoRoute(path: '/feedback', builder: (_, __) => const FeedbackScreen()),
           GoRoute(path: '/feedback-history', builder: (_, __) => const FeedbackHistoryScreen()),

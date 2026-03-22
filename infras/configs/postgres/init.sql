@@ -373,5 +373,103 @@ INSERT INTO subscription_plans (months, amount, label, sort_order) VALUES
     (12, 300000, '12 tháng', 4)
 ON CONFLICT (months) DO NOTHING;
 
+-- Role permissions table
+CREATE TABLE IF NOT EXISTS role_permissions (
+    role VARCHAR(20) NOT NULL,
+    permission_key VARCHAR(50) NOT NULL,
+    allowed BOOLEAN NOT NULL DEFAULT false,
+    PRIMARY KEY (role, permission_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_role_permissions_role ON role_permissions(role);
+
+-- Seed default permissions
+INSERT INTO role_permissions (role, permission_key, allowed) VALUES
+    -- Owner: all permissions
+    ('owner', 'dashboard.view', true), ('owner', 'dashboard.charts', true), ('owner', 'system.monitor', true),
+    ('owner', 'users.list', true), ('owner', 'users.detail', true), ('owner', 'users.block', true),
+    ('owner', 'users.role', true), ('owner', 'users.batch_block', true),
+    ('owner', 'listings.create', true), ('owner', 'listings.edit_own', true),
+    ('owner', 'listings.delete_any', true), ('owner', 'listings.batch_delete', true),
+    ('owner', 'marketplace.browse', true), ('owner', 'marketplace.search', true),
+    ('owner', 'marketplace.detail', true), ('owner', 'marketplace.priceboard', true),
+    ('owner', 'marketplace.seller_profile', true),
+    ('owner', 'chat.send', true), ('owner', 'chat.send_image', true), ('owner', 'ratings.create', true),
+    ('owner', 'reports.create', true), ('owner', 'reports.manage', true),
+    ('owner', 'sub.activate', true), ('owner', 'sub.revenue', true), ('owner', 'sub.plans', true),
+    ('owner', 'catalog.manage', true), ('owner', 'sponsors.manage', true),
+    ('owner', 'feedback.create', true), ('owner', 'feedback.reply', true),
+    -- Admin
+    ('admin', 'dashboard.view', true), ('admin', 'dashboard.charts', true), ('admin', 'system.monitor', true),
+    ('admin', 'users.list', true), ('admin', 'users.detail', true), ('admin', 'users.block', true),
+    ('admin', 'users.role', true), ('admin', 'users.batch_block', true),
+    ('admin', 'listings.create', true), ('admin', 'listings.edit_own', true),
+    ('admin', 'listings.delete_any', true), ('admin', 'listings.batch_delete', true),
+    ('admin', 'marketplace.browse', true), ('admin', 'marketplace.search', true),
+    ('admin', 'marketplace.detail', true), ('admin', 'marketplace.priceboard', true),
+    ('admin', 'marketplace.seller_profile', true),
+    ('admin', 'chat.send', true), ('admin', 'chat.send_image', true), ('admin', 'ratings.create', true),
+    ('admin', 'reports.create', true), ('admin', 'reports.manage', true),
+    ('admin', 'sub.activate', true), ('admin', 'sub.revenue', true), ('admin', 'sub.plans', false),
+    ('admin', 'catalog.manage', true), ('admin', 'sponsors.manage', true),
+    ('admin', 'feedback.create', true), ('admin', 'feedback.reply', true),
+    -- Editor
+    ('editor', 'dashboard.view', true), ('editor', 'dashboard.charts', true), ('editor', 'system.monitor', true),
+    ('editor', 'users.list', false), ('editor', 'users.detail', false), ('editor', 'users.block', false),
+    ('editor', 'users.role', false), ('editor', 'users.batch_block', false),
+    ('editor', 'listings.create', true), ('editor', 'listings.edit_own', true),
+    ('editor', 'listings.delete_any', true), ('editor', 'listings.batch_delete', true),
+    ('editor', 'marketplace.browse', true), ('editor', 'marketplace.search', true),
+    ('editor', 'marketplace.detail', true), ('editor', 'marketplace.priceboard', true),
+    ('editor', 'marketplace.seller_profile', true),
+    ('editor', 'chat.send', true), ('editor', 'chat.send_image', true), ('editor', 'ratings.create', true),
+    ('editor', 'reports.create', true), ('editor', 'reports.manage', true),
+    ('editor', 'sub.activate', true), ('editor', 'sub.revenue', true), ('editor', 'sub.plans', false),
+    ('editor', 'catalog.manage', true), ('editor', 'sponsors.manage', true),
+    ('editor', 'feedback.create', true), ('editor', 'feedback.reply', true),
+    -- Member
+    ('member', 'dashboard.view', false), ('member', 'dashboard.charts', false), ('member', 'system.monitor', false),
+    ('member', 'users.list', false), ('member', 'users.detail', false), ('member', 'users.block', false),
+    ('member', 'users.role', false), ('member', 'users.batch_block', false),
+    ('member', 'listings.create', true), ('member', 'listings.edit_own', true),
+    ('member', 'listings.delete_any', false), ('member', 'listings.batch_delete', false),
+    ('member', 'marketplace.browse', true), ('member', 'marketplace.search', true),
+    ('member', 'marketplace.detail', true), ('member', 'marketplace.priceboard', true),
+    ('member', 'marketplace.seller_profile', true),
+    ('member', 'chat.send', true), ('member', 'chat.send_image', true), ('member', 'ratings.create', true),
+    ('member', 'reports.create', true), ('member', 'reports.manage', false),
+    ('member', 'sub.activate', false), ('member', 'sub.revenue', false), ('member', 'sub.plans', false),
+    ('member', 'catalog.manage', false), ('member', 'sponsors.manage', false),
+    ('member', 'feedback.create', true), ('member', 'feedback.reply', false),
+    -- Expired member
+    ('expired', 'dashboard.view', false), ('expired', 'dashboard.charts', false), ('expired', 'system.monitor', false),
+    ('expired', 'users.list', false), ('expired', 'users.detail', false), ('expired', 'users.block', false),
+    ('expired', 'users.role', false), ('expired', 'users.batch_block', false),
+    ('expired', 'listings.create', false), ('expired', 'listings.edit_own', false),
+    ('expired', 'listings.delete_any', false), ('expired', 'listings.batch_delete', false),
+    ('expired', 'marketplace.browse', true), ('expired', 'marketplace.search', true),
+    ('expired', 'marketplace.detail', true), ('expired', 'marketplace.priceboard', true),
+    ('expired', 'marketplace.seller_profile', true),
+    ('expired', 'chat.send', true), ('expired', 'chat.send_image', true), ('expired', 'ratings.create', true),
+    ('expired', 'reports.create', true), ('expired', 'reports.manage', false),
+    ('expired', 'sub.activate', false), ('expired', 'sub.revenue', false), ('expired', 'sub.plans', false),
+    ('expired', 'catalog.manage', false), ('expired', 'sponsors.manage', false),
+    ('expired', 'feedback.create', true), ('expired', 'feedback.reply', false),
+    -- Guest (not logged in)
+    ('guest', 'dashboard.view', false), ('guest', 'dashboard.charts', false), ('guest', 'system.monitor', false),
+    ('guest', 'users.list', false), ('guest', 'users.detail', false), ('guest', 'users.block', false),
+    ('guest', 'users.role', false), ('guest', 'users.batch_block', false),
+    ('guest', 'listings.create', false), ('guest', 'listings.edit_own', false),
+    ('guest', 'listings.delete_any', false), ('guest', 'listings.batch_delete', false),
+    ('guest', 'marketplace.browse', true), ('guest', 'marketplace.search', true),
+    ('guest', 'marketplace.detail', true), ('guest', 'marketplace.priceboard', true),
+    ('guest', 'marketplace.seller_profile', true),
+    ('guest', 'chat.send', false), ('guest', 'chat.send_image', false), ('guest', 'ratings.create', false),
+    ('guest', 'reports.create', false), ('guest', 'reports.manage', false),
+    ('guest', 'sub.activate', false), ('guest', 'sub.revenue', false), ('guest', 'sub.plans', false),
+    ('guest', 'catalog.manage', false), ('guest', 'sponsors.manage', false),
+    ('guest', 'feedback.create', false), ('guest', 'feedback.reply', false)
+ON CONFLICT (role, permission_key) DO NOTHING;
+
 -- Done
 DO $$ BEGIN RAISE NOTICE '✅ Rice Marketplace database initialized successfully!'; END $$;

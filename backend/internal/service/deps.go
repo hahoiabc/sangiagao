@@ -28,6 +28,10 @@ type UserRepository interface {
 	SetRole(ctx context.Context, id, role string) (*model.User, error)
 	AcceptTOS(ctx context.Context, id string) (*model.User, error)
 	UpdateAvatar(ctx context.Context, id, avatarURL string) (*model.User, error)
+	GetPasswordHashByID(ctx context.Context, userID string) (string, error)
+	UpdatePasswordByID(ctx context.Context, userID, passwordHash string) error
+	UpdatePhone(ctx context.Context, userID, newPhone string) (*model.User, error)
+	PhoneExists(ctx context.Context, phone string) (bool, error)
 	BlockUser(ctx context.Context, id, reason string) (*model.User, error)
 	UnblockUser(ctx context.Context, id string) (*model.User, error)
 	ListUsers(ctx context.Context, search string, page, limit int) ([]*model.User, int, error)
