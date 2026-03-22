@@ -54,11 +54,11 @@ func (m *MinIOClient) EnsureBucket(ctx context.Context) error {
 		if err := m.client.MakeBucket(ctx, m.bucketName, minio.MakeBucketOptions{}); err != nil {
 			return fmt.Errorf("create bucket: %w", err)
 		}
-		// Public read policy for images
-		policy := `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":"*","Action":["s3:GetObject"],"Resource":["arn:aws:s3:::` + m.bucketName + `/*"]}]}`
-		if err := m.client.SetBucketPolicy(ctx, m.bucketName, policy); err != nil {
-			return fmt.Errorf("set bucket policy: %w", err)
-		}
+	}
+	// Always ensure public read policy for images
+	policy := `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":"*","Action":["s3:GetObject"],"Resource":["arn:aws:s3:::` + m.bucketName + `/*"]}]}`
+	if err := m.client.SetBucketPolicy(ctx, m.bucketName, policy); err != nil {
+		return fmt.Errorf("set bucket policy: %w", err)
 	}
 	return nil
 }
