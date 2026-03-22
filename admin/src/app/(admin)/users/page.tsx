@@ -30,7 +30,7 @@ const rolesData = [
 ];
 
 // ── Permission matrix ──
-const permissionRoles = ["owner", "admin", "editor", "member"] as const;
+const permissionRoles = ["owner", "admin", "editor", "member", "expired"] as const;
 
 type PermissionGroup = {
   group: string;
@@ -48,72 +48,72 @@ const permissionGroups: PermissionGroup[] = [
   {
     group: "Tổng quan & Giám sát",
     permissions: [
-      { key: "dashboard.view", label: "Xem tổng quan (Dashboard)", defaults: { owner: true, admin: true, editor: true, member: false } },
-      { key: "dashboard.charts", label: "Xem biểu đồ thống kê", defaults: { owner: true, admin: true, editor: true, member: false } },
-      { key: "system.monitor", label: "Giám sát hệ thống", defaults: { owner: true, admin: true, editor: true, member: false } },
+      { key: "dashboard.view", label: "Xem tổng quan (Dashboard)", defaults: { owner: true, admin: true, editor: true, member: false, expired: false } },
+      { key: "dashboard.charts", label: "Xem biểu đồ thống kê", defaults: { owner: true, admin: true, editor: true, member: false, expired: false } },
+      { key: "system.monitor", label: "Giám sát hệ thống", defaults: { owner: true, admin: true, editor: true, member: false, expired: false } },
     ],
   },
   {
     group: "Người dùng",
     permissions: [
-      { key: "users.list", label: "Xem danh sách người dùng", defaults: { owner: true, admin: true, editor: false, member: false } },
-      { key: "users.detail", label: "Xem chi tiết người dùng", defaults: { owner: true, admin: true, editor: false, member: false } },
-      { key: "users.block", label: "Khóa / mở khóa tài khoản", defaults: { owner: true, admin: true, editor: false, member: false } },
-      { key: "users.role", label: "Đổi vai trò người dùng", defaults: { owner: true, admin: true, editor: false, member: false } },
-      { key: "users.batch_block", label: "Khóa hàng loạt", defaults: { owner: true, admin: true, editor: false, member: false } },
+      { key: "users.list", label: "Xem danh sách người dùng", defaults: { owner: true, admin: true, editor: false, member: false, expired: false } },
+      { key: "users.detail", label: "Xem chi tiết người dùng", defaults: { owner: true, admin: true, editor: false, member: false, expired: false } },
+      { key: "users.block", label: "Khóa / mở khóa tài khoản", defaults: { owner: true, admin: true, editor: false, member: false, expired: false } },
+      { key: "users.role", label: "Đổi vai trò người dùng", defaults: { owner: true, admin: true, editor: false, member: false, expired: false } },
+      { key: "users.batch_block", label: "Khóa hàng loạt", defaults: { owner: true, admin: true, editor: false, member: false, expired: false } },
     ],
   },
   {
     group: "Tin đăng",
     permissions: [
-      { key: "listings.create", label: "Đăng tin mới", defaults: { owner: true, admin: true, editor: true, member: true } },
-      { key: "listings.edit_own", label: "Sửa tin của mình", defaults: { owner: true, admin: true, editor: true, member: true } },
-      { key: "listings.delete_any", label: "Xóa tin của người khác", defaults: { owner: true, admin: true, editor: true, member: false } },
-      { key: "listings.batch_delete", label: "Xóa tin hàng loạt", defaults: { owner: true, admin: true, editor: true, member: false } },
+      { key: "listings.create", label: "Đăng tin mới", defaults: { owner: true, admin: true, editor: true, member: true, expired: false } },
+      { key: "listings.edit_own", label: "Sửa tin của mình", defaults: { owner: true, admin: true, editor: true, member: true, expired: false } },
+      { key: "listings.delete_any", label: "Xóa tin của người khác", defaults: { owner: true, admin: true, editor: true, member: false, expired: false } },
+      { key: "listings.batch_delete", label: "Xóa tin hàng loạt", defaults: { owner: true, admin: true, editor: true, member: false, expired: false } },
     ],
   },
   {
     group: "Sàn gạo",
     permissions: [
-      { key: "marketplace.browse", label: "Xem sàn gạo", defaults: { owner: true, admin: true, editor: true, member: true } },
-      { key: "marketplace.search", label: "Tìm kiếm tin đăng", defaults: { owner: true, admin: true, editor: true, member: true } },
-      { key: "marketplace.detail", label: "Xem chi tiết tin đăng", defaults: { owner: true, admin: true, editor: true, member: true } },
+      { key: "marketplace.browse", label: "Xem sàn gạo", defaults: { owner: true, admin: true, editor: true, member: true, expired: true } },
+      { key: "marketplace.search", label: "Tìm kiếm tin đăng", defaults: { owner: true, admin: true, editor: true, member: true, expired: true } },
+      { key: "marketplace.detail", label: "Xem chi tiết tin đăng", defaults: { owner: true, admin: true, editor: true, member: true, expired: true } },
     ],
   },
   {
     group: "Tin nhắn & Đánh giá",
     permissions: [
-      { key: "chat.send", label: "Gửi / nhận tin nhắn", defaults: { owner: true, admin: true, editor: true, member: true } },
-      { key: "ratings.create", label: "Đánh giá người bán", defaults: { owner: true, admin: true, editor: true, member: true } },
+      { key: "chat.send", label: "Gửi / nhận tin nhắn", defaults: { owner: true, admin: true, editor: true, member: true, expired: true } },
+      { key: "ratings.create", label: "Đánh giá người bán", defaults: { owner: true, admin: true, editor: true, member: true, expired: true } },
     ],
   },
   {
     group: "Báo cáo vi phạm",
     permissions: [
-      { key: "reports.create", label: "Tạo báo cáo vi phạm", defaults: { owner: true, admin: true, editor: true, member: true } },
-      { key: "reports.manage", label: "Xử lý báo cáo vi phạm", defaults: { owner: true, admin: true, editor: true, member: false } },
+      { key: "reports.create", label: "Tạo báo cáo vi phạm", defaults: { owner: true, admin: true, editor: true, member: true, expired: true } },
+      { key: "reports.manage", label: "Xử lý báo cáo vi phạm", defaults: { owner: true, admin: true, editor: true, member: false, expired: false } },
     ],
   },
   {
     group: "Gói dịch vụ",
     permissions: [
-      { key: "sub.activate", label: "Kích hoạt gói cho người dùng", defaults: { owner: true, admin: true, editor: true, member: false } },
-      { key: "sub.revenue", label: "Xem thống kê doanh thu", defaults: { owner: true, admin: true, editor: true, member: false } },
-      { key: "sub.plans", label: "Quản lý gói dịch vụ (CRUD)", defaults: { owner: true, admin: false, editor: false, member: false }, locked: true },
+      { key: "sub.activate", label: "Kích hoạt gói cho người dùng", defaults: { owner: true, admin: true, editor: true, member: false, expired: false } },
+      { key: "sub.revenue", label: "Xem thống kê doanh thu", defaults: { owner: true, admin: true, editor: true, member: false, expired: false } },
+      { key: "sub.plans", label: "Quản lý gói dịch vụ (CRUD)", defaults: { owner: true, admin: false, editor: false, member: false, expired: false }, locked: true },
     ],
   },
   {
     group: "Danh mục & Tài trợ",
     permissions: [
-      { key: "catalog.manage", label: "Quản lý danh mục sản phẩm", defaults: { owner: true, admin: true, editor: true, member: false } },
-      { key: "sponsors.manage", label: "Quản lý tài trợ", defaults: { owner: true, admin: true, editor: true, member: false } },
+      { key: "catalog.manage", label: "Quản lý danh mục sản phẩm", defaults: { owner: true, admin: true, editor: true, member: false, expired: false } },
+      { key: "sponsors.manage", label: "Quản lý tài trợ", defaults: { owner: true, admin: true, editor: true, member: false, expired: false } },
     ],
   },
   {
     group: "Góp ý",
     permissions: [
-      { key: "feedback.create", label: "Gửi góp ý", defaults: { owner: true, admin: true, editor: true, member: true } },
-      { key: "feedback.reply", label: "Trả lời góp ý", defaults: { owner: true, admin: true, editor: true, member: false } },
+      { key: "feedback.create", label: "Gửi góp ý", defaults: { owner: true, admin: true, editor: true, member: true, expired: true } },
+      { key: "feedback.reply", label: "Trả lời góp ý", defaults: { owner: true, admin: true, editor: true, member: false, expired: false } },
     ],
   },
 ];
@@ -167,6 +167,7 @@ function RolePermissionsTab() {
     admin: "QTV",
     editor: "BTV",
     member: "Thành viên",
+    expired: "Hết hạn",
   };
 
   const roleColors: Record<string, string> = {
@@ -174,6 +175,7 @@ function RolePermissionsTab() {
     admin: "bg-red-500",
     editor: "bg-indigo-500",
     member: "bg-emerald-500",
+    expired: "bg-gray-400",
   };
 
   return (
