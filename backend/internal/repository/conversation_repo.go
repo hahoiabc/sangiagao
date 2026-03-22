@@ -27,12 +27,12 @@ func (r *ConversationRepo) FindOrCreate(ctx context.Context, buyerID, sellerID s
 
 	// Try to find existing conversation between these two users (either direction)
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, buyer_id, seller_id, listing_id, last_message_at, created_at
+		`SELECT id, member_id, seller_id, listing_id, last_message_at, created_at
 		 FROM conversations
-		 WHERE (buyer_id = $1 AND seller_id = $2) OR (buyer_id = $2 AND seller_id = $1)
+		 WHERE (member_id = $1 AND seller_id = $2) OR (member_id = $2 AND seller_id = $1)
 		 ORDER BY last_message_at DESC LIMIT 1`,
 		buyerID, sellerID,
-	).Scan(&conv.ID, &conv.BuyerID, &conv.SellerID, &conv.ListingID, &conv.LastMessageAt, &conv.CreatedAt)
+	).Scan(&conv.ID, &conv.MemberID, &conv.SellerID, &conv.ListingID, &conv.LastMessageAt, &conv.CreatedAt)
 	if err == nil {
 		return &conv, nil
 	}
@@ -42,11 +42,11 @@ func (r *ConversationRepo) FindOrCreate(ctx context.Context, buyerID, sellerID s
 
 	// Create new
 	err = r.pool.QueryRow(ctx,
-		`INSERT INTO conversations (buyer_id, seller_id, listing_id)
+		`INSERT INTO conversations (member_id, seller_id, listing_id)
 		 VALUES ($1, $2, $3)
-		 RETURNING id, buyer_id, seller_id, listing_id, last_message_at, created_at`,
+		 RETURNING id, member_id, seller_id, listing_id, last_message_at, created_at`,
 		buyerID, sellerID, listingID,
-	).Scan(&conv.ID, &conv.BuyerID, &conv.SellerID, &conv.ListingID, &conv.LastMessageAt, &conv.CreatedAt)
+	).Scan(&conv.ID, &conv.MemberID, &conv.SellerID, &conv.ListingID, &conv.LastMessageAt, &conv.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -56,10 +56,10 @@ func (r *ConversationRepo) FindOrCreate(ctx context.Context, buyerID, sellerID s
 func (r *ConversationRepo) GetByID(ctx context.Context, id string) (*model.Conversation, error) {
 	var conv model.Conversation
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, buyer_id, seller_id, listing_id, last_message_at, created_at
+		`SELECT id, member_id, seller_id, listing_id, last_message_at, created_at
 		 FROM conversations WHERE id = $1`,
 		id,
-	).Scan(&conv.ID, &conv.BuyerID, &conv.SellerID, &conv.ListingID, &conv.LastMessageAt, &conv.CreatedAt)
+	).Scan(&conv.ID, &conv.MemberID, &conv.SellerID, &conv.ListingID, &conv.LastMessageAt, &conv.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrConversationNotFound
 	}
@@ -74,25 +74,25 @@ func (r *ConversationRepo) ListByUser(ctx context.Context, userID string, page, 
 
 	var total int
 	err := r.pool.QueryRow(ctx,
-		`SELECT COUNT(*) FROM conversations WHERE buyer_id = $1 OR seller_id = $1`, userID,
+		`SELECT COUNT(*) FROM conversations WHERE member_id = $1 OR seller_id = $1`, userID,
 	).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
 
 	rows, err := r.pool.Query(ctx,
-		`SELECT c.id, c.buyer_id, c.seller_id, c.listing_id, c.last_message_at, c.created_at,
+		`SELECT c.id, c.member_id, c.seller_id, c.listing_id, c.last_message_at, c.created_at,
 		        u.id, u.role, u.name, u.avatar_url, u.province, u.description, u.org_name, u.created_at,
 		        COALESCE(unread.cnt, 0)
 		 FROM conversations c
-		 JOIN users u ON u.id = CASE WHEN c.buyer_id = $1 THEN c.seller_id ELSE c.buyer_id END
+		 JOIN users u ON u.id = CASE WHEN c.member_id = $1 THEN c.seller_id ELSE c.member_id END
 		 LEFT JOIN (
 		     SELECT conversation_id, COUNT(*) AS cnt
 		     FROM messages
 		     WHERE sender_id <> $1 AND read_at IS NULL
 		     GROUP BY conversation_id
 		 ) unread ON unread.conversation_id = c.id
-		 WHERE c.buyer_id = $1 OR c.seller_id = $1
+		 WHERE c.member_id = $1 OR c.seller_id = $1
 		 ORDER BY c.last_message_at DESC LIMIT $2 OFFSET $3`,
 		userID, limit, offset,
 	)
@@ -106,7 +106,7 @@ func (r *ConversationRepo) ListByUser(ctx context.Context, userID string, page, 
 		var conv model.Conversation
 		conv.OtherUser = &model.PublicProfile{}
 		if err := rows.Scan(
-			&conv.ID, &conv.BuyerID, &conv.SellerID, &conv.ListingID,
+			&conv.ID, &conv.MemberID, &conv.SellerID, &conv.ListingID,
 			&conv.LastMessageAt, &conv.CreatedAt,
 			&conv.OtherUser.ID, &conv.OtherUser.Role, &conv.OtherUser.Name,
 			&conv.OtherUser.AvatarURL, &conv.OtherUser.Province,
@@ -248,7 +248,7 @@ func (r *ConversationRepo) IsParticipant(ctx context.Context, conversationID, us
 	err := r.pool.QueryRow(ctx,
 		`SELECT EXISTS(
 			SELECT 1 FROM conversations
-			WHERE id = $1 AND (buyer_id = $2 OR seller_id = $2)
+			WHERE id = $1 AND (member_id = $2 OR seller_id = $2)
 		)`, conversationID, userID,
 	).Scan(&exists)
 	return exists, err

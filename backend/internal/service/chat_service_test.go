@@ -83,7 +83,7 @@ func TestChatCreateConversation_Success(t *testing.T) {
 
 	req := &model.CreateConversationRequest{SellerID: "seller-1"}
 	repo.On("FindOrCreate", mock.Anything, "buyer-1", "seller-1", (*string)(nil)).
-		Return(&model.Conversation{ID: "conv-1", BuyerID: "buyer-1", SellerID: "seller-1"}, nil)
+		Return(&model.Conversation{ID: "conv-1", MemberID: "buyer-1", SellerID: "seller-1"}, nil)
 
 	conv, err := svc.CreateConversation(context.Background(), "buyer-1", req)
 	assert.NoError(t, err)

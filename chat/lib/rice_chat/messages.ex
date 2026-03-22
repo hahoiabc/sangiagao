@@ -35,7 +35,7 @@ defmodule RiceChat.Messages do
   end
 
   def is_participant?(conversation_id, user_id) do
-    query = "SELECT EXISTS(SELECT 1 FROM conversations WHERE id = $1 AND (buyer_id = $2 OR seller_id = $2))"
+    query = "SELECT EXISTS(SELECT 1 FROM conversations WHERE id = $1 AND (member_id = $2 OR seller_id = $2))"
     case Postgrex.query(:pg, query, [uuid_to_bin(conversation_id), uuid_to_bin(user_id)]) do
       {:ok, %{rows: [[true]]}} -> true
       _ -> false

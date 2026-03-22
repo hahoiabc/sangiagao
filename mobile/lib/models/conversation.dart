@@ -2,7 +2,7 @@ import 'user.dart';
 
 class Conversation {
   final String id;
-  final String buyerId;
+  final String memberId;
   final String sellerId;
   final String? listingId;
   final String lastMessageAt;
@@ -12,7 +12,7 @@ class Conversation {
 
   Conversation({
     required this.id,
-    required this.buyerId,
+    required this.memberId,
     required this.sellerId,
     this.listingId,
     required this.lastMessageAt,
@@ -23,7 +23,7 @@ class Conversation {
 
   factory Conversation.fromJson(Map<String, dynamic> json) => Conversation(
         id: json['id'] as String,
-        buyerId: json['buyer_id'] as String,
+        memberId: json['member_id'] as String,
         sellerId: json['seller_id'] as String,
         listingId: json['listing_id'] as String?,
         lastMessageAt: json['last_message_at'] as String,

@@ -82,7 +82,7 @@ void main() {
         'data': [
           {
             'id': 'c1',
-            'buyer_id': 'u1',
+            'member_id': 'u1',
             'seller_id': 'u2',
             'last_message_at': '2024-03-01T12:00:00Z',
             'created_at': '2024-03-01T10:00:00Z',

@@ -72,6 +72,10 @@ func (m *mockChatService) GetConversation(ctx context.Context, id string) (*mode
 	}
 	return args.Get(0).(*model.Conversation), args.Error(1)
 }
+func (m *mockChatService) MarkConversationRead(ctx context.Context, userID, conversationID string) error {
+	args := m.Called(ctx, userID, conversationID)
+	return args.Error(0)
+}
 
 func setupConvRouter(h *ConversationHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
@@ -95,7 +99,7 @@ func TestConvHandler_Create_Success(t *testing.T) {
 	r := setupConvRouter(h)
 
 	svc.On("CreateConversation", mock.Anything, "user-1", mock.AnythingOfType("*model.CreateConversationRequest")).
-		Return(&model.Conversation{ID: "conv-1", BuyerID: "user-1", SellerID: "seller-1"}, nil)
+		Return(&model.Conversation{ID: "conv-1", MemberID: "user-1", SellerID: "seller-1"}, nil)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/api/v1/conversations", strings.NewReader(`{"seller_id":"seller-1"}`))

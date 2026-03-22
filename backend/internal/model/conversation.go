@@ -4,7 +4,7 @@ import "time"
 
 type Conversation struct {
 	ID            string     `json:"id"`
-	BuyerID       string     `json:"buyer_id"`
+	MemberID      string     `json:"member_id"`
 	SellerID      string     `json:"seller_id"`
 	ListingID     *string    `json:"listing_id,omitempty"`
 	LastMessageAt time.Time  `json:"last_message_at"`

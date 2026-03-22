@@ -6,7 +6,7 @@ void main() {
     test('fromJson parses all fields correctly', () {
       final json = {
         'id': 'c1',
-        'buyer_id': 'u1',
+        'member_id': 'u1',
         'seller_id': 'u2',
         'listing_id': 'l1',
         'last_message_at': '2024-03-01T12:00:00Z',
@@ -23,7 +23,7 @@ void main() {
       final conv = Conversation.fromJson(json);
 
       expect(conv.id, 'c1');
-      expect(conv.buyerId, 'u1');
+      expect(conv.memberId, 'u1');
       expect(conv.sellerId, 'u2');
       expect(conv.listingId, 'l1');
       expect(conv.lastMessageAt, '2024-03-01T12:00:00Z');
@@ -36,7 +36,7 @@ void main() {
     test('fromJson handles null otherUser and defaults', () {
       final json = {
         'id': 'c2',
-        'buyer_id': 'u1',
+        'member_id': 'u1',
         'seller_id': 'u2',
         'last_message_at': '2024-03-01T12:00:00Z',
         'created_at': '2024-03-01T10:00:00Z',

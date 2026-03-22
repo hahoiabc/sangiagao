@@ -2,15 +2,15 @@
 
 CREATE TABLE conversations (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    buyer_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    member_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     seller_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     listing_id UUID REFERENCES listings(id) ON DELETE SET NULL,
     last_message_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE(buyer_id, seller_id, listing_id)
+    UNIQUE(member_id, seller_id, listing_id)
 );
 
-CREATE INDEX idx_conversations_buyer_id ON conversations(buyer_id);
+CREATE INDEX idx_conversations_member_id ON conversations(member_id);
 CREATE INDEX idx_conversations_seller_id ON conversations(seller_id);
 CREATE INDEX idx_conversations_last_message ON conversations(last_message_at DESC);
 

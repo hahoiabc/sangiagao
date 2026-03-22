@@ -121,7 +121,7 @@ func (h *ConversationHandler) SendMessage(c *gin.Context) {
 			if err != nil {
 				return
 			}
-			recipientID := conv.BuyerID
+			recipientID := conv.MemberID
 			if recipientID == userID {
 				recipientID = conv.SellerID
 			}
