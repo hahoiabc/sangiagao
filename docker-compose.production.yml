@@ -215,6 +215,26 @@ services:
           memory: 256M
 
   # ========================
+  # Member Website (Next.js)
+  # ========================
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: rice_web
+    environment:
+      NODE_ENV: production
+    depends_on:
+      - backend
+    networks:
+      - internal
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # ========================
   # Nginx - Reverse Proxy
   # ========================
   nginx:
@@ -230,6 +250,7 @@ services:
     depends_on:
       - backend
       - admin
+      - web
       - chat
       - minio
     networks:
