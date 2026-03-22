@@ -13,7 +13,7 @@ import (
 
 var (
 	ErrNotListingOwner = errors.New("you don't own this listing")
-	ErrMaxImages       = errors.New("maximum 1 image per listing")
+	ErrMaxImages       = errors.New("maximum 3 images per listing")
 	ErrListingDeleted  = errors.New("listing has been deleted")
 )
 

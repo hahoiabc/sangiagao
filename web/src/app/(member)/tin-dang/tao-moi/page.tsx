@@ -1,21 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ImagePlus, X } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { createListing, getProductCatalog, type RiceCategory } from "@/services/api";
+import { createListing, uploadImage, addListingImage, getProductCatalog, type RiceCategory } from "@/services/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+
+const MAX_IMAGES = 3;
 
 export default function CreateListingPage() {
   const { token } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<RiceCategory[]>([]);
+  const [images, setImages] = useState<{ file: File; preview: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     title: "",
     category: "",
@@ -32,6 +37,12 @@ export default function CreateListingPage() {
     getProductCatalog().then(setCategories).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    return () => {
+      images.forEach((img) => URL.revokeObjectURL(img.preview));
+    };
+  }, [images]);
+
   const selectedCat = categories.find((c) => c.key === form.category);
 
   function update(field: string, value: string) {
@@ -41,22 +52,62 @@ export default function CreateListingPage() {
     }
   }
 
+  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files) return;
+
+    const remaining = MAX_IMAGES - images.length;
+    const selected = Array.from(files).slice(0, remaining);
+
+    const newImages = selected.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+
+    setImages((prev) => [...prev, ...newImages]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function removeImage(index: number) {
+    setImages((prev) => {
+      URL.revokeObjectURL(prev[index].preview);
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!token) return;
     setLoading(true);
     try {
-      await createListing(token, {
+      // 1. Create listing
+      const listing = await createListing(token, {
         ...form,
         quantity_kg: Number(form.quantity_kg),
         price_per_kg: Number(form.price_per_kg),
       });
+
+      // 2. Upload images and attach to listing
+      if (images.length > 0) {
+        setUploading(true);
+        for (const img of images) {
+          try {
+            const { url } = await uploadImage(token, img.file, "listings");
+            await addListingImage(token, listing.id, url);
+          } catch {
+            // Continue with other images if one fails
+          }
+        }
+        setUploading(false);
+      }
+
       toast.success("Tạo tin đăng thành công!");
       router.push("/tin-dang");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Tạo tin đăng thất bại");
     } finally {
       setLoading(false);
+      setUploading(false);
     }
   }
 
@@ -178,8 +229,47 @@ export default function CreateListingPage() {
               />
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Đang tạo..." : "Đăng Tin"}
+            {/* Image upload */}
+            <div>
+              <label className="text-sm font-medium mb-2 block">
+                Hình ảnh ({images.length}/{MAX_IMAGES})
+              </label>
+              <div className="flex flex-wrap gap-3">
+                {images.map((img, i) => (
+                  <div key={i} className="relative w-24 h-24 rounded-lg overflow-hidden border">
+                    <img src={img.preview} alt="" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(i)}
+                      className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-0.5 hover:bg-black/80"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+                {images.length < MAX_IMAGES && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-24 h-24 rounded-lg border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                  >
+                    <ImagePlus className="h-6 w-6" />
+                    <span className="text-xs mt-1">Thêm ảnh</span>
+                  </button>
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                onChange={handleImageSelect}
+                className="hidden"
+              />
+            </div>
+
+            <Button type="submit" className="w-full" disabled={loading || uploading}>
+              {uploading ? "Đang tải ảnh..." : loading ? "Đang tạo..." : "Đăng Tin"}
             </Button>
           </form>
         </CardContent>

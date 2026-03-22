@@ -359,26 +359,55 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Future<void> _pickAndSendImage(ImageSource source) async {
     final picker = ImagePicker();
-    final image = await picker.pickImage(
-      source: source,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      imageQuality: 80,
-    );
-    if (image == null) return;
 
-    setState(() => _uploadingImage = true);
-    try {
-      final url = await ref.read(apiServiceProvider).uploadImage(image.path, 'images');
-      await _sendMessage(url, 'image');
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gửi ảnh thất bại: $e')),
-        );
+    if (source == ImageSource.gallery) {
+      // Allow multiple images from gallery (max 10)
+      final images = await picker.pickMultiImage(
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 80,
+        limit: 10,
+      );
+      if (images.isEmpty) return;
+
+      setState(() => _uploadingImage = true);
+      try {
+        for (final image in images) {
+          final url = await ref.read(apiServiceProvider).uploadImage(image.path, 'images');
+          await _sendMessage(url, 'image');
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gửi ảnh thất bại: $e')),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _uploadingImage = false);
       }
-    } finally {
-      if (mounted) setState(() => _uploadingImage = false);
+    } else {
+      // Camera: single image
+      final image = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 80,
+      );
+      if (image == null) return;
+
+      setState(() => _uploadingImage = true);
+      try {
+        final url = await ref.read(apiServiceProvider).uploadImage(image.path, 'images');
+        await _sendMessage(url, 'image');
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gửi ảnh thất bại: $e')),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _uploadingImage = false);
+      }
     }
   }
 

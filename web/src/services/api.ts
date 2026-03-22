@@ -408,6 +408,14 @@ export async function deleteListing(token: string, id: string) {
   return request<void>(`/listings/${id}`, { token, method: "DELETE" });
 }
 
+export async function addListingImage(token: string, listingId: string, url: string) {
+  return request<Listing>(`/listings/${listingId}/images`, {
+    token,
+    method: "POST",
+    body: JSON.stringify({ url }),
+  });
+}
+
 // --- Chat ---
 export async function getConversations(token: string, page: number, limit: number) {
   const params = new URLSearchParams({ page: String(page), limit: String(limit) });
