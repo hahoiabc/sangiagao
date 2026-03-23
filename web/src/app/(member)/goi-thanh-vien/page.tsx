@@ -50,7 +50,7 @@ export default function SubscriptionPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Gói Thành Viên</h1>
+      <h1 className="text-2xl font-bold mb-6">Gói dịch vụ</h1>
 
       <Card className="mb-6">
         <CardHeader className="pb-3">
@@ -86,7 +86,7 @@ export default function SubscriptionPage() {
 
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle className="text-lg">Các Gói Thành Viên</CardTitle>
+          <CardTitle className="text-lg">Các gói dịch vụ</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

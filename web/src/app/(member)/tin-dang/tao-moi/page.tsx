@@ -14,11 +14,8 @@ import { toast } from "sonner";
 const MAX_IMAGES = 3;
 
 interface ListingForm {
-  title: string;
   category: string;
   rice_type: string;
-  province: string;
-  district: string;
   quantity_kg: string;
   price_per_kg: string;
   harvest_season: string;
@@ -28,11 +25,8 @@ interface ListingForm {
 
 function emptyForm(): ListingForm {
   return {
-    title: "",
     category: "",
     rice_type: "",
-    province: "",
-    district: "",
     quantity_kg: "",
     price_per_kg: "",
     harvest_season: "",
@@ -118,7 +112,7 @@ export default function CreateListingPage() {
     // Validate all forms
     for (let i = 0; i < forms.length; i++) {
       const f = forms[i];
-      if (!f.title || !f.category || !f.rice_type || !f.quantity_kg || !f.price_per_kg) {
+      if (!f.category || !f.rice_type || !f.quantity_kg || !f.price_per_kg) {
         toast.error(`Sản phẩm ${i + 1}: Vui lòng điền đầy đủ thông tin bắt buộc`);
         return;
       }
@@ -130,11 +124,8 @@ export default function CreateListingPage() {
         // Single listing
         const f = forms[0];
         const listing = await createListing(token, {
-          title: f.title,
           category: f.category,
           rice_type: f.rice_type,
-          province: f.province,
-          district: f.district,
           quantity_kg: Number(f.quantity_kg),
           price_per_kg: Number(f.price_per_kg),
           harvest_season: f.harvest_season,
@@ -152,11 +143,8 @@ export default function CreateListingPage() {
       } else {
         // Batch create
         const items = forms.map((f) => ({
-          title: f.title,
           category: f.category,
           rice_type: f.rice_type,
-          province: f.province,
-          district: f.district,
           quantity_kg: Number(f.quantity_kg),
           price_per_kg: Number(f.price_per_kg),
           harvest_season: f.harvest_season,
@@ -195,7 +183,7 @@ export default function CreateListingPage() {
       </Link>
 
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold">Tạo Tin Đăng Mới</h1>
+        <h1 className="text-xl font-bold">Đăng tin</h1>
         <Button type="button" variant="outline" className="gap-1.5" onClick={addForm}>
           <Plus className="h-4 w-4" />
           Thêm sản phẩm
@@ -220,16 +208,6 @@ export default function CreateListingPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Tiêu đề *</label>
-                  <Input
-                    value={form.title}
-                    onChange={(e) => updateForm(fi, "title", e.target.value)}
-                    placeholder="VD: Bán gạo ST25 Long An"
-                    required
-                  />
-                </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium mb-1 block">Phân loại *</label>
@@ -283,25 +261,6 @@ export default function CreateListingPage() {
                       placeholder="VD: 15000"
                       required
                       min="1"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">Tỉnh/Thành</label>
-                    <Input
-                      value={form.province}
-                      onChange={(e) => updateForm(fi, "province", e.target.value)}
-                      placeholder="VD: Long An"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">Quận/Huyện</label>
-                    <Input
-                      value={form.district}
-                      onChange={(e) => updateForm(fi, "district", e.target.value)}
-                      placeholder="VD: Tân An"
                     />
                   </div>
                 </div>

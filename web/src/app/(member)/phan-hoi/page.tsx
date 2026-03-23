@@ -59,7 +59,7 @@ export default function FeedbackPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Phản Hồi & Góp Ý</h1>
+      <h1 className="text-2xl font-bold mb-6">Góp ý cho nhà phát triển</h1>
 
       {/* Submit form */}
       <Card className="mb-6">
@@ -97,7 +97,7 @@ export default function FeedbackPage() {
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Clock className="h-5 w-5" />
-            Lịch sử phản hồi
+            Lịch sử góp ý
           </CardTitle>
         </CardHeader>
         <CardContent>

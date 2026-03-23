@@ -48,11 +48,11 @@ export default function MyListingsPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Tin Đăng Của Tôi</h1>
+        <h1 className="text-2xl font-bold">Tin đăng của tôi</h1>
         <Link href="/tin-dang/tao-moi">
           <Button className="gap-2">
             <Plus className="h-4 w-4" />
-            Tạo Tin Đăng
+            Đăng tin
           </Button>
         </Link>
       </div>
@@ -90,7 +90,7 @@ export default function MyListingsPage() {
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                    <Link href={`/san-giao-dich/${listing.id}`}>
+                    <Link href={`/tin-dang/sua/${listing.id}`}>
                       <Edit className="h-4 w-4" />
                     </Link>
                   </Button>
@@ -114,7 +114,7 @@ export default function MyListingsPage() {
           <Link href="/tin-dang/tao-moi">
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
-              Tạo Tin Đăng Đầu Tiên
+              Đăng tin đầu tiên
             </Button>
           </Link>
         </div>

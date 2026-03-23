@@ -9,16 +9,16 @@ import { cn } from "@/lib/utils";
 import { useState } from "react";
 
 const publicLinks = [
-  { href: "/bang-gia", label: "Bảng Giá" },
-  { href: "/san-giao-dich", label: "Sàn Giao Dịch" },
+  { href: "/bang-gia", label: "Sàn gạo" },
+  { href: "/san-giao-dich", label: "Sàn giao dịch" },
 ];
 
 const memberLinks = [
-  { href: "/tin-dang", label: "Tin Đăng", icon: Search },
-  { href: "/tin-nhan", label: "Tin Nhắn", icon: MessageCircle },
-  { href: "/thong-bao", label: "Thông Báo", icon: Bell },
-  { href: "/goi-thanh-vien", label: "Gói TV", icon: Crown },
-  { href: "/phan-hoi", label: "Phản Hồi", icon: MessageSquareText },
+  { href: "/tin-dang", label: "Tin của tôi", icon: Search },
+  { href: "/tin-nhan", label: "Tin nhắn", icon: MessageCircle },
+  { href: "/thong-bao", label: "Thông báo", icon: Bell },
+  { href: "/goi-thanh-vien", label: "Gói dịch vụ", icon: Crown },
+  { href: "/phan-hoi", label: "Góp ý", icon: MessageSquareText },
 ];
 
 export function Navbar() {

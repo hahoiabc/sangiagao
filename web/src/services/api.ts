@@ -261,7 +261,6 @@ export async function completeRegister(data: {
   name: string;
   password: string;
   province?: string;
-  district?: string;
   ward?: string;
   address?: string;
 }) {

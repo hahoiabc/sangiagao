@@ -41,7 +41,7 @@ export default function LoginPage() {
           <Wheat className="h-6 w-6 text-primary" />
         </div>
         <CardTitle className="text-2xl font-bold text-primary">SanGiaGao.Com</CardTitle>
-        <CardDescription>Đăng nhập tài khoản</CardDescription>
+        <CardDescription>Đăng nhập tài khoản của bạn</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleLogin} className="space-y-4">

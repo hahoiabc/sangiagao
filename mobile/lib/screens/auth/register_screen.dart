@@ -14,11 +14,11 @@ class RegisterScreen extends ConsumerStatefulWidget {
 }
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
-  final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _otpController = TextEditingController();
+  final _nameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _otpController = TextEditingController();
   final _addressController = TextEditingController();
 
   String? _province;
@@ -27,56 +27,33 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _loading = false;
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
-  bool _otpStep = false;
+  bool _step2 = false; // false = phone step, true = OTP + details step
   bool _acceptedTOS = false;
   String? _error;
 
   @override
   void dispose() {
-    _nameController.dispose();
     _phoneController.dispose();
+    _otpController.dispose();
+    _nameController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
-    _otpController.dispose();
     _addressController.dispose();
     super.dispose();
   }
 
-  String? _validate() {
-    final name = _nameController.text.trim();
-    final phone = _phoneController.text.trim();
-    final password = _passwordController.text;
-    final confirm = _confirmPasswordController.text;
-
-    if (name.length < 4) return 'Tên phải có ít nhất 4 ký tự';
-    if (name.length > 60) return 'Tên không được quá 60 ký tự';
-    if (phone.isEmpty || !RegExp(r'^0(3[2-9]|5[2689]|7[06-9]|8[1-689]|9[0-46-9])\d{7}$').hasMatch(phone)) {
-      return 'Số điện thoại không hợp lệ, vui lòng kiểm tra đầu số';
-    }
-    if (password.length < 6) return 'Mật khẩu phải có ít nhất 6 ký tự';
-    if (!RegExp(r'[A-Z]').hasMatch(password)) return 'Mật khẩu phải có ít nhất 1 chữ hoa';
-    if (!RegExp(r'[a-z]').hasMatch(password)) return 'Mật khẩu phải có ít nhất 1 chữ thường';
-    if (!RegExp(r'[^a-zA-Z0-9]').hasMatch(password)) return 'Mật khẩu phải có ít nhất 1 ký tự đặc biệt';
-    if (password != confirm) return 'Mật khẩu nhập lại không khớp';
-    final address = _addressController.text.trim();
-    if (address.isNotEmpty) {
-      if (address.length < 6) return 'Địa chỉ chi tiết phải có ít nhất 6 ký tự';
-      if (address.length > 80) return 'Địa chỉ chi tiết không được quá 80 ký tự';
-    }
-    return null;
-  }
-
+  // Step 1: Validate phone and send OTP
   Future<void> _sendOTP() async {
-    final validationError = _validate();
-    if (validationError != null) {
-      setState(() { _error = validationError; });
+    final phone = _phoneController.text.trim();
+    if (phone.isEmpty || !RegExp(r'^0(3[2-9]|5[2689]|7[06-9]|8[1-689]|9[0-46-9])\d{7}$').hasMatch(phone)) {
+      setState(() { _error = 'Số điện thoại không hợp lệ, vui lòng kiểm tra đầu số'; });
       return;
     }
 
     setState(() { _loading = true; _error = null; });
     try {
-      await ref.read(authProvider.notifier).register(_phoneController.text.trim());
-      setState(() { _otpStep = true; });
+      await ref.read(authProvider.notifier).register(phone);
+      setState(() { _step2 = true; });
     } catch (e) {
       String msg = 'Gửi mã OTP thất bại';
       if (e is DioException && e.response?.data is Map) {
@@ -88,10 +65,39 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
   }
 
-  Future<void> _verifyAndRegister() async {
+  // Step 2: Validate all fields + verify OTP + complete register
+  String? _validateStep2() {
     final code = _otpController.text.trim();
-    if (code.length != 6) {
-      setState(() { _error = 'Vui lòng nhập mã OTP 6 số'; });
+    if (code.length != 6) return 'Vui lòng nhập mã OTP 6 số';
+
+    final name = _nameController.text.trim();
+    if (name.length < 4) return 'Tên phải có ít nhất 4 ký tự';
+    if (name.length > 60) return 'Tên không được quá 60 ký tự';
+
+    final password = _passwordController.text;
+    if (password.length < 6) return 'Mật khẩu phải có ít nhất 6 ký tự';
+    if (!RegExp(r'[A-Z]').hasMatch(password)) return 'Mật khẩu phải có ít nhất 1 chữ hoa';
+    if (!RegExp(r'[a-z]').hasMatch(password)) return 'Mật khẩu phải có ít nhất 1 chữ thường';
+    if (!RegExp(r'[^a-zA-Z0-9]').hasMatch(password)) return 'Mật khẩu phải có ít nhất 1 ký tự đặc biệt';
+
+    final confirm = _confirmPasswordController.text;
+    if (password != confirm) return 'Mật khẩu nhập lại không khớp';
+
+    final address = _addressController.text.trim();
+    if (address.isNotEmpty) {
+      if (address.length < 6) return 'Địa chỉ chi tiết phải có ít nhất 6 ký tự';
+      if (address.length > 80) return 'Địa chỉ chi tiết không được quá 80 ký tự';
+    }
+
+    if (!_acceptedTOS) return 'Vui lòng đồng ý điều khoản sử dụng';
+
+    return null;
+  }
+
+  Future<void> _verifyAndRegister() async {
+    final validationError = _validateStep2();
+    if (validationError != null) {
+      setState(() { _error = validationError; });
       return;
     }
 
@@ -99,7 +105,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     try {
       await ref.read(authProvider.notifier).completeRegister(
         phone: _phoneController.text.trim(),
-        code: code,
+        code: _otpController.text.trim(),
         name: _nameController.text.trim(),
         password: _passwordController.text,
         province: _province,
@@ -248,6 +254,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ],
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: FilledButton(
+                onPressed: () {
+                  setState(() => _acceptedTOS = true);
+                  Navigator.pop(ctx);
+                },
+                style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                child: const Text('Đồng ý điều khoản'),
+              ),
+            ),
           ],
         ),
       ),
@@ -278,21 +295,58 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                _otpStep ? 'Xác minh số điện thoại' : 'Đăng ký tài khoản',
+                _step2 ? 'Xác minh và hoàn tất' : 'Đăng ký tài khoản',
                 style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
-                _otpStep
-                    ? 'Nhập mã OTP đã gửi đến ${_phoneController.text}'
-                    : 'Điền đầy đủ thông tin để tạo tài khoản',
+                _step2
+                    ? 'Nhập mã OTP đã gửi đến ${_phoneController.text} và điền thông tin'
+                    : 'Nhập số điện thoại để đăng ký',
                 style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
 
-              if (!_otpStep) ...[
+              if (!_step2) ...[
+                // Step 1: Phone only
+                TextField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: 'Số điện thoại *',
+                    hintText: '0901234567',
+                    prefixIcon: Icon(Icons.phone),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                FilledButton(
+                  onPressed: _loading ? null : _sendOTP,
+                  style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                  child: Text(_loading ? 'Đang gửi mã OTP...' : 'Tiếp tục'),
+                ),
+              ] else ...[
+                // Step 2: OTP + all details
+
+                // OTP
+                TextField(
+                  controller: _otpController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 24, letterSpacing: 8),
+                  decoration: const InputDecoration(
+                    labelText: 'Mã OTP',
+                    hintText: '000000',
+                    prefixIcon: Icon(Icons.sms),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
                 // Name
                 TextField(
                   controller: _nameController,
@@ -302,19 +356,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     labelText: 'Họ và tên * (4-60 ký tự)',
                     hintText: 'VD: Nguyễn Văn A',
                     prefixIcon: Icon(Icons.person),
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Phone
-                TextField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    labelText: 'Số điện thoại *',
-                    hintText: '0901234567',
-                    prefixIcon: Icon(Icons.phone),
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -414,35 +455,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 const SizedBox(height: 16),
 
                 FilledButton(
-                  onPressed: _loading || !_acceptedTOS ? null : _sendOTP,
+                  onPressed: _loading || !_acceptedTOS ? null : _verifyAndRegister,
                   style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-                  child: Text(_loading ? 'Đang gửi mã OTP...' : 'Đăng ký'),
-                ),
-              ] else ...[
-                // OTP input
-                TextField(
-                  controller: _otpController,
-                  keyboardType: TextInputType.number,
-                  maxLength: 6,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 24, letterSpacing: 8),
-                  decoration: const InputDecoration(
-                    labelText: 'Mã OTP',
-                    hintText: '000000',
-                    prefixIcon: Icon(Icons.sms),
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                FilledButton(
-                  onPressed: _loading ? null : _verifyAndRegister,
-                  style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-                  child: Text(_loading ? 'Đang xác minh...' : 'Xác minh và hoàn tất'),
+                  child: Text(_loading ? 'Đang xử lý...' : 'Đăng ký'),
                 ),
                 const SizedBox(height: 8),
                 TextButton(
-                  onPressed: () => setState(() { _otpStep = false; _otpController.clear(); _error = null; }),
+                  onPressed: () => setState(() { _step2 = false; _otpController.clear(); _error = null; }),
                   child: const Text('Quay lại'),
                 ),
               ],
@@ -453,7 +472,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ],
 
               const SizedBox(height: 16),
-              if (!_otpStep)
+              if (!_step2)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

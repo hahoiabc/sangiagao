@@ -43,7 +43,7 @@ export default function ConversationsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Tin Nhắn</h1>
+      <h1 className="text-2xl font-bold mb-6">Tin nhắn</h1>
 
       {loading ? (
         <div className="space-y-3">
