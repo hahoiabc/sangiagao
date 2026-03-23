@@ -34,6 +34,7 @@ type UserRepository interface {
 	PhoneExists(ctx context.Context, phone string) (bool, error)
 	BlockUser(ctx context.Context, id, reason string) (*model.User, error)
 	UnblockUser(ctx context.Context, id string) (*model.User, error)
+	DeleteUser(ctx context.Context, id string) error
 	ListUsers(ctx context.Context, search string, page, limit int) ([]*model.User, int, error)
 	GetDashboardStats(ctx context.Context) (map[string]int, error)
 	GetDashboardCharts(ctx context.Context) (*repository.DashboardCharts, error)

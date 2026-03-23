@@ -184,6 +184,10 @@ export async function unblockUser(token: string, userId: string) {
   return request<User>(`/admin/users/${userId}/unblock`, { token, method: "PUT" });
 }
 
+export async function deleteUser(token: string, userId: string) {
+  return request<{ message: string }>(`/admin/users/${userId}`, { token, method: "DELETE" });
+}
+
 export async function getUserDetail(token: string, userId: string) {
   return request<User>(`/admin/users/${userId}`, { token });
 }

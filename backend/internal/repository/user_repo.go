@@ -281,6 +281,17 @@ func (r *UserRepo) BlockUser(ctx context.Context, id, reason string) (*model.Use
 	return r.scanUser(row)
 }
 
+func (r *UserRepo) DeleteUser(ctx context.Context, id string) error {
+	result, err := r.pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, id)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
+
 func (r *UserRepo) UnblockUser(ctx context.Context, id string) (*model.User, error) {
 	row := r.pool.QueryRow(ctx,
 		`UPDATE users SET is_blocked = false, block_reason = NULL

@@ -111,6 +111,20 @@ func (s *AdminService) ChangeUserRole(ctx context.Context, userID, role, callerR
 	return s.userRepo.SetRole(ctx, userID, role)
 }
 
+func (s *AdminService) DeleteUser(ctx context.Context, userID, callerRole string) error {
+	target, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if target.Role == "owner" {
+		return ErrCannotModifyAdmin
+	}
+	if target.Role == "admin" && callerRole != "owner" {
+		return ErrCannotModifyAdmin
+	}
+	return s.userRepo.DeleteUser(ctx, userID)
+}
+
 func (s *AdminService) DeleteListing(ctx context.Context, listingID string) error {
 	return s.listingRepo.SoftDelete(ctx, listingID)
 }

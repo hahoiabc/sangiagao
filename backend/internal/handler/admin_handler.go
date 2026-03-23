@@ -170,6 +170,32 @@ func (h *AdminHandler) DeleteListing(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "listing deleted"})
 }
 
+func (h *AdminHandler) DeleteUser(c *gin.Context) {
+	userID := c.Param("id")
+	callerID := c.GetString("user_id")
+
+	if userID == callerID {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "không thể xóa chính tài khoản của mình"})
+		return
+	}
+
+	callerRole := c.GetString("user_role")
+	if err := h.adminService.DeleteUser(c.Request.Context(), userID, callerRole); err != nil {
+		if err.Error() == "không thể thao tác trên tài khoản quản trị viên" {
+			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
+		}
+		if err.Error() == "user not found" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Không tìm thấy người dùng"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Xóa tài khoản thất bại"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Đã xóa tài khoản"})
+}
+
 type batchBlockUsersRequest struct {
 	UserIDs []string `json:"user_ids" binding:"required"`
 	Reason  string   `json:"reason" binding:"required"`

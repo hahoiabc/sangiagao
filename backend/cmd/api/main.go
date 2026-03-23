@@ -338,6 +338,7 @@ func main() {
 					adminOnly.PUT("/users/:id/unblock", adminHandler.UnblockUser)
 					adminOnly.PUT("/users/:id/role", adminHandler.ChangeUserRole)
 					adminOnly.POST("/users/batch-block", adminHandler.BatchBlockUsers)
+					adminOnly.DELETE("/users/:id", adminHandler.DeleteUser)
 				}
 
 				// Plan management — owner only

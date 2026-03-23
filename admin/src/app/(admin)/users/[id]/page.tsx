@@ -20,7 +20,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  getUserDetail, blockUser, unblockUser, activateSubscription, listUserListings, listUserSubscriptions, changeUserRole,
+  getUserDetail, blockUser, unblockUser, activateSubscription, listUserListings, listUserSubscriptions, changeUserRole, deleteUser,
   type User, type Listing, type Subscription,
 } from "@/services/api";
 
@@ -47,6 +47,9 @@ export default function UserDetailPage() {
   // Block dialog
   const [blockDialog, setBlockDialog] = useState(false);
   const [blockReason, setBlockReason] = useState("");
+
+  // Delete dialog
+  const [deleteDialog, setDeleteDialog] = useState(false);
 
   // Subscription dialog
   const [subDialog, setSubDialog] = useState(false);
@@ -115,6 +118,17 @@ export default function UserDetailPage() {
       fetchUser();
     } catch {
       toast.error("Mở khóa thất bại");
+    }
+  }
+
+  async function handleDeleteUser() {
+    if (!token) return;
+    try {
+      await deleteUser(token, id);
+      toast.success("Đã xóa tài khoản");
+      router.push("/users");
+    } catch {
+      toast.error("Xóa tài khoản thất bại");
     }
   }
 
@@ -231,6 +245,11 @@ export default function UserDetailPage() {
                 Khóa tài khoản
               </Button>
             )
+          )}
+          {currentUser?.id !== user.id && (currentUser?.role === "owner" || (currentUser?.role === "admin" && !["owner", "admin"].includes(user.role))) && (
+            <Button variant="destructive" size="sm" onClick={() => setDeleteDialog(true)}>
+              Xóa tài khoản
+            </Button>
           )}
           {!["owner", "admin"].includes(user.role) && (
             <Button variant="outline" size="sm" onClick={() => setSubDialog(true)}>
@@ -530,6 +549,22 @@ export default function UserDetailPage() {
           <DialogFooter>
             <Button variant="ghost" onClick={() => setSubDialog(false)}>Hủy</Button>
             <Button onClick={handleActivateSub}>Kích hoạt</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete User Dialog */}
+      <Dialog open={deleteDialog} onOpenChange={setDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xóa tài khoản</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Bạn có chắc muốn xóa tài khoản <strong>{user.name || user.phone}</strong>? Hành động này không thể hoàn tác.
+          </p>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteDialog(false)}>Hủy</Button>
+            <Button variant="destructive" onClick={handleDeleteUser}>Xóa vĩnh viễn</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
