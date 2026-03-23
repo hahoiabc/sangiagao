@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Quản Trị SanGiaGao.Com",
-  description: "Trang quản trị SanGiaGao.Com",
+  title: "Quản Trị SanGiaGao.Vn",
+  description: "Trang quản trị SanGiaGao.Vn",
 };
 
 export default function RootLayout({

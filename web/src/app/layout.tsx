@@ -8,7 +8,7 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "SanGiaGao.Com - Sàn Giá Gạo",
+  title: "SanGiaGao.Vn - Sàn Giá Gạo",
   description: "Sàn giao dịch giá gạo trực tuyến",
 };
 

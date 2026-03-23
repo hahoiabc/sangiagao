@@ -7,7 +7,7 @@ export function Footer() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Wheat className="h-5 w-5 text-primary" />
-            <span className="font-semibold text-primary">SanGiaGao.Com</span>
+            <span className="font-semibold text-primary">SanGiaGao.Vn</span>
           </div>
           <p className="text-sm text-muted-foreground">
             Sàn giao dịch giá gạo trực tuyến &copy; {new Date().getFullYear()}

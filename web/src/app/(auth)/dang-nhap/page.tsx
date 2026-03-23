@@ -40,7 +40,7 @@ export default function LoginPage() {
         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
           <Wheat className="h-6 w-6 text-primary" />
         </div>
-        <CardTitle className="text-2xl font-bold text-primary">SanGiaGao.Com</CardTitle>
+        <CardTitle className="text-2xl font-bold text-primary">SanGiaGao.Vn</CardTitle>
         <CardDescription>Đăng nhập tài khoản của bạn</CardDescription>
       </CardHeader>
       <CardContent>

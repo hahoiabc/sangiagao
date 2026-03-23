@@ -67,7 +67,7 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SanGiaGao.Com'),
+        title: const Text('SanGiaGao.Vn'),
       ),
       body: _loading
           ? const PriceBoardSkeleton()

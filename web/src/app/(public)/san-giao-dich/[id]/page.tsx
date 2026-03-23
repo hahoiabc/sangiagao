@@ -130,7 +130,7 @@ export default function ListingDetailPage() {
               <img
                 src={listing.images[selectedImage]}
                 alt={listing.title}
-                className="h-full w-full object-cover"
+                className="max-h-full max-w-full object-contain"
               />
             ) : (
               <Package className="h-16 w-16 text-muted-foreground/40" />

@@ -266,6 +266,8 @@ function MarketplaceContent() {
                 className="h-9 rounded-md border border-input bg-background px-2 text-sm"
               >
                 <option value="">Mới nhất</option>
+                <option value="name_asc">Tên gạo (A-Z)</option>
+                <option value="name_desc">Tên gạo (Z-A)</option>
                 <option value="price_asc">Giá tăng dần</option>
                 <option value="price_desc">Giá giảm dần</option>
                 <option value="quantity_desc">Số lượng nhiều nhất</option>
@@ -302,7 +304,7 @@ function MarketplaceContent() {
               Giá: {minPrice || "0"} - {maxPrice || "..."}đ/kg
             </Badge>
           )}
-          {sort && <Badge variant="secondary"><ArrowUpDown className="h-3 w-3 mr-1" />{sort === "price_asc" ? "Giá tăng" : sort === "price_desc" ? "Giá giảm" : "SL nhiều"}</Badge>}
+          {sort && <Badge variant="secondary"><ArrowUpDown className="h-3 w-3 mr-1" />{sort === "price_asc" ? "Giá tăng" : sort === "price_desc" ? "Giá giảm" : sort === "name_asc" ? "Tên A-Z" : sort === "name_desc" ? "Tên Z-A" : "SL nhiều"}</Badge>}
           <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={clearFilters}>
             Xóa bộ lọc
           </Button>
@@ -336,7 +338,7 @@ function MarketplaceContent() {
                       <img
                         src={listing.images[0]}
                         alt={listing.title}
-                        className="h-full w-full object-cover"
+                        className="max-h-full max-w-full object-contain"
                       />
                     ) : (
                       <Package className="h-10 w-10 text-muted-foreground/40" />

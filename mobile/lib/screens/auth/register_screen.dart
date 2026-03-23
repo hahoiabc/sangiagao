@@ -160,7 +160,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 padding: const EdgeInsets.all(16),
                 children: const [
                   Text(
-                    'ĐIỀU KHOẢN SỬ DỤNG SANGIAGAO.COM',
+                    'ĐIỀU KHOẢN SỬ DỤNG SANGIAGAO.VN',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   SizedBox(height: 16),
@@ -170,8 +170,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'SanGiaGao.Com là nền tảng công nghệ kết nối người sản xuất, thương nhân '
-                    'và người mua trong ngành gạo Việt Nam. SanGiaGao.Com là công cụ hỗ trợ '
+                    'SanGiaGao.Vn là nền tảng công nghệ kết nối người sản xuất, thương nhân '
+                    'và người mua trong ngành gạo Việt Nam. SanGiaGao.Vn là công cụ hỗ trợ '
                     'giúp các thành viên kết nối thuận tiện và nhanh chóng, không trực tiếp '
                     'tham gia vào các giao dịch mua bán giữa các bên.',
                     style: TextStyle(height: 1.5),
@@ -183,7 +183,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Mỗi thành viên tham gia SanGiaGao.Com phải tự chịu trách nhiệm hoàn toàn '
+                    'Mỗi thành viên tham gia SanGiaGao.Vn phải tự chịu trách nhiệm hoàn toàn '
                     'cho mọi quyết định giao dịch của mình, bao gồm nhưng không giới hạn:\n\n'
                     '- Tính chính xác của thông tin sản phẩm đăng tải\n'
                     '- Chất lượng hàng hóa và dịch vụ\n'
@@ -194,17 +194,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   SizedBox(height: 16),
                   Text(
-                    '3. VAI TRÒ CỦA SANGIAGAO.COM',
+                    '3. VAI TRÒ CỦA SANGIAGAO.VN',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'SanGiaGao.Com cam kết:\n\n'
+                    'SanGiaGao.Vn cam kết:\n\n'
                     '- Cung cấp nền tảng kết nối minh bạch và công bằng\n'
                     '- Hỗ trợ cung cấp thông tin trong khả năng của sàn khi có yêu cầu từ thành viên\n'
                     '- Duy trì môi trường giao dịch lành mạnh thông qua hệ thống đánh giá và báo cáo vi phạm\n'
                     '- Bảo mật thông tin cá nhân của thành viên theo quy định pháp luật\n\n'
-                    'SanGiaGao.Com không chịu trách nhiệm cho bất kỳ tranh chấp, tổn thất hoặc thiệt hại '
+                    'SanGiaGao.Vn không chịu trách nhiệm cho bất kỳ tranh chấp, tổn thất hoặc thiệt hại '
                     'phát sinh từ giao dịch giữa các thành viên.',
                     style: TextStyle(height: 1.5),
                   ),
@@ -240,7 +240,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'SanGiaGao.Com có quyền cảnh cáo, tạm khóa hoặc xóa vĩnh viễn tài khoản vi phạm '
+                    'SanGiaGao.Vn có quyền cảnh cáo, tạm khóa hoặc xóa vĩnh viễn tài khoản vi phạm '
                     'điều khoản sử dụng mà không cần thông báo trước.',
                     style: TextStyle(height: 1.5),
                   ),

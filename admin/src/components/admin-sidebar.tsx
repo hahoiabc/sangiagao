@@ -229,7 +229,7 @@ function SidebarBrand() {
       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary/20">
         <Wheat className="h-4.5 w-4.5 text-sidebar-primary" />
       </div>
-      <span className="text-lg font-bold text-white tracking-tight">SanGiaGao.Com</span>
+      <span className="text-lg font-bold text-white tracking-tight">SanGiaGao.Vn</span>
     </div>
   );
 }

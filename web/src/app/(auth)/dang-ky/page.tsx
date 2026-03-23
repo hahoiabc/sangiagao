@@ -287,13 +287,13 @@ export default function RegisterPage() {
               </button>
             </div>
             <div className="overflow-y-auto p-4 space-y-4 text-sm leading-relaxed">
-              <h3 className="font-bold">ĐIỀU KHOẢN SỬ DỤNG SANGIAGAO.COM</h3>
+              <h3 className="font-bold">ĐIỀU KHOẢN SỬ DỤNG SANGIAGAO.VN</h3>
 
               <div>
                 <h4 className="font-semibold">1. GIỚI THIỆU</h4>
                 <p className="mt-1">
-                  SanGiaGao.Com là nền tảng công nghệ kết nối người sản xuất, thương nhân
-                  và người mua trong ngành gạo Việt Nam. SanGiaGao.Com là công cụ hỗ trợ
+                  SanGiaGao.Vn là nền tảng công nghệ kết nối người sản xuất, thương nhân
+                  và người mua trong ngành gạo Việt Nam. SanGiaGao.Vn là công cụ hỗ trợ
                   giúp các thành viên kết nối thuận tiện và nhanh chóng, không trực tiếp
                   tham gia vào các giao dịch mua bán giữa các bên.
                 </p>
@@ -302,7 +302,7 @@ export default function RegisterPage() {
               <div>
                 <h4 className="font-semibold">2. TRÁCH NHIỆM CỦA THÀNH VIÊN</h4>
                 <p className="mt-1">
-                  Mỗi thành viên tham gia SanGiaGao.Com phải tự chịu trách nhiệm hoàn toàn
+                  Mỗi thành viên tham gia SanGiaGao.Vn phải tự chịu trách nhiệm hoàn toàn
                   cho mọi quyết định giao dịch của mình, bao gồm nhưng không giới hạn:
                 </p>
                 <ul className="list-disc ml-5 mt-1 space-y-1">
@@ -315,8 +315,8 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <h4 className="font-semibold">3. VAI TRÒ CỦA SANGIAGAO.COM</h4>
-                <p className="mt-1">SanGiaGao.Com cam kết:</p>
+                <h4 className="font-semibold">3. VAI TRÒ CỦA SANGIAGAO.VN</h4>
+                <p className="mt-1">SanGiaGao.Vn cam kết:</p>
                 <ul className="list-disc ml-5 mt-1 space-y-1">
                   <li>Cung cấp nền tảng kết nối minh bạch và công bằng</li>
                   <li>Hỗ trợ cung cấp thông tin trong khả năng của sàn khi có yêu cầu từ thành viên</li>
@@ -324,7 +324,7 @@ export default function RegisterPage() {
                   <li>Bảo mật thông tin cá nhân của thành viên theo quy định pháp luật</li>
                 </ul>
                 <p className="mt-2">
-                  SanGiaGao.Com không chịu trách nhiệm cho bất kỳ tranh chấp, tổn thất hoặc thiệt hại
+                  SanGiaGao.Vn không chịu trách nhiệm cho bất kỳ tranh chấp, tổn thất hoặc thiệt hại
                   phát sinh từ giao dịch giữa các thành viên.
                 </p>
               </div>
@@ -351,7 +351,7 @@ export default function RegisterPage() {
               <div>
                 <h4 className="font-semibold">6. XỬ LÝ VI PHẠM</h4>
                 <p className="mt-1">
-                  SanGiaGao.Com có quyền cảnh cáo, tạm khóa hoặc xóa vĩnh viễn tài khoản vi phạm
+                  SanGiaGao.Vn có quyền cảnh cáo, tạm khóa hoặc xóa vĩnh viễn tài khoản vi phạm
                   điều khoản sử dụng mà không cần thông báo trước.
                 </p>
               </div>

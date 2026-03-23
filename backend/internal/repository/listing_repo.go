@@ -280,6 +280,10 @@ func (r *ListingRepo) Search(ctx context.Context, filter *model.ListingFilter) (
 		orderBy = "price_per_kg ASC"
 	} else if filter.Sort == "price_desc" {
 		orderBy = "price_per_kg DESC"
+	} else if filter.Sort == "name_asc" {
+		orderBy = "rice_type ASC"
+	} else if filter.Sort == "name_desc" {
+		orderBy = "rice_type DESC"
 	}
 	dataQuery := fmt.Sprintf(
 		"SELECT %s FROM listings WHERE %s ORDER BY %s LIMIT $%d OFFSET $%d",

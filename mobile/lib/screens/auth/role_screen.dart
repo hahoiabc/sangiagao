@@ -18,12 +18,12 @@ class RoleScreen extends ConsumerWidget {
             children: [
               Text('Bạn là ai?', style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: 8),
-              const Text('Chọn vai trò của bạn trên SanGiaGao.Com', style: TextStyle(color: AppColors.textHint)),
+              const Text('Chọn vai trò của bạn trên SanGiaGao.Vn', style: TextStyle(color: AppColors.textHint)),
               const SizedBox(height: 32),
               _RoleCard(
                 icon: Icons.person,
                 title: 'Thành viên',
-                subtitle: 'Tham gia sàn giao dịch gạo SanGiaGao.Com',
+                subtitle: 'Tham gia sàn giao dịch gạo SanGiaGao.Vn',
                 onTap: () async {
                   await ref.read(authProvider.notifier).updateProfile({'role': 'member', 'accept_tos': true});
                   if (context.mounted) context.go('/marketplace');

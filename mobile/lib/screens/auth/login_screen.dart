@@ -83,7 +83,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: const Icon(Icons.rice_bowl, size: 44, color: Colors.white),
               ),
               const SizedBox(height: 20),
-              Text('SanGiaGao.Com', style: theme.textTheme.headlineMedium),
+              Text('SanGiaGao.Vn', style: theme.textTheme.headlineMedium),
               const SizedBox(height: 6),
               Text(
                 'Đăng nhập tài khoản',
