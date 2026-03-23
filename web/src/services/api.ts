@@ -231,6 +231,12 @@ export interface SubscriptionStatus {
   days_remaining: number;
 }
 
+interface SubscriptionStatusRaw {
+  subscription: { plan: string; expires_at: string; status: string } | null;
+  is_active: boolean;
+  days_left: number;
+}
+
 export interface Feedback {
   id: string;
   user_id: string;
@@ -544,8 +550,14 @@ export async function markNotificationRead(token: string, id: string) {
 }
 
 // --- Subscription ---
-export async function getSubscriptionStatus(token: string) {
-  return request<SubscriptionStatus>("/subscription/status", { token });
+export async function getSubscriptionStatus(token: string): Promise<SubscriptionStatus> {
+  const raw = await request<SubscriptionStatusRaw>("/subscription/status", { token });
+  return {
+    has_active: raw.is_active,
+    expires_at: raw.subscription?.expires_at ?? null,
+    plan: raw.subscription?.plan ?? "",
+    days_remaining: raw.days_left,
+  };
 }
 
 export async function getSubscriptionPlans(token: string) {
