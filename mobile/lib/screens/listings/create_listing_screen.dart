@@ -143,23 +143,28 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
       );
       return;
     }
-    final image = await _picker.pickImage(
-      source: ImageSource.gallery,
+    final remaining = 3 - form.imageUrls.length;
+    final images = await _picker.pickMultiImage(
       maxWidth: 1024,
       maxHeight: 1024,
       imageQuality: 80,
+      limit: remaining,
     );
-    if (image == null) return;
+    if (images.isEmpty) return;
 
     setState(() => form.uploading = true);
     try {
-      final url = await ref.read(apiServiceProvider).uploadImage(image.path, 'listings');
+      for (final image in images.take(remaining)) {
+        final url = await ref.read(apiServiceProvider).uploadImage(image.path, 'listings');
+        if (mounted) {
+          setState(() {
+            form.imageUrls.add(url);
+            form.localPaths.add(image.path);
+          });
+        }
+      }
       if (mounted) {
-        setState(() {
-          form.imageUrls.add(url);
-          form.localPaths.add(image.path);
-          form.uploading = false;
-        });
+        setState(() => form.uploading = false);
       }
     } catch (e) {
       if (mounted) {
