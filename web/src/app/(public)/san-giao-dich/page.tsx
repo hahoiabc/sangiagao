@@ -12,6 +12,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { searchMarketplace, getProductCatalog, type Listing, type PaginatedResponse, type RiceCategory } from "@/services/api";
 import { formatPrice, formatQuantity, timeAgo } from "@/lib/utils";
 
+interface LocationItem {
+  code: string;
+  name: string;
+}
+
+function removeDiacritics(str: string): string {
+  const withDiacritics = "àáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđ";
+  const withoutDiacritics = "aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd";
+  let result = str.toLowerCase();
+  for (let i = 0; i < withDiacritics.length; i++) {
+    result = result.replaceAll(withDiacritics[i], withoutDiacritics[i]);
+  }
+  return result;
+}
+
 export default function MarketplacePage() {
   return (
     <Suspense fallback={<div className="mx-auto max-w-7xl px-4 py-6"><Skeleton className="h-80 w-full" /></div>}>
@@ -26,6 +41,7 @@ function MarketplaceContent() {
   const [category, setCategory] = useState(searchParams.get("category") || "");
   const [riceType, setRiceType] = useState(searchParams.get("rice_type") || "");
   const [province, setProvince] = useState(searchParams.get("province") || "");
+  const [ward, setWard] = useState(searchParams.get("ward") || "");
   const [sort, setSort] = useState(searchParams.get("sort") || "");
   const [minPrice, setMinPrice] = useState(searchParams.get("min_price") || "");
   const [maxPrice, setMaxPrice] = useState(searchParams.get("max_price") || "");
@@ -35,9 +51,50 @@ function MarketplaceContent() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
 
+  // Location data from CSV (like mobile)
+  const [provinces, setProvinces] = useState<LocationItem[]>([]);
+  const [wards, setWards] = useState<LocationItem[]>([]);
+  const [allWards, setAllWards] = useState<{ code: string; name: string; provinceCode: string }[]>([]);
+
   useEffect(() => {
     getProductCatalog().then(setCategories).catch(() => {});
+    // Load location data from CSV
+    fetch("/vietnam_divisions.csv")
+      .then((res) => res.text())
+      .then((text) => {
+        const lines = text.trim().split("\n").slice(1);
+        const provMap = new Map<string, string>();
+        const wardList: { code: string; name: string; provinceCode: string }[] = [];
+        for (const line of lines) {
+          const cols = line.split(",");
+          if (cols.length < 8) continue;
+          const pCode = cols[0].trim();
+          const pName = cols[1].trim();
+          const wCode = cols[6]?.trim();
+          const wName = cols[7]?.trim();
+          if (pCode && pName) provMap.set(pCode, pName);
+          if (wCode && wName && pCode) wardList.push({ code: wCode, name: wName, provinceCode: pCode });
+        }
+        const provList = Array.from(provMap.entries()).map(([code, name]) => ({ code, name }));
+        setProvinces(provList);
+        setAllWards(wardList);
+      })
+      .catch(() => {});
   }, []);
+
+  // Update wards when province changes
+  useEffect(() => {
+    if (!province) {
+      setWards([]);
+      setWard("");
+      return;
+    }
+    const provItem = provinces.find((p) => p.name === province);
+    if (provItem) {
+      const filtered = allWards.filter((w) => w.provinceCode === provItem.code);
+      setWards(filtered.map((w) => ({ code: w.code, name: w.name })));
+    }
+  }, [province, provinces, allWards]);
 
   const selectedCat = categories.find((c) => c.key === category);
 
@@ -50,6 +107,7 @@ function MarketplaceContent() {
           category: category || undefined,
           rice_type: riceType || undefined,
           province: province || undefined,
+          ward: ward || undefined,
           sort: sort || undefined,
           min_price: minPrice ? Number(minPrice) : undefined,
           max_price: maxPrice ? Number(maxPrice) : undefined,
@@ -63,7 +121,7 @@ function MarketplaceContent() {
         setLoading(false);
       }
     },
-    [query, category, riceType, province, sort, minPrice, maxPrice]
+    [query, category, riceType, province, ward, sort, minPrice, maxPrice]
   );
 
   useEffect(() => {
@@ -80,6 +138,7 @@ function MarketplaceContent() {
     setCategory("");
     setRiceType("");
     setProvince("");
+    setWard("");
     setSort("");
     setMinPrice("");
     setMaxPrice("");
@@ -87,7 +146,7 @@ function MarketplaceContent() {
     setPage(1);
   }
 
-  const hasFilters = category || riceType || province || sort || minPrice || maxPrice;
+  const hasFilters = category || riceType || province || ward || sort || minPrice || maxPrice;
   const totalPages = result ? Math.ceil(result.total / 20) : 0;
 
   return (
@@ -121,7 +180,7 @@ function MarketplaceContent() {
       {showFilter && (
         <Card className="mb-4">
           <CardContent className="p-4 space-y-4">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               <div>
                 <label className="text-xs font-medium mb-1 block text-muted-foreground">Phân loại</label>
                 <select
@@ -150,13 +209,31 @@ function MarketplaceContent() {
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium mb-1 block text-muted-foreground">Tỉnh/Thành</label>
-                <Input
+                <label className="text-xs font-medium mb-1 block text-muted-foreground">Tỉnh/Thành phố</label>
+                <select
                   value={province}
-                  onChange={(e) => setProvince(e.target.value)}
-                  placeholder="VD: Long An"
-                  className="h-9"
-                />
+                  onChange={(e) => { setProvince(e.target.value); setWard(""); }}
+                  className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
+                >
+                  <option value="">Tất cả</option>
+                  {provinces.map((p) => (
+                    <option key={p.code} value={p.name}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium mb-1 block text-muted-foreground">Xã/Phường</label>
+                <select
+                  value={ward}
+                  onChange={(e) => setWard(e.target.value)}
+                  className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
+                  disabled={!province}
+                >
+                  <option value="">Tất cả</option>
+                  {wards.map((w) => (
+                    <option key={w.code} value={w.name}>{w.name}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="text-xs font-medium mb-1 block text-muted-foreground">Giá từ (đ/kg)</label>
@@ -214,7 +291,12 @@ function MarketplaceContent() {
         <div className="flex flex-wrap gap-2 mb-4">
           {category && <Badge variant="secondary">Loại: {categories.find(c => c.key === category)?.label || category}</Badge>}
           {riceType && <Badge variant="secondary">Gạo: {riceType}</Badge>}
-          {province && <Badge variant="secondary"><MapPin className="h-3 w-3 mr-1" />{province}</Badge>}
+          {province && (
+            <Badge variant="secondary">
+              <MapPin className="h-3 w-3 mr-1" />{province}
+              {ward && ` - ${ward}`}
+            </Badge>
+          )}
           {(minPrice || maxPrice) && (
             <Badge variant="secondary">
               Giá: {minPrice || "0"} - {maxPrice || "..."}đ/kg

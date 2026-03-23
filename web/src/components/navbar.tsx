@@ -4,9 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Wheat, Search, MessageCircle, Bell, User, LogOut, Menu, X, Crown, MessageSquareText } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { getConversations } from "@/services/api";
 
 const publicLinks = [
   { href: "/bang-gia", label: "Sàn gạo" },
@@ -22,9 +24,47 @@ const memberLinks = [
 ];
 
 export function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
+
+  // Poll unread count like mobile (every 10 seconds)
+  useEffect(() => {
+    if (!token) {
+      setUnreadCount(0);
+      return;
+    }
+
+    async function fetchUnread() {
+      try {
+        const res = await getConversations(token!, 1, 50);
+        const total = res.data.reduce((sum, c) => sum + c.unread_count, 0);
+        setUnreadCount(total);
+      } catch {
+        // ignore
+      }
+    }
+
+    fetchUnread();
+    intervalRef.current = setInterval(fetchUnread, 10000);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [token]);
+
+  function renderBadge(href: string) {
+    if (href === "/tin-nhan" && unreadCount > 0) {
+      return (
+        <Badge className="h-5 min-w-5 flex items-center justify-center text-[10px] rounded-full px-1.5 ml-1">
+          {unreadCount > 99 ? "99+" : unreadCount}
+        </Badge>
+      );
+    }
+    return null;
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b bg-white/95 backdrop-blur">
@@ -63,6 +103,7 @@ export function Navbar() {
                 >
                   <l.icon className="h-4 w-4" />
                   {l.label}
+                  {renderBadge(l.href)}
                 </Link>
               ))}
           </nav>
@@ -126,6 +167,7 @@ export function Navbar() {
               >
                 <l.icon className="h-4 w-4" />
                 {l.label}
+                {renderBadge(l.href)}
               </Link>
             ))}
           <div className="border-t pt-2 mt-2">

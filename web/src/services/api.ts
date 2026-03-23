@@ -321,6 +321,7 @@ export async function searchMarketplace(params: {
   category?: string;
   rice_type?: string;
   province?: string;
+  ward?: string;
   min_price?: number;
   max_price?: number;
   sort?: string;

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getListingDetail, createConversation, createReport, type ListingDetail } from "@/services/api";
+import { getListingDetail, createConversation, createReport, getMessages, sendMessage, type ListingDetail } from "@/services/api";
 import { formatPrice, formatQuantity, formatDate, timeAgo } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -43,10 +43,23 @@ export default function ListingDetailPage() {
       router.push("/dang-nhap");
       return;
     }
-    if (!listing?.seller) return;
+    if (!listing?.seller || !id) return;
     setContacting(true);
     try {
       const conv = await createConversation(token, listing.seller.id, listing.id);
+      // Auto-send listing_link if not already sent today (like mobile)
+      try {
+        const msgs = await getMessages(token, conv.id, 1, 30);
+        const today = new Date().toDateString();
+        const alreadySent = msgs.data.some(
+          (m) => m.type === "listing_link" && m.content === `listing://${id}` && new Date(m.created_at).toDateString() === today
+        );
+        if (!alreadySent) {
+          await sendMessage(token, conv.id, `listing://${id}`, "listing_link");
+        }
+      } catch {
+        // ignore - still navigate to chat
+      }
       router.push(`/tin-nhan/${conv.id}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Không thể liên hệ");
@@ -238,7 +251,7 @@ export default function ListingDetailPage() {
                   disabled={contacting || listing.seller.id === user?.id}
                 >
                   <MessageCircle className="h-4 w-4" />
-                  {contacting ? "Đang xử lý..." : "Liên hệ người bán"}
+                  {contacting ? "Đang xử lý..." : "Chat với người bán"}
                 </Button>
               </CardContent>
             </Card>

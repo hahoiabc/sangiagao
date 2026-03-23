@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Package, Edit, Trash2 } from "lucide-react";
+import { Plus, Package, Edit, Trash2, Eye, Calendar } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,10 +12,12 @@ import { formatPrice, formatQuantity, timeAgo } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
-const statusLabels: Record<string, string> = {
-  active: "Đang hiển thị",
-  hidden_subscription: "Ẩn (hết hạn)",
-  deleted: "Đã xóa",
+// Match mobile status labels exactly
+const statusLabels: Record<string, { label: string; color: "default" | "secondary" | "destructive" }> = {
+  active: { label: "Đang hiển thị", color: "default" },
+  hidden: { label: "Đã ẩn", color: "secondary" },
+  hidden_subscription: { label: "Đã ẩn", color: "secondary" },
+  deleted: { label: "Đã xóa", color: "destructive" },
 };
 
 export default function MyListingsPage() {
@@ -59,53 +61,84 @@ export default function MyListingsPage() {
 
       {loading ? (
         <div className="space-y-3">
-          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-24 w-full rounded-lg" />)}
+          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-28 w-full rounded-lg" />)}
         </div>
       ) : result && result.data.length > 0 ? (
         <div className="space-y-3">
-          {result.data.map((listing) => (
-            <Card key={listing.id}>
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className="h-16 w-16 rounded-md bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
-                  {listing.images.length > 0 ? (
-                    <img src={listing.images[0]} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <Package className="h-6 w-6 text-muted-foreground/40" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-sm truncate">{listing.title}</h3>
-                  <p className="text-sm text-primary font-medium">
-                    {formatPrice(listing.price_per_kg)} &middot; {formatQuantity(listing.quantity_kg)}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Badge
-                      variant={listing.status === "active" ? "default" : "secondary"}
-                      className="text-xs"
-                    >
-                      {statusLabels[listing.status] || listing.status}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">{timeAgo(listing.created_at)}</span>
+          {result.data.map((listing) => {
+            const st = statusLabels[listing.status] || { label: listing.status, color: "secondary" as const };
+            return (
+              <Card key={listing.id}>
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-4">
+                    {/* Thumbnail */}
+                    <div className="h-20 w-20 rounded-md bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {listing.images.length > 0 ? (
+                        <img src={listing.images[0]} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <Package className="h-6 w-6 text-muted-foreground/40" />
+                      )}
+                    </div>
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-sm truncate">{listing.title}</h3>
+                        <Badge variant={st.color} className="text-xs flex-shrink-0">
+                          {st.label}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-primary font-bold">
+                        {formatPrice(listing.price_per_kg)}
+                      </p>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                        <span className="flex items-center gap-1">
+                          <Package className="h-3 w-3" />
+                          {formatQuantity(listing.quantity_kg)}
+                        </span>
+                        {listing.harvest_season && (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {listing.harvest_season}
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1">
+                          <Eye className="h-3 w-3" />
+                          {listing.view_count}
+                        </span>
+                        <span>{timeAgo(listing.created_at)}</span>
+                      </div>
+                      {/* Image strip - show additional images like mobile */}
+                      {listing.images.length > 1 && (
+                        <div className="flex gap-1.5 mt-2 overflow-x-auto">
+                          {listing.images.slice(0, 3).map((img, i) => (
+                            <div key={i} className="h-14 w-14 rounded-md overflow-hidden bg-muted flex-shrink-0">
+                              <img src={img} alt="" className="h-full w-full object-cover" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {/* Actions */}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                        <Link href={`/tin-dang/sua/${listing.id}`}>
+                          <Edit className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive"
+                        onClick={() => handleDelete(listing.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                    <Link href={`/tin-dang/sua/${listing.id}`}>
-                      <Edit className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive"
-                    onClick={() => handleDelete(listing.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       ) : (
         <div className="text-center py-12">
