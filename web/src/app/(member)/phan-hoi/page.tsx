@@ -21,7 +21,7 @@ export default function FeedbackPage() {
   useEffect(() => {
     if (token) {
       getMyFeedbacks(token, 1, 50)
-        .then((res) => setFeedbacks(res.data))
+        .then((res) => setFeedbacks(res.data ?? []))
         .catch(() => {})
         .finally(() => setLoading(false));
     }

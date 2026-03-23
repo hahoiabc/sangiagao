@@ -251,7 +251,7 @@ export default function ChatRoomPage() {
     pollingRef.current = setInterval(async () => {
       try {
         const res = await getMessages(token!, convId!, 1, 100);
-        setMessages(res.data.reverse());
+        setMessages((res.data ?? []).reverse());
       } catch {
         // ignore
       }
@@ -282,7 +282,7 @@ export default function ChatRoomPage() {
     async function fetchMessages() {
       try {
         const res = await getMessages(token!, convId!, 1, 100);
-        setMessages(res.data.reverse());
+        setMessages((res.data ?? []).reverse());
         markConversationRead(token!, convId!).catch(() => {});
       } catch {
         // ignore
