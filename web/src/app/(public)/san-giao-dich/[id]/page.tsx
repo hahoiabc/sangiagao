@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, MapPin, Package, MessageCircle, Star, Flag } from "lucide-react";
+import { ArrowLeft, MapPin, Package, MessageCircle, Star, Flag, X, ChevronLeft, ChevronRight, ZoomIn } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,7 @@ export default function ListingDetailPage() {
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
   const [contacting, setContacting] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   // Report state
   const [showReport, setShowReport] = useState(false);
@@ -125,13 +126,21 @@ export default function ListingDetailPage() {
         {/* Images + Details */}
         <div className="lg:col-span-2 space-y-4">
           {/* Image Gallery */}
-          <div className="rounded-lg overflow-hidden bg-muted aspect-video flex items-center justify-center">
+          <div
+            className="rounded-lg overflow-hidden bg-muted aspect-video flex items-center justify-center relative group cursor-pointer"
+            onClick={() => listing.images.length > 0 && setLightboxOpen(true)}
+          >
             {listing.images.length > 0 ? (
-              <img
-                src={listing.images[selectedImage]}
-                alt={listing.title}
-                className="max-h-full max-w-full object-contain"
-              />
+              <>
+                <img
+                  src={listing.images[selectedImage]}
+                  alt={listing.title}
+                  className="max-h-full max-w-full object-contain"
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                  <ZoomIn className="h-8 w-8 text-white opacity-0 group-hover:opacity-80 transition-opacity drop-shadow-lg" />
+                </div>
+              </>
             ) : (
               <Package className="h-16 w-16 text-muted-foreground/40" />
             )}
@@ -319,6 +328,48 @@ export default function ListingDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Lightbox */}
+      {lightboxOpen && listing.images.length > 0 && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+          onClick={() => setLightboxOpen(false)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white/80 hover:text-white z-10"
+            onClick={() => setLightboxOpen(false)}
+          >
+            <X className="h-8 w-8" />
+          </button>
+          {listing.images.length > 1 && (
+            <>
+              <button
+                className="absolute left-4 text-white/80 hover:text-white z-10"
+                onClick={(e) => { e.stopPropagation(); setSelectedImage((prev) => (prev - 1 + listing.images.length) % listing.images.length); }}
+              >
+                <ChevronLeft className="h-10 w-10" />
+              </button>
+              <button
+                className="absolute right-4 text-white/80 hover:text-white z-10"
+                onClick={(e) => { e.stopPropagation(); setSelectedImage((prev) => (prev + 1) % listing.images.length); }}
+              >
+                <ChevronRight className="h-10 w-10" />
+              </button>
+            </>
+          )}
+          <img
+            src={listing.images[selectedImage]}
+            alt={listing.title}
+            className="max-h-[90vh] max-w-[90vw] object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          {listing.images.length > 1 && (
+            <div className="absolute bottom-4 text-white/70 text-sm">
+              {selectedImage + 1} / {listing.images.length}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
