@@ -10,7 +10,7 @@ export function Footer() {
             <span className="font-semibold text-primary">SanGiaGao.Vn</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Sàn giao dịch giá gạo trực tuyến &copy; {new Date().getFullYear()}
+            Sàn giao gạo trực tuyến &copy; {new Date().getFullYear()}
           </p>
         </div>
       </div>

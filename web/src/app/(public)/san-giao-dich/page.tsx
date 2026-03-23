@@ -42,7 +42,7 @@ function MarketplaceContent() {
   const [riceType, setRiceType] = useState(searchParams.get("rice_type") || "");
   const [province, setProvince] = useState(searchParams.get("province") || "");
   const [ward, setWard] = useState(searchParams.get("ward") || "");
-  const [sort, setSort] = useState(searchParams.get("sort") || "");
+  const [sort, setSort] = useState(searchParams.get("sort") || "price_asc");
   const [minPrice, setMinPrice] = useState(searchParams.get("min_price") || "");
   const [maxPrice, setMaxPrice] = useState(searchParams.get("max_price") || "");
   const [showFilter, setShowFilter] = useState(false);
