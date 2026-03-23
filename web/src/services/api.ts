@@ -417,6 +417,14 @@ export async function createListing(token: string, data: Record<string, unknown>
   return request<Listing>("/listings", { token, method: "POST", body: JSON.stringify(data) });
 }
 
+export async function batchCreateListings(token: string, items: Record<string, unknown>[]) {
+  return request<{ listings: Listing[] }>("/listings/batch", {
+    token,
+    method: "POST",
+    body: JSON.stringify({ items }),
+  });
+}
+
 export async function updateListing(token: string, id: string, data: Record<string, unknown>) {
   return request<Listing>(`/listings/${id}`, { token, method: "PUT", body: JSON.stringify(data) });
 }
@@ -458,6 +466,30 @@ export async function sendMessage(token: string, convId: string, content: string
   });
 }
 
+export async function deleteMessage(token: string, convId: string, msgId: string) {
+  return request<void>(`/conversations/${convId}/messages/${msgId}`, { token, method: "DELETE" });
+}
+
+export async function recallMessage(token: string, convId: string, msgId: string) {
+  return request<void>(`/conversations/${convId}/messages/${msgId}/recall`, { token, method: "PUT" });
+}
+
+export async function batchDeleteMessages(token: string, convId: string, messageIds: string[]) {
+  return request<void>(`/conversations/${convId}/messages/batch-delete`, {
+    token,
+    method: "POST",
+    body: JSON.stringify({ message_ids: messageIds }),
+  });
+}
+
+export async function batchRecallMessages(token: string, convId: string, messageIds: string[]) {
+  return request<void>(`/conversations/${convId}/messages/batch-recall`, {
+    token,
+    method: "POST",
+    body: JSON.stringify({ message_ids: messageIds }),
+  });
+}
+
 export async function markConversationRead(token: string, convId: string) {
   return request<void>(`/conversations/${convId}/read`, { token, method: "PUT" });
 }
@@ -479,6 +511,21 @@ export async function getSubscriptionStatus(token: string) {
 
 export async function getSubscriptionPlans(token: string) {
   return request<{ plans: SubscriptionPlan[] }>("/subscription/plans", { token });
+}
+
+export interface SubscriptionHistory {
+  id: string;
+  plan_months: number;
+  amount: number;
+  starts_at: string;
+  expires_at: string;
+  status: string;
+  created_at: string;
+}
+
+export async function getSubscriptionHistory(token: string, page: number, limit: number) {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  return request<PaginatedResponse<SubscriptionHistory>>(`/subscription/history?${params}`, { token });
 }
 
 // --- Ratings ---

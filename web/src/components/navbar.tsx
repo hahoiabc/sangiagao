@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Wheat, Search, MessageCircle, Bell, User, LogOut, Menu, X } from "lucide-react";
+import { Wheat, Search, MessageCircle, Bell, User, LogOut, Menu, X, Crown, MessageSquareText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,8 @@ const memberLinks = [
   { href: "/tin-dang", label: "Tin Đăng", icon: Search },
   { href: "/tin-nhan", label: "Tin Nhắn", icon: MessageCircle },
   { href: "/thong-bao", label: "Thông Báo", icon: Bell },
+  { href: "/goi-thanh-vien", label: "Gói TV", icon: Crown },
+  { href: "/phan-hoi", label: "Phản Hồi", icon: MessageSquareText },
 ];
 
 export function Navbar() {

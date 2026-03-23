@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Send, ImagePlus, X, Loader2 } from "lucide-react";
+import { ArrowLeft, Send, ImagePlus, X, Loader2, Trash2, RotateCcw, CheckSquare, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,12 +12,16 @@ import {
   sendMessage as apiSendMessage,
   markConversationRead,
   uploadImage,
+  deleteMessage,
+  recallMessage,
+  batchDeleteMessages,
+  batchRecallMessages,
   type Message,
-  type PaginatedResponse,
 } from "@/services/api";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { timeAgo } from "@/lib/utils";
+import { toast } from "sonner";
 
 const MAX_CHAT_IMAGES = 10;
 
@@ -33,6 +37,11 @@ export default function ChatRoomPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Message actions state
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedMsgIds, setSelectedMsgIds] = useState<Set<string>>(new Set());
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; msg: Message } | null>(null);
 
   useEffect(() => {
     if (!token || !convId) return;
@@ -51,7 +60,6 @@ export default function ChatRoomPage() {
 
     fetchMessages();
 
-    // Poll for new messages every 3 seconds
     intervalRef.current = setInterval(async () => {
       try {
         const res = await getMessages(token!, convId!, 1, 100);
@@ -76,18 +84,26 @@ export default function ChatRoomPage() {
     };
   }, [selectedImages]);
 
+  // Close context menu on click outside
+  useEffect(() => {
+    function handleClick() {
+      setContextMenu(null);
+    }
+    if (contextMenu) {
+      window.addEventListener("click", handleClick);
+      return () => window.removeEventListener("click", handleClick);
+    }
+  }, [contextMenu]);
+
   function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
     if (!files) return;
-
     const remaining = MAX_CHAT_IMAGES - selectedImages.length;
     const selected = Array.from(files).slice(0, remaining);
-
     const newImages = selected.map((file) => ({
       file,
       preview: URL.createObjectURL(file),
     }));
-
     setSelectedImages((prev) => [...prev, ...newImages]);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
@@ -121,12 +137,10 @@ export default function ChatRoomPage() {
     e.preventDefault();
     if (!token || !convId) return;
 
-    // Send images first if any
     if (selectedImages.length > 0) {
       await handleSendImages();
     }
 
-    // Send text message
     if (input.trim()) {
       setSending(true);
       try {
@@ -141,6 +155,85 @@ export default function ChatRoomPage() {
     }
   }
 
+  function handleContextMenu(e: React.MouseEvent, msg: Message) {
+    if (msg.type === "recalled") return;
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, msg });
+  }
+
+  async function handleDeleteMsg(msg: Message) {
+    if (!token || !convId) return;
+    try {
+      await deleteMessage(token, convId, msg.id);
+      setMessages((prev) => prev.filter((m) => m.id !== msg.id));
+      toast.success("Đã xóa tin nhắn");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Xóa thất bại");
+    }
+    setContextMenu(null);
+  }
+
+  async function handleRecallMsg(msg: Message) {
+    if (!token || !convId) return;
+    try {
+      await recallMessage(token, convId, msg.id);
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msg.id ? { ...m, type: "recalled", content: "Tin nhắn đã được thu hồi" } : m))
+      );
+      toast.success("Đã thu hồi tin nhắn");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Thu hồi thất bại");
+    }
+    setContextMenu(null);
+  }
+
+  function toggleSelectMsg(msgId: string) {
+    setSelectedMsgIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(msgId)) next.delete(msgId);
+      else next.add(msgId);
+      return next;
+    });
+  }
+
+  async function handleBatchDelete() {
+    if (!token || !convId || selectedMsgIds.size === 0) return;
+    try {
+      await batchDeleteMessages(token, convId, Array.from(selectedMsgIds));
+      setMessages((prev) => prev.filter((m) => !selectedMsgIds.has(m.id)));
+      toast.success(`Đã xóa ${selectedMsgIds.size} tin nhắn`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Xóa thất bại");
+    }
+    setSelectedMsgIds(new Set());
+    setSelectMode(false);
+  }
+
+  async function handleBatchRecall() {
+    if (!token || !convId || selectedMsgIds.size === 0) return;
+    const myMsgIds = Array.from(selectedMsgIds).filter((id) => {
+      const msg = messages.find((m) => m.id === id);
+      return msg && msg.sender_id === user?.id;
+    });
+    if (myMsgIds.length === 0) {
+      toast.error("Chỉ có thể thu hồi tin nhắn của bạn");
+      return;
+    }
+    try {
+      await batchRecallMessages(token, convId, myMsgIds);
+      setMessages((prev) =>
+        prev.map((m) =>
+          myMsgIds.includes(m.id) ? { ...m, type: "recalled", content: "Tin nhắn đã được thu hồi" } : m
+        )
+      );
+      toast.success(`Đã thu hồi ${myMsgIds.length} tin nhắn`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Thu hồi thất bại");
+    }
+    setSelectedMsgIds(new Set());
+    setSelectMode(false);
+  }
+
   const isBusy = sending || uploadingImages;
 
   return (
@@ -151,7 +244,28 @@ export default function ChatRoomPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
-        <h2 className="font-semibold">Trò chuyện</h2>
+        <h2 className="font-semibold flex-1">Trò chuyện</h2>
+        {selectMode ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">{selectedMsgIds.size} đã chọn</span>
+            <Button variant="outline" size="sm" className="gap-1" onClick={handleBatchRecall} disabled={selectedMsgIds.size === 0}>
+              <RotateCcw className="h-3.5 w-3.5" />
+              Thu hồi
+            </Button>
+            <Button variant="destructive" size="sm" className="gap-1" onClick={handleBatchDelete} disabled={selectedMsgIds.size === 0}>
+              <Trash2 className="h-3.5 w-3.5" />
+              Xóa
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => { setSelectMode(false); setSelectedMsgIds(new Set()); }}>
+              Hủy
+            </Button>
+          </div>
+        ) : (
+          <Button variant="ghost" size="sm" className="gap-1" onClick={() => setSelectMode(true)}>
+            <CheckSquare className="h-4 w-4" />
+            Chọn
+          </Button>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto py-4 space-y-3">
@@ -165,10 +279,27 @@ export default function ChatRoomPage() {
           messages.map((msg) => {
             const isMine = msg.sender_id === user?.id;
             return (
-              <div key={msg.id} className={cn("flex", isMine ? "justify-end" : "justify-start")}>
+              <div
+                key={msg.id}
+                className={cn("flex items-start gap-2", isMine ? "justify-end" : "justify-start")}
+                onContextMenu={(e) => handleContextMenu(e, msg)}
+              >
+                {selectMode && (
+                  <button
+                    type="button"
+                    onClick={() => toggleSelectMsg(msg.id)}
+                    className="mt-2 text-muted-foreground hover:text-foreground"
+                  >
+                    {selectedMsgIds.has(msg.id) ? (
+                      <CheckSquare className="h-4 w-4 text-primary" />
+                    ) : (
+                      <Square className="h-4 w-4" />
+                    )}
+                  </button>
+                )}
                 <div
                   className={cn(
-                    "max-w-[70%] rounded-2xl px-4 py-2 text-sm",
+                    "max-w-[70%] rounded-2xl px-4 py-2 text-sm group relative",
                     isMine
                       ? "bg-primary text-primary-foreground rounded-br-md"
                       : "bg-muted rounded-bl-md"
@@ -178,6 +309,8 @@ export default function ChatRoomPage() {
                     <p className="italic text-xs opacity-70">{msg.content}</p>
                   ) : msg.type === "image" ? (
                     <img src={msg.content} alt="" className="max-w-full rounded-lg cursor-pointer" onClick={() => window.open(msg.content, "_blank")} />
+                  ) : msg.type === "audio" ? (
+                    <audio controls src={msg.content} className="max-w-full" />
                   ) : (
                     <p className="whitespace-pre-wrap">{msg.content}</p>
                   )}
@@ -196,6 +329,31 @@ export default function ChatRoomPage() {
         )}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Context menu */}
+      {contextMenu && (
+        <div
+          className="fixed z-50 bg-white border rounded-lg shadow-lg py-1 min-w-[140px]"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+        >
+          {contextMenu.msg.sender_id === user?.id && (
+            <button
+              className="w-full text-left px-4 py-2 text-sm hover:bg-muted flex items-center gap-2"
+              onClick={() => handleRecallMsg(contextMenu.msg)}
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Thu hồi
+            </button>
+          )}
+          <button
+            className="w-full text-left px-4 py-2 text-sm hover:bg-muted flex items-center gap-2 text-destructive"
+            onClick={() => handleDeleteMsg(contextMenu.msg)}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Xóa
+          </button>
+        </div>
+      )}
 
       {/* Image preview bar */}
       {selectedImages.length > 0 && (

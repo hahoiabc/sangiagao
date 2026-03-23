@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getListingDetail, createConversation, type ListingDetail } from "@/services/api";
+import { getListingDetail, createConversation, createReport, type ListingDetail } from "@/services/api";
 import { formatPrice, formatQuantity, formatDate, timeAgo } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -22,6 +22,12 @@ export default function ListingDetailPage() {
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
   const [contacting, setContacting] = useState(false);
+
+  // Report state
+  const [showReport, setShowReport] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportDesc, setReportDesc] = useState("");
+  const [submittingReport, setSubmittingReport] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -46,6 +52,30 @@ export default function ListingDetailPage() {
       toast.error(err instanceof Error ? err.message : "Không thể liên hệ");
     } finally {
       setContacting(false);
+    }
+  }
+
+  async function handleReport(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token || !id) {
+      router.push("/dang-nhap");
+      return;
+    }
+    if (!reportReason) {
+      toast.error("Vui lòng chọn lý do");
+      return;
+    }
+    setSubmittingReport(true);
+    try {
+      await createReport(token, "listing", id, reportReason, reportDesc || undefined);
+      toast.success("Đã gửi báo cáo");
+      setShowReport(false);
+      setReportReason("");
+      setReportDesc("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Báo cáo thất bại");
+    } finally {
+      setSubmittingReport(false);
     }
   }
 
@@ -178,25 +208,27 @@ export default function ListingDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center gap-3 mb-4">
-                  <Avatar className="h-12 w-12">
-                    <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                      {(listing.seller.name || "?").charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-semibold">{listing.seller.name || "Ẩn danh"}</p>
-                    {listing.seller.org_name && (
-                      <p className="text-xs text-muted-foreground">{listing.seller.org_name}</p>
-                    )}
-                    {listing.seller.province && (
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {listing.seller.province}
-                      </p>
-                    )}
+                <Link href={`/nguoi-ban/${listing.seller.id}`} className="block mb-4 hover:opacity-80">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-12 w-12">
+                      <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                        {(listing.seller.name || "?").charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-semibold">{listing.seller.name || "Ẩn danh"}</p>
+                      {listing.seller.org_name && (
+                        <p className="text-xs text-muted-foreground">{listing.seller.org_name}</p>
+                      )}
+                      {listing.seller.province && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          {listing.seller.province}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
+                </Link>
                 <p className="text-xs text-muted-foreground mb-4">
                   Thành viên từ {formatDate(listing.seller.created_at)}
                 </p>
@@ -214,16 +246,64 @@ export default function ListingDetailPage() {
 
           <Card>
             <CardContent className="p-4 flex flex-col gap-2">
-              <Button variant="outline" size="sm" className="gap-2 justify-start">
-                <Star className="h-4 w-4" />
-                Xem đánh giá người bán
-              </Button>
-              <Button variant="outline" size="sm" className="gap-2 justify-start text-destructive">
+              {listing.seller && (
+                <Link href={`/nguoi-ban/${listing.seller.id}`}>
+                  <Button variant="outline" size="sm" className="gap-2 justify-start w-full">
+                    <Star className="h-4 w-4" />
+                    Xem đánh giá người bán
+                  </Button>
+                </Link>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 justify-start text-destructive"
+                onClick={() => setShowReport(!showReport)}
+              >
                 <Flag className="h-4 w-4" />
                 Báo cáo tin đăng
               </Button>
             </CardContent>
           </Card>
+
+          {/* Report form */}
+          {showReport && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium">Báo cáo tin đăng</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleReport} className="space-y-3">
+                  <select
+                    value={reportReason}
+                    onChange={(e) => setReportReason(e.target.value)}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    required
+                  >
+                    <option value="">Chọn lý do</option>
+                    <option value="fraud">Lừa đảo</option>
+                    <option value="false_info">Thông tin sai lệch</option>
+                    <option value="spam">Spam</option>
+                    <option value="other">Khác</option>
+                  </select>
+                  <textarea
+                    value={reportDesc}
+                    onChange={(e) => setReportDesc(e.target.value)}
+                    placeholder="Mô tả chi tiết (không bắt buộc)"
+                    className="w-full min-h-16 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                  <div className="flex gap-2">
+                    <Button type="submit" variant="destructive" size="sm" disabled={submittingReport}>
+                      {submittingReport ? "Đang gửi..." : "Gửi báo cáo"}
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setShowReport(false)}>
+                      Hủy
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

@@ -3,13 +3,13 @@
 import { Suspense, useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Search, MapPin, Package, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, MapPin, Package, ChevronLeft, ChevronRight, Filter, X, ArrowUpDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { searchMarketplace, type Listing, type PaginatedResponse } from "@/services/api";
+import { searchMarketplace, getProductCatalog, type Listing, type PaginatedResponse, type RiceCategory } from "@/services/api";
 import { formatPrice, formatQuantity, timeAgo } from "@/lib/utils";
 
 export default function MarketplacePage() {
@@ -23,11 +23,23 @@ export default function MarketplacePage() {
 function MarketplaceContent() {
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") || "");
-  const [category] = useState(searchParams.get("category") || "");
-  const [riceType] = useState(searchParams.get("rice_type") || "");
+  const [category, setCategory] = useState(searchParams.get("category") || "");
+  const [riceType, setRiceType] = useState(searchParams.get("rice_type") || "");
+  const [province, setProvince] = useState(searchParams.get("province") || "");
+  const [sort, setSort] = useState(searchParams.get("sort") || "");
+  const [minPrice, setMinPrice] = useState(searchParams.get("min_price") || "");
+  const [maxPrice, setMaxPrice] = useState(searchParams.get("max_price") || "");
+  const [showFilter, setShowFilter] = useState(false);
+  const [categories, setCategories] = useState<RiceCategory[]>([]);
   const [result, setResult] = useState<PaginatedResponse<Listing> | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    getProductCatalog().then(setCategories).catch(() => {});
+  }, []);
+
+  const selectedCat = categories.find((c) => c.key === category);
 
   const fetchListings = useCallback(
     async (p: number) => {
@@ -37,6 +49,10 @@ function MarketplaceContent() {
           q: query || undefined,
           category: category || undefined,
           rice_type: riceType || undefined,
+          province: province || undefined,
+          sort: sort || undefined,
+          min_price: minPrice ? Number(minPrice) : undefined,
+          max_price: maxPrice ? Number(maxPrice) : undefined,
           page: p,
           limit: 20,
         });
@@ -47,7 +63,7 @@ function MarketplaceContent() {
         setLoading(false);
       }
     },
-    [query, category, riceType]
+    [query, category, riceType, province, sort, minPrice, maxPrice]
   );
 
   useEffect(() => {
@@ -60,13 +76,25 @@ function MarketplaceContent() {
     fetchListings(1);
   }
 
+  function clearFilters() {
+    setCategory("");
+    setRiceType("");
+    setProvince("");
+    setSort("");
+    setMinPrice("");
+    setMaxPrice("");
+    setQuery("");
+    setPage(1);
+  }
+
+  const hasFilters = category || riceType || province || sort || minPrice || maxPrice;
   const totalPages = result ? Math.ceil(result.total / 20) : 0;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
       <h1 className="text-2xl font-bold mb-4">Sàn Giao Dịch</h1>
 
-      <form onSubmit={handleSearch} className="flex gap-2 mb-6">
+      <form onSubmit={handleSearch} className="flex gap-2 mb-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -77,15 +105,125 @@ function MarketplaceContent() {
           />
         </div>
         <Button type="submit">Tìm</Button>
+        <Button
+          type="button"
+          variant={showFilter ? "secondary" : "outline"}
+          className="gap-1.5"
+          onClick={() => setShowFilter(!showFilter)}
+        >
+          <Filter className="h-4 w-4" />
+          Lọc
+          {hasFilters && <span className="h-2 w-2 rounded-full bg-primary" />}
+        </Button>
       </form>
 
-      {(category || riceType) && (
-        <div className="flex gap-2 mb-4">
-          {category && <Badge variant="secondary">Loại: {category}</Badge>}
+      {/* Filter panel */}
+      {showFilter && (
+        <Card className="mb-4">
+          <CardContent className="p-4 space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              <div>
+                <label className="text-xs font-medium mb-1 block text-muted-foreground">Phân loại</label>
+                <select
+                  value={category}
+                  onChange={(e) => { setCategory(e.target.value); setRiceType(""); }}
+                  className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
+                >
+                  <option value="">Tất cả</option>
+                  {categories.map((c) => (
+                    <option key={c.key} value={c.key}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium mb-1 block text-muted-foreground">Loại gạo</label>
+                <select
+                  value={riceType}
+                  onChange={(e) => setRiceType(e.target.value)}
+                  className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
+                  disabled={!category}
+                >
+                  <option value="">Tất cả</option>
+                  {selectedCat?.products.map((p) => (
+                    <option key={p.key} value={p.key}>{p.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium mb-1 block text-muted-foreground">Tỉnh/Thành</label>
+                <Input
+                  value={province}
+                  onChange={(e) => setProvince(e.target.value)}
+                  placeholder="VD: Long An"
+                  className="h-9"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium mb-1 block text-muted-foreground">Giá từ (đ/kg)</label>
+                <Input
+                  type="number"
+                  value={minPrice}
+                  onChange={(e) => setMinPrice(e.target.value)}
+                  placeholder="Tối thiểu"
+                  className="h-9"
+                  min="0"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium mb-1 block text-muted-foreground">Giá đến (đ/kg)</label>
+                <Input
+                  type="number"
+                  value={maxPrice}
+                  onChange={(e) => setMaxPrice(e.target.value)}
+                  placeholder="Tối đa"
+                  className="h-9"
+                  min="0"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-medium text-muted-foreground">Sắp xếp:</label>
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              >
+                <option value="">Mới nhất</option>
+                <option value="price_asc">Giá tăng dần</option>
+                <option value="price_desc">Giá giảm dần</option>
+                <option value="quantity_desc">Số lượng nhiều nhất</option>
+              </select>
+              <div className="flex-1" />
+              <Button type="button" variant="outline" size="sm" onClick={() => { setPage(1); fetchListings(1); }} className="gap-1">
+                <Search className="h-3.5 w-3.5" />
+                Áp dụng
+              </Button>
+              {hasFilters && (
+                <Button type="button" variant="ghost" size="sm" onClick={clearFilters} className="gap-1">
+                  <X className="h-3.5 w-3.5" />
+                  Xóa bộ lọc
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Active filters */}
+      {hasFilters && !showFilter && (
+        <div className="flex flex-wrap gap-2 mb-4">
+          {category && <Badge variant="secondary">Loại: {categories.find(c => c.key === category)?.label || category}</Badge>}
           {riceType && <Badge variant="secondary">Gạo: {riceType}</Badge>}
-          <Link href="/san-giao-dich">
-            <Button variant="ghost" size="sm">Xóa bộ lọc</Button>
-          </Link>
+          {province && <Badge variant="secondary"><MapPin className="h-3 w-3 mr-1" />{province}</Badge>}
+          {(minPrice || maxPrice) && (
+            <Badge variant="secondary">
+              Giá: {minPrice || "0"} - {maxPrice || "..."}đ/kg
+            </Badge>
+          )}
+          {sort && <Badge variant="secondary"><ArrowUpDown className="h-3 w-3 mr-1" />{sort === "price_asc" ? "Giá tăng" : sort === "price_desc" ? "Giá giảm" : "SL nhiều"}</Badge>}
+          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={clearFilters}>
+            Xóa bộ lọc
+          </Button>
         </div>
       )}
 

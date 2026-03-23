@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { User, Save, KeyRound, Phone, Eye, EyeOff } from "lucide-react";
+import { User, Save, KeyRound, Phone, Eye, EyeOff, Crown, MessageSquareText, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { getMe, updateMe, changePassword, changePhone, sendOTP, type User as Use
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils";
+import Link from "next/link";
 
 export default function ProfilePage() {
   const { token } = useAuth();
@@ -277,6 +278,31 @@ export default function ProfilePage() {
                   {pwSaving ? "Đang xử lý..." : "Đổi mật khẩu"}
                 </Button>
               </form>
+            </CardContent>
+          </Card>
+
+          {/* Quick links */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Tiện ích
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              <Link href="/goi-thanh-vien" className="flex items-center justify-between p-2 rounded-lg hover:bg-muted transition-colors">
+                <div className="flex items-center gap-3">
+                  <Crown className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Gói thành viên</span>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
+              <Link href="/phan-hoi" className="flex items-center justify-between p-2 rounded-lg hover:bg-muted transition-colors">
+                <div className="flex items-center gap-3">
+                  <MessageSquareText className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Phản hồi & Góp ý</span>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
             </CardContent>
           </Card>
 
