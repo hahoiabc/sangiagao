@@ -11,20 +11,20 @@ import { useState, useEffect, useRef } from "react";
 import { getConversations } from "@/services/api";
 
 const publicLinks = [
-  { href: "/bang-gia", label: "Sàn gạo" },
-  { href: "/san-giao-dich", label: "Sàn giao dịch" },
+  { href: "/bang-gia", label: "Sàn gạo", perm: "marketplace.priceboard" },
+  { href: "/san-giao-dich", label: "Sàn giao dịch", perm: "marketplace.browse" },
 ];
 
 const memberLinks = [
-  { href: "/tin-dang", label: "Tin của tôi", icon: Search },
-  { href: "/tin-nhan", label: "Tin nhắn", icon: MessageCircle },
-  { href: "/thong-bao", label: "Thông báo", icon: Bell },
-  { href: "/goi-thanh-vien", label: "Gói dịch vụ", icon: Crown },
-  { href: "/phan-hoi", label: "Góp ý", icon: MessageSquareText },
+  { href: "/tin-dang", label: "Tin của tôi", icon: Search, perm: "listings.create" },
+  { href: "/tin-nhan", label: "Tin nhắn", icon: MessageCircle, perm: "chat.send" },
+  { href: "/thong-bao", label: "Thông báo", icon: Bell, perm: null },
+  { href: "/goi-thanh-vien", label: "Gói dịch vụ", icon: Crown, perm: null },
+  { href: "/phan-hoi", label: "Góp ý", icon: MessageSquareText, perm: "feedback.create" },
 ];
 
 export function Navbar() {
-  const { user, token, logout } = useAuth();
+  const { user, token, logout, hasPermission } = useAuth();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -75,7 +75,7 @@ export function Navbar() {
             <span className="text-lg font-bold text-primary hidden sm:inline">SanGiaGao</span>
           </Link>
           <nav className="hidden md:flex items-center gap-1">
-            {publicLinks.map((l) => (
+            {publicLinks.filter((l) => !l.perm || hasPermission(l.perm)).map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
@@ -90,7 +90,7 @@ export function Navbar() {
               </Link>
             ))}
             {user &&
-              memberLinks.map((l) => (
+              memberLinks.filter((l) => !l.perm || hasPermission(l.perm)).map((l) => (
                 <Link
                   key={l.href}
                   href={l.href}
@@ -141,7 +141,7 @@ export function Navbar() {
 
       {mobileOpen && (
         <div className="md:hidden border-t bg-white p-4 space-y-2">
-          {publicLinks.map((l) => (
+          {publicLinks.filter((l) => !l.perm || hasPermission(l.perm)).map((l) => (
             <Link
               key={l.href}
               href={l.href}
@@ -155,7 +155,7 @@ export function Navbar() {
             </Link>
           ))}
           {user &&
-            memberLinks.map((l) => (
+            memberLinks.filter((l) => !l.perm || hasPermission(l.perm)).map((l) => (
               <Link
                 key={l.href}
                 href={l.href}

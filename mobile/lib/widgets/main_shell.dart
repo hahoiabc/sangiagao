@@ -21,6 +21,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   bool _needsSubscription = false;
   bool _subChecked = false;
   Timer? _unreadPollTimer;
+  Timer? _permPollTimer;
 
   @override
   void initState() {
@@ -32,11 +33,17 @@ class _MainShellState extends ConsumerState<MainShell> {
       const Duration(seconds: 10),
       (_) => ref.read(unreadCountProvider.notifier).refresh(),
     );
+    // Refresh permissions every 60s so admin changes apply quickly
+    _permPollTimer = Timer.periodic(
+      const Duration(seconds: 60),
+      (_) => ref.read(permissionProvider.notifier).load(),
+    );
   }
 
   @override
   void dispose() {
     _unreadPollTimer?.cancel();
+    _permPollTimer?.cancel();
     super.dispose();
   }
 
@@ -65,15 +72,6 @@ class _MainShellState extends ConsumerState<MainShell> {
     }
   }
 
-  int _currentIndex(BuildContext context) {
-    final location = GoRouterState.of(context).uri.path;
-    if (location.startsWith('/marketplace')) return 0;
-    if (location.startsWith('/my-listings') || location.startsWith('/create-listing')) return 1;
-    if (location.startsWith('/inbox') || location.startsWith('/chat')) return 2;
-    if (location.startsWith('/profile') || location.startsWith('/notifications') || location.startsWith('/subscription') || location.startsWith('/seller')) return 3;
-    return 0;
-  }
-
   bool get _shouldShowBanner {
     if (_bannerDismissed || !_needsSubscription || !_subChecked) return false;
     if (!_isActive) return true;
@@ -99,11 +97,64 @@ class _MainShellState extends ConsumerState<MainShell> {
     return !_isAllowedRoute(location);
   }
 
+  bool _hasPerm(String key) {
+    final user = ref.read(authProvider).user;
+    if (user != null && user.role == 'owner') return true;
+    return ref.read(permissionProvider.notifier).hasPermission(key);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final index = _currentIndex(context);
     final unreadCount = ref.watch(unreadCountProvider);
     final user = ref.watch(authProvider).user;
+    // Watch permissions to rebuild when loaded
+    ref.watch(permissionProvider);
+
+    // Build nav destinations based on permissions
+    final navItems = <_NavDest>[];
+    if (_hasPerm('marketplace.browse')) {
+      navItems.add(_NavDest(
+        dest: const NavigationDestination(icon: Icon(Icons.storefront), label: 'Sàn gạo'),
+        route: '/marketplace',
+      ));
+    }
+    if (_hasPerm('listings.create')) {
+      navItems.add(_NavDest(
+        dest: const NavigationDestination(icon: Icon(Icons.list_alt), label: 'Tin của tôi'),
+        route: '/my-listings',
+      ));
+    }
+    if (_hasPerm('chat.send')) {
+      navItems.add(_NavDest(
+        dest: NavigationDestination(
+          icon: Badge(
+            isLabelVisible: unreadCount > 0,
+            label: Text(unreadCount > 99 ? '99+' : '$unreadCount'),
+            child: const Icon(Icons.chat_bubble_outline),
+          ),
+          label: 'Tin nhắn',
+        ),
+        route: '/inbox',
+      ));
+    }
+    navItems.add(_NavDest(
+      dest: const NavigationDestination(icon: Icon(Icons.person_outline), label: 'Tài khoản'),
+      route: '/profile',
+    ));
+
+    // Calculate selected index based on visible destinations
+    final location = GoRouterState.of(context).uri.path;
+    int selectedIndex = 0;
+    for (int i = 0; i < navItems.length; i++) {
+      final route = navItems[i].route;
+      if (location.startsWith(route) ||
+          (route == '/my-listings' && location.startsWith('/create-listing')) ||
+          (route == '/inbox' && location.startsWith('/chat')) ||
+          (route == '/profile' && (location.startsWith('/notifications') || location.startsWith('/subscription') || location.startsWith('/seller')))) {
+        selectedIndex = i;
+        break;
+      }
+    }
 
     // Show gate for restricted pages when subscription expired
     final showGate = _shouldShowGate;
@@ -152,32 +203,25 @@ class _MainShellState extends ConsumerState<MainShell> {
           ),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
-        onDestinationSelected: (i) {
-          switch (i) {
-            case 0: context.go('/marketplace');
-            case 1: context.go('/my-listings');
-            case 2:
-              context.go('/inbox');
-              ref.read(unreadCountProvider.notifier).refresh();
-            case 3: context.go('/profile');
-          }
-        },
-        destinations: [
-          const NavigationDestination(icon: Icon(Icons.storefront), label: 'Sàn gạo'),
-          const NavigationDestination(icon: Icon(Icons.list_alt), label: 'Tin của tôi'),
-          NavigationDestination(
-            icon: Badge(
-              isLabelVisible: unreadCount > 0,
-              label: Text(unreadCount > 99 ? '99+' : '$unreadCount'),
-              child: const Icon(Icons.chat_bubble_outline),
-            ),
-            label: 'Tin nhắn',
-          ),
-          const NavigationDestination(icon: Icon(Icons.person_outline), label: 'Tài khoản'),
-        ],
-      ),
+      bottomNavigationBar: navItems.length >= 2
+          ? NavigationBar(
+              selectedIndex: selectedIndex.clamp(0, navItems.length - 1),
+              onDestinationSelected: (i) {
+                final route = navItems[i].route;
+                context.go(route);
+                if (route == '/inbox') {
+                  ref.read(unreadCountProvider.notifier).refresh();
+                }
+              },
+              destinations: navItems.map((d) => d.dest).toList(),
+            )
+          : null,
     );
   }
+}
+
+class _NavDest {
+  final NavigationDestination dest;
+  final String route;
+  const _NavDest({required this.dest, required this.route});
 }

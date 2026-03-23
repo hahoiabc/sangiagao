@@ -29,17 +29,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [permissions, setPermissions] = useState<PermissionMap>({});
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch permissions when token is available, or guest permissions when logged out
+  // Fetch permissions and refresh every 60s so admin changes apply quickly
   useEffect(() => {
-    if (!token) {
-      getGuestPermissions()
-        .then((res) => setPermissions(res.permissions))
-        .catch(() => setPermissions({}));
-      return;
+    function fetchPermissions() {
+      if (!token) {
+        getGuestPermissions()
+          .then((res) => setPermissions(res.permissions))
+          .catch(() => setPermissions({}));
+      } else {
+        getMyPermissions(token)
+          .then((res) => setPermissions(res.permissions))
+          .catch(() => setPermissions({}));
+      }
     }
-    getMyPermissions(token)
-      .then((res) => setPermissions(res.permissions))
-      .catch(() => setPermissions({}));
+    fetchPermissions();
+    const interval = setInterval(fetchPermissions, 60000);
+    return () => clearInterval(interval);
   }, [token]);
 
   useEffect(() => {
