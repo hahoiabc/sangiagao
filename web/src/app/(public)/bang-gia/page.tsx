@@ -75,9 +75,9 @@ export default function PriceBoardPage() {
           <div className="space-y-6">
             {data.categories.map((cat) => (
               <Card key={cat.category_key}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Wheat className="h-5 w-5 text-primary" />
+                <CardHeader className="pb-3 bg-gradient-to-r from-green-800 to-green-600 rounded-t-lg">
+                  <CardTitle className="text-lg flex items-center gap-2 text-white">
+                    <Wheat className="h-5 w-5 text-white" />
                     {cat.category_label}
                   </CardTitle>
                 </CardHeader>

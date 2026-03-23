@@ -104,16 +104,20 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
         children: [
           // Category header
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.primaryDark, AppColors.primary],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
             ),
             child: Row(
               children: [
                 Icon(
                   _categoryIcons[cat.categoryKey] ?? Icons.category,
                   size: 20,
-                  color: AppColors.primary,
+                  color: Colors.white,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -122,6 +126,7 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       fontSize: 17,
+                      color: Colors.white,
                     ),
                   ),
                 ),
