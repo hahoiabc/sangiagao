@@ -40,7 +40,7 @@ export function Navbar() {
     async function fetchUnread() {
       try {
         const res = await getConversations(token!, 1, 50);
-        const total = res.data.reduce((sum, c) => sum + c.unread_count, 0);
+        const total = (res.data ?? []).reduce((sum, c) => sum + c.unread_count, 0);
         setUnreadCount(total);
       } catch {
         // ignore
