@@ -291,6 +291,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 onTap: () => context.push('/feedback-history'),
               ),
               ListTile(
+                leading: const Icon(Icons.privacy_tip_outlined),
+                title: const Text('Chính sách bảo mật'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/privacy-policy'),
+              ),
+              ListTile(
                 leading: const Icon(Icons.logout, color: AppColors.error),
                 title: const Text('Đăng xuất', style: TextStyle(color: AppColors.error)),
                 onTap: _logout,

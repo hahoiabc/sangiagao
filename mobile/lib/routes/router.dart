@@ -18,6 +18,7 @@ import '../screens/profile/seller_profile_screen.dart';
 import '../screens/profile/subscription_screen.dart';
 import '../screens/profile/change_password_screen.dart';
 import '../screens/profile/change_phone_screen.dart';
+import '../screens/profile/privacy_policy_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
 import '../screens/feedback/feedback_screen.dart';
 import '../screens/feedback/feedback_history_screen.dart';
@@ -38,7 +39,8 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final isPublic = publicRoutes.contains(loc) ||
           loc.startsWith('/marketplace') ||
-          loc.startsWith('/seller');
+          loc.startsWith('/seller') ||
+          loc == '/privacy-policy';
       if (!isAuth && !isPublic) {
         return '/marketplace';
       }
@@ -93,6 +95,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
           GoRoute(path: '/feedback', builder: (_, __) => const FeedbackScreen()),
           GoRoute(path: '/feedback-history', builder: (_, __) => const FeedbackHistoryScreen()),
+          GoRoute(path: '/privacy-policy', builder: (_, __) => const PrivacyPolicyScreen()),
         ],
       ),
     ],
