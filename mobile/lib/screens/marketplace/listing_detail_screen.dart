@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -18,6 +19,7 @@ class ListingDetailScreen extends ConsumerStatefulWidget {
 class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
   ListingDetail? _detail;
   bool _loading = true;
+  bool _needsLogin = false;
   int _currentImageIndex = 0;
   late PageController _pageController;
 
@@ -40,6 +42,10 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
       setState(() => _detail = detail);
     } catch (e) {
       debugPrint('Detail error: $e');
+      // Check if 403 (no permission) — guest needs to login
+      if (e is DioException && e.response?.statusCode == 403) {
+        setState(() => _needsLogin = true);
+      }
     } finally {
       setState(() => _loading = false);
     }
@@ -122,7 +128,40 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
       return Scaffold(appBar: AppBar(), body: const Center(child: CircularProgressIndicator()));
     }
     if (_detail == null) {
-      return Scaffold(appBar: AppBar(), body: const Center(child: Text('Không tìm thấy tin đăng')));
+      return Scaffold(
+        appBar: AppBar(),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  _needsLogin ? Icons.lock_outline : Icons.search_off,
+                  size: 64,
+                  color: AppColors.textHint,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _needsLogin
+                      ? 'Đăng nhập để xem chi tiết sản phẩm và nhà cung cấp'
+                      : 'Không tìm thấy tin đăng',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16, color: AppColors.textSecondary),
+                ),
+                if (_needsLogin) ...[
+                  const SizedBox(height: 20),
+                  FilledButton.icon(
+                    onPressed: () => context.go('/login'),
+                    icon: const Icon(Icons.login),
+                    label: const Text('Đăng nhập'),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      );
     }
 
     final listing = _detail!.listing;

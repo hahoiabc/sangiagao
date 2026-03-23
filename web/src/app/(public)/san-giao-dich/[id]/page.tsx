@@ -30,11 +30,19 @@ export default function ListingDetailPage() {
   const [reportDesc, setReportDesc] = useState("");
   const [submittingReport, setSubmittingReport] = useState(false);
 
+  const [needsLogin, setNeedsLogin] = useState(false);
+
   useEffect(() => {
     if (id) {
       getListingDetail(id)
         .then(setListing)
-        .catch(() => toast.error("Không tìm thấy tin đăng"))
+        .catch((err) => {
+          if (err?.status === 403) {
+            setNeedsLogin(true);
+          } else {
+            toast.error("Không tìm thấy tin đăng");
+          }
+        })
         .finally(() => setLoading(false));
     }
   }, [id]);
@@ -107,10 +115,22 @@ export default function ListingDetailPage() {
   if (!listing) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-12 text-center">
-        <p className="text-muted-foreground">Tin đăng không tồn tại hoặc đã bị xóa</p>
-        <Link href="/san-giao-dich">
-          <Button variant="outline" className="mt-4">Quay lại sàn</Button>
-        </Link>
+        {needsLogin ? (
+          <>
+            <p className="text-lg font-medium text-foreground mb-2">Đăng nhập để xem chi tiết</p>
+            <p className="text-muted-foreground mb-6">Bạn cần đăng nhập để xem chi tiết sản phẩm và nhà cung cấp</p>
+            <Link href="/dang-nhap">
+              <Button className="gap-2">Đăng nhập</Button>
+            </Link>
+          </>
+        ) : (
+          <>
+            <p className="text-muted-foreground">Tin đăng không tồn tại hoặc đã bị xóa</p>
+            <Link href="/san-giao-dich">
+              <Button variant="outline" className="mt-4">Quay lại sàn</Button>
+            </Link>
+          </>
+        )}
       </div>
     );
   }
