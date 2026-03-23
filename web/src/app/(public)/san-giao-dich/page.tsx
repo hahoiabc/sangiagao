@@ -151,7 +151,7 @@ function MarketplaceContent() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
-      <h1 className="text-2xl font-bold mb-4">Sàn Giao Dịch</h1>
+      <h1 className="text-2xl font-bold mb-4">Xem tin đăng</h1>
 
       <form onSubmit={handleSearch} className="flex gap-2 mb-4">
         <div className="relative flex-1">

@@ -104,7 +104,7 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
         children: [
           // Category header
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: [AppColors.primaryDark, AppColors.primary],
@@ -114,20 +114,36 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
             ),
             child: Row(
               children: [
-                Icon(
-                  _categoryIcons[cat.categoryKey] ?? Icons.category,
-                  size: 20,
-                  color: Colors.white,
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    _categoryIcons[cat.categoryKey] ?? Icons.category,
+                    size: 18,
+                    color: Colors.white,
+                  ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     cat.categoryLabel,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      fontSize: 17,
+                      fontSize: 16,
                       color: Colors.white,
+                      letterSpacing: 0.3,
                     ),
+                  ),
+                ),
+                Text(
+                  '${cat.products.length} SP',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
