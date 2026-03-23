@@ -149,6 +149,15 @@ class PermissionNotifier extends StateNotifier<Map<String, bool>> {
     }
   }
 
+  Future<void> loadGuest() async {
+    try {
+      final perms = await _api.getGuestPermissions();
+      state = perms;
+    } catch (_) {
+      state = {};
+    }
+  }
+
   bool hasPermission(String key) => state[key] == true;
 
   void clear() => state = {};

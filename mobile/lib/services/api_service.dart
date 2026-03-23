@@ -382,6 +382,13 @@ class ApiService {
     if (perms == null) return {};
     return perms.map((key, value) => MapEntry(key, value == true));
   }
+
+  Future<Map<String, bool>> getGuestPermissions() async {
+    final response = await _dio.get('/permissions/guest');
+    final perms = response.data['permissions'] as Map<String, dynamic>?;
+    if (perms == null) return {};
+    return perms.map((key, value) => MapEntry(key, value == true));
+  }
 }
 
 class PaginatedResult<T> {

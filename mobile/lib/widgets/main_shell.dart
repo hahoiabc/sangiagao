@@ -26,18 +26,30 @@ class _MainShellState extends ConsumerState<MainShell> {
   @override
   void initState() {
     super.initState();
-    _checkSubscription();
-    ref.read(unreadCountProvider.notifier).refresh();
-    ref.read(permissionProvider.notifier).load();
-    _unreadPollTimer = Timer.periodic(
-      const Duration(seconds: 10),
-      (_) => ref.read(unreadCountProvider.notifier).refresh(),
-    );
-    // Refresh permissions every 60s so admin changes apply quickly
-    _permPollTimer = Timer.periodic(
-      const Duration(seconds: 60),
-      (_) => ref.read(permissionProvider.notifier).load(),
-    );
+    final user = ref.read(authProvider).user;
+    final isAuth = user != null;
+
+    if (isAuth) {
+      _checkSubscription();
+      ref.read(unreadCountProvider.notifier).refresh();
+      ref.read(permissionProvider.notifier).load();
+      _unreadPollTimer = Timer.periodic(
+        const Duration(seconds: 10),
+        (_) => ref.read(unreadCountProvider.notifier).refresh(),
+      );
+      _permPollTimer = Timer.periodic(
+        const Duration(seconds: 60),
+        (_) => ref.read(permissionProvider.notifier).load(),
+      );
+    } else {
+      // Guest: load guest permissions, skip subscription check
+      setState(() => _subChecked = true);
+      ref.read(permissionProvider.notifier).loadGuest();
+      _permPollTimer = Timer.periodic(
+        const Duration(seconds: 60),
+        (_) => ref.read(permissionProvider.notifier).loadGuest(),
+      );
+    }
   }
 
   @override
@@ -137,10 +149,17 @@ class _MainShellState extends ConsumerState<MainShell> {
         route: '/inbox',
       ));
     }
-    navItems.add(_NavDest(
-      dest: const NavigationDestination(icon: Icon(Icons.person_outline), label: 'Tài khoản'),
-      route: '/profile',
-    ));
+    if (user != null) {
+      navItems.add(_NavDest(
+        dest: const NavigationDestination(icon: Icon(Icons.person_outline), label: 'Tài khoản'),
+        route: '/profile',
+      ));
+    } else {
+      navItems.add(_NavDest(
+        dest: const NavigationDestination(icon: Icon(Icons.login), label: 'Đăng nhập'),
+        route: '/login',
+      ));
+    }
 
     // Calculate selected index based on visible destinations
     final location = GoRouterState.of(context).uri.path;

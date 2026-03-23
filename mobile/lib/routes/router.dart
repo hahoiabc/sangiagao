@@ -32,13 +32,15 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isAuth = authState.status == AuthStatus.authenticated;
       final loc = state.matchedLocation;
-      final publicRoutes = ['/splash', '/login', '/marketplace', '/register', '/forgot-password'];
+      final publicRoutes = ['/splash', '/login', '/register', '/forgot-password'];
 
       if (authState.status == AuthStatus.unknown) return null;
 
-      final isPublic = publicRoutes.contains(loc) || loc.startsWith('/marketplace');
+      final isPublic = publicRoutes.contains(loc) ||
+          loc.startsWith('/marketplace') ||
+          loc.startsWith('/seller');
       if (!isAuth && !isPublic) {
-        return '/login';
+        return '/marketplace';
       }
 
       if (isAuth && (loc == '/login' || loc == '/register' || loc == '/forgot-password')) {
