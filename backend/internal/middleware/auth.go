@@ -54,6 +54,37 @@ func TrackOnline(c cache.Cache) gin.HandlerFunc {
 	}
 }
 
+// OptionalJWTAuth tries to parse JWT token if present.
+// If valid, sets user_id and user_role. If absent or invalid, sets user_role to "guest".
+func OptionalJWTAuth(jwtManager *jwtpkg.Manager) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		header := c.GetHeader("Authorization")
+		if header == "" {
+			c.Set("user_role", "guest")
+			c.Next()
+			return
+		}
+
+		token := strings.TrimPrefix(header, "Bearer ")
+		if token == header {
+			c.Set("user_role", "guest")
+			c.Next()
+			return
+		}
+
+		claims, err := jwtManager.ValidateToken(token)
+		if err != nil {
+			c.Set("user_role", "guest")
+			c.Next()
+			return
+		}
+
+		c.Set("user_id", claims.UserID)
+		c.Set("user_role", claims.Role)
+		c.Next()
+	}
+}
+
 func RequireRole(roles ...string) gin.HandlerFunc {
 	roleSet := make(map[string]bool, len(roles))
 	for _, r := range roles {

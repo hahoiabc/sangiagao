@@ -61,6 +61,11 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     }
   }
 
+  if (res.status === 403 && !token) {
+    window.location.href = "/dang-nhap";
+    throw new ApiError(403, "forbidden", "Vui lòng đăng nhập để tiếp tục");
+  }
+
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new ApiError(res.status, body.error || "unknown", body.message || res.statusText);
@@ -618,4 +623,8 @@ export type PermissionMap = Record<string, boolean>;
 
 export async function getMyPermissions(token: string): Promise<{ role: string; permissions: PermissionMap }> {
   return request<{ role: string; permissions: PermissionMap }>("/permissions/me", { token });
+}
+
+export async function getGuestPermissions(): Promise<{ role: string; permissions: PermissionMap }> {
+  return request<{ role: string; permissions: PermissionMap }>("/permissions/guest", {});
 }

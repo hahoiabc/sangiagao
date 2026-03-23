@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
-import { getMyPermissions, type PermissionMap } from "@/services/api";
+import { getMyPermissions, getGuestPermissions, type PermissionMap } from "@/services/api";
 
 interface AuthUser {
   id: string;
@@ -29,10 +29,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [permissions, setPermissions] = useState<PermissionMap>({});
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch permissions when token is available
+  // Fetch permissions when token is available, or guest permissions when logged out
   useEffect(() => {
     if (!token) {
-      setPermissions({});
+      getGuestPermissions()
+        .then((res) => setPermissions(res.permissions))
+        .catch(() => setPermissions({}));
       return;
     }
     getMyPermissions(token)
@@ -79,9 +81,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const hasPermission = useCallback(
     (key: string) => {
-      if (!user) return false;
       // Owner always has all permissions
-      if (user.role === "owner") return true;
+      if (user?.role === "owner") return true;
+      // Check permission matrix (works for both logged-in users and guests)
       return permissions[key] === true;
     },
     [user, permissions]

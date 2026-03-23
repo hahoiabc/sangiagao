@@ -202,10 +202,13 @@ func main() {
 			auth.POST("/reset-password", authHandler.ResetPassword)
 		}
 
-		// User (public — view profile + ratings)
-		v1.GET("/users/:id/profile", userHandler.GetProfile)
-		v1.GET("/users/:id/ratings", ratingHandler.ListBySeller)
-		v1.GET("/users/:id/rating-summary", ratingHandler.GetSummary)
+		// Guest permissions (public)
+		v1.GET("/permissions/guest", permissionHandler.GetGuestPermissions)
+
+		// User (public — permission-controlled)
+		v1.GET("/users/:id/profile", middleware.OptionalJWTAuth(jwtManager), middleware.RequirePermission(permissionService, "marketplace.seller_profile"), userHandler.GetProfile)
+		v1.GET("/users/:id/ratings", middleware.OptionalJWTAuth(jwtManager), middleware.RequirePermission(permissionService, "marketplace.seller_profile"), ratingHandler.ListBySeller)
+		v1.GET("/users/:id/rating-summary", middleware.OptionalJWTAuth(jwtManager), middleware.RequirePermission(permissionService, "marketplace.seller_profile"), ratingHandler.GetSummary)
 
 		// Protected routes
 		protected := v1.Group("")
@@ -357,12 +360,16 @@ func main() {
 	// WebSocket (auth via query param)
 	v1.GET("/ws", wsHandler.Connect)
 
-	// Marketplace (public — browse)
-	v1.GET("/marketplace", marketplaceHandler.Browse)
-	v1.GET("/marketplace/price-board", marketplaceHandler.GetPriceBoard)
-	v1.GET("/marketplace/product-catalog", marketplaceHandler.GetProductCatalog)
-	v1.GET("/marketplace/search", marketplaceHandler.Search)
-	v1.GET("/marketplace/:id", marketplaceHandler.GetDetail)
+	// Marketplace (public — permission-controlled)
+	marketplace := v1.Group("/marketplace")
+	marketplace.Use(middleware.OptionalJWTAuth(jwtManager))
+	{
+		marketplace.GET("", middleware.RequirePermission(permissionService, "marketplace.browse"), marketplaceHandler.Browse)
+		marketplace.GET("/price-board", middleware.RequirePermission(permissionService, "marketplace.priceboard"), marketplaceHandler.GetPriceBoard)
+		marketplace.GET("/product-catalog", middleware.RequirePermission(permissionService, "marketplace.browse"), marketplaceHandler.GetProductCatalog)
+		marketplace.GET("/search", middleware.RequirePermission(permissionService, "marketplace.search"), marketplaceHandler.Search)
+		marketplace.GET("/:id", middleware.RequirePermission(permissionService, "marketplace.detail"), marketplaceHandler.GetDetail)
+	}
 
 	// --- Graceful Shutdown ---
 	srv := &http.Server{

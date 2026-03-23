@@ -42,6 +42,22 @@ func (h *PermissionHandler) SavePermissions(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Đã cập nhật phân quyền"})
 }
 
+// GetGuestPermissions returns permissions for the guest role (public endpoint).
+func (h *PermissionHandler) GetGuestPermissions(c *gin.Context) {
+	matrix, err := h.svc.GetAll(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không thể tải phân quyền"})
+		return
+	}
+
+	perms, ok := matrix["guest"]
+	if !ok {
+		perms = make(map[string]bool)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"role": "guest", "permissions": perms})
+}
+
 // GetMyPermissions returns permissions for the current user's role.
 func (h *PermissionHandler) GetMyPermissions(c *gin.Context) {
 	role, exists := c.Get("user_role")
