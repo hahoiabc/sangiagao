@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { MessageCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,14 +15,30 @@ export default function ConversationsPage() {
   const { token } = useAuth();
   const [result, setResult] = useState<PaginatedResponse<Conversation> | null>(null);
   const [loading, setLoading] = useState(true);
+  const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   useEffect(() => {
-    if (token) {
-      getConversations(token, 1, 50)
-        .then(setResult)
-        .catch(() => {})
-        .finally(() => setLoading(false));
+    if (!token) return;
+
+    async function fetch() {
+      try {
+        const res = await getConversations(token!, 1, 50);
+        setResult(res);
+      } catch {
+        // ignore
+      } finally {
+        setLoading(false);
+      }
     }
+
+    fetch();
+
+    // Poll every 5 seconds like mobile
+    intervalRef.current = setInterval(fetch, 5000);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [token]);
 
   return (

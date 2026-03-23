@@ -407,6 +407,45 @@ export async function uploadImage(token: string, file: File, folder: "avatars" |
   return res.json() as Promise<{ url: string }>;
 }
 
+export async function uploadAudio(token: string, blob: Blob) {
+  const formData = new FormData();
+  formData.append("audio", blob, "recording.webm");
+
+  const doUpload = (t: string) =>
+    fetch(`${API_BASE}/upload/audio`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${t}` },
+      body: formData,
+    });
+
+  let res = await doUpload(token);
+
+  if (res.status === 401) {
+    try {
+      if (!isRefreshing) {
+        isRefreshing = true;
+        refreshPromise = tryRefreshToken();
+      }
+      const newToken = await refreshPromise!;
+      isRefreshing = false;
+      refreshPromise = null;
+      res = await doUpload(newToken);
+    } catch {
+      isRefreshing = false;
+      refreshPromise = null;
+      clearAuth();
+      throw new ApiError(401, "session_expired", "Phiên đăng nhập đã hết hạn.");
+    }
+  }
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body.error || "unknown", body.message || res.statusText);
+  }
+
+  return res.json() as Promise<{ url: string }>;
+}
+
 // --- Listings ---
 export async function getMyListings(token: string, page: number, limit: number) {
   const params = new URLSearchParams({ page: String(page), limit: String(limit) });
