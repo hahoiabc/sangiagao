@@ -234,17 +234,18 @@ func main() {
 			// Listing routes
 			listings := protected.Group("/listings")
 			{
-				listings.POST("", listingHandler.Create)
-				listings.POST("/batch", listingHandler.BatchCreate)
+				listings.POST("", middleware.RequirePermission(permissionService, "listings.create"), listingHandler.Create)
+				listings.POST("/batch", middleware.RequirePermission(permissionService, "listings.create"), listingHandler.BatchCreate)
 				listings.GET("/my", listingHandler.ListMy)
 				listings.GET("/:id", listingHandler.Get)
-				listings.PUT("/:id", listingHandler.Update)
+				listings.PUT("/:id", middleware.RequirePermission(permissionService, "listings.edit_own"), listingHandler.Update)
 				listings.DELETE("/:id", listingHandler.Delete)
-				listings.POST("/:id/images", listingHandler.AddImage)
+				listings.POST("/:id/images", middleware.RequirePermission(permissionService, "listings.edit_own"), listingHandler.AddImage)
 			}
 
 			// Conversations
 			conversations := protected.Group("/conversations")
+			conversations.Use(middleware.RequirePermission(permissionService, "chat.send"))
 			{
 				conversations.GET("", convHandler.List)
 				conversations.POST("", convHandler.Create)
@@ -271,13 +272,13 @@ func main() {
 			}
 
 			// Rating
-			protected.POST("/ratings", ratingHandler.Create)
+			protected.POST("/ratings", middleware.RequirePermission(permissionService, "ratings.create"), ratingHandler.Create)
 
 			// Report
-			protected.POST("/reports", reportHandler.Create)
+			protected.POST("/reports", middleware.RequirePermission(permissionService, "reports.create"), reportHandler.Create)
 
 			// Feedback
-			protected.POST("/feedbacks", feedbackHandler.Create)
+			protected.POST("/feedbacks", middleware.RequirePermission(permissionService, "feedback.create"), feedbackHandler.Create)
 			protected.GET("/feedbacks/my", feedbackHandler.ListMy)
 
 			// Admin (admin + editor can access)
@@ -285,45 +286,45 @@ func main() {
 			admin.Use(middleware.RequireRole("owner", "admin", "editor"))
 			{
 				// Dashboard — admin + editor
-				admin.GET("/dashboard/stats", adminHandler.GetDashboardStats)
-				admin.GET("/dashboard/charts", adminHandler.GetDashboardCharts)
+				admin.GET("/dashboard/stats", middleware.RequirePermission(permissionService, "dashboard.view"), adminHandler.GetDashboardStats)
+				admin.GET("/dashboard/charts", middleware.RequirePermission(permissionService, "dashboard.charts"), adminHandler.GetDashboardCharts)
 
 				// Listings — admin + editor
-				admin.DELETE("/listings/:id", adminHandler.DeleteListing)
-				admin.POST("/listings/batch-delete", adminHandler.BatchDeleteListings)
+				admin.DELETE("/listings/:id", middleware.RequirePermission(permissionService, "listings.delete_any"), adminHandler.DeleteListing)
+				admin.POST("/listings/batch-delete", middleware.RequirePermission(permissionService, "listings.batch_delete"), adminHandler.BatchDeleteListings)
 
 				// Subscriptions — admin + editor
-				admin.POST("/subscriptions/:user_id/activate", subHandler.AdminActivate)
-				admin.GET("/subscriptions/stats", subHandler.GetRevenueStats)
-				admin.GET("/subscriptions/daily-revenue", subHandler.GetDailyRevenue)
+				admin.POST("/subscriptions/:user_id/activate", middleware.RequirePermission(permissionService, "sub.activate"), subHandler.AdminActivate)
+				admin.GET("/subscriptions/stats", middleware.RequirePermission(permissionService, "sub.revenue"), subHandler.GetRevenueStats)
+				admin.GET("/subscriptions/daily-revenue", middleware.RequirePermission(permissionService, "sub.revenue"), subHandler.GetDailyRevenue)
 
 				// Reports — admin + editor
-				admin.GET("/reports", reportHandler.ListPending)
-				admin.PUT("/reports/:id", reportHandler.Resolve)
+				admin.GET("/reports", middleware.RequirePermission(permissionService, "reports.manage"), reportHandler.ListPending)
+				admin.PUT("/reports/:id", middleware.RequirePermission(permissionService, "reports.manage"), reportHandler.Resolve)
 
 				// Sponsors — admin + editor
-				admin.GET("/sponsors", sponsorHandler.List)
-				admin.POST("/sponsors", sponsorHandler.Create)
-				admin.PUT("/sponsors/:id", sponsorHandler.Update)
-				admin.DELETE("/sponsors/:id", sponsorHandler.Delete)
+				admin.GET("/sponsors", middleware.RequirePermission(permissionService, "sponsors.manage"), sponsorHandler.List)
+				admin.POST("/sponsors", middleware.RequirePermission(permissionService, "sponsors.manage"), sponsorHandler.Create)
+				admin.PUT("/sponsors/:id", middleware.RequirePermission(permissionService, "sponsors.manage"), sponsorHandler.Update)
+				admin.DELETE("/sponsors/:id", middleware.RequirePermission(permissionService, "sponsors.manage"), sponsorHandler.Delete)
 
 				// Catalog management — admin + editor
-				admin.GET("/catalog/categories", catalogHandler.ListCategories)
-				admin.POST("/catalog/categories", catalogHandler.CreateCategory)
-				admin.PUT("/catalog/categories/:id", catalogHandler.UpdateCategory)
-				admin.DELETE("/catalog/categories/:id", catalogHandler.DeleteCategory)
-				admin.GET("/catalog/products", catalogHandler.ListProducts)
-				admin.POST("/catalog/products", catalogHandler.CreateProduct)
-				admin.PUT("/catalog/products/:id", catalogHandler.UpdateProduct)
-				admin.DELETE("/catalog/products/:id", catalogHandler.DeleteProduct)
+				admin.GET("/catalog/categories", middleware.RequirePermission(permissionService, "catalog.manage"), catalogHandler.ListCategories)
+				admin.POST("/catalog/categories", middleware.RequirePermission(permissionService, "catalog.manage"), catalogHandler.CreateCategory)
+				admin.PUT("/catalog/categories/:id", middleware.RequirePermission(permissionService, "catalog.manage"), catalogHandler.UpdateCategory)
+				admin.DELETE("/catalog/categories/:id", middleware.RequirePermission(permissionService, "catalog.manage"), catalogHandler.DeleteCategory)
+				admin.GET("/catalog/products", middleware.RequirePermission(permissionService, "catalog.manage"), catalogHandler.ListProducts)
+				admin.POST("/catalog/products", middleware.RequirePermission(permissionService, "catalog.manage"), catalogHandler.CreateProduct)
+				admin.PUT("/catalog/products/:id", middleware.RequirePermission(permissionService, "catalog.manage"), catalogHandler.UpdateProduct)
+				admin.DELETE("/catalog/products/:id", middleware.RequirePermission(permissionService, "catalog.manage"), catalogHandler.DeleteProduct)
 
 				// Feedbacks — admin + editor
-				admin.GET("/feedbacks", feedbackHandler.List)
-				admin.GET("/feedbacks/unreplied-count", feedbackHandler.CountUnreplied)
-				admin.PUT("/feedbacks/:id/reply", feedbackHandler.Reply)
+				admin.GET("/feedbacks", middleware.RequirePermission(permissionService, "feedback.reply"), feedbackHandler.List)
+				admin.GET("/feedbacks/unreplied-count", middleware.RequirePermission(permissionService, "feedback.reply"), feedbackHandler.CountUnreplied)
+				admin.PUT("/feedbacks/:id/reply", middleware.RequirePermission(permissionService, "feedback.reply"), feedbackHandler.Reply)
 
 				// System monitoring — admin + editor
-				admin.GET("/system/stats", systemHandler.GetStats)
+				admin.GET("/system/stats", middleware.RequirePermission(permissionService, "system.monitor"), systemHandler.GetStats)
 
 				// Permissions management — owner + admin only
 				admin.GET("/permissions", permissionHandler.GetPermissions)
@@ -333,25 +334,25 @@ func main() {
 				adminOnly := admin.Group("")
 				adminOnly.Use(middleware.RequireRole("owner", "admin"))
 				{
-					adminOnly.GET("/users", adminHandler.ListUsers)
-					adminOnly.GET("/users/:id", adminHandler.GetUser)
-					adminOnly.GET("/users/:id/listings", adminHandler.ListUserListings)
-					adminOnly.GET("/users/:id/subscriptions", adminHandler.ListUserSubscriptions)
-					adminOnly.PUT("/users/:id/block", adminHandler.BlockUser)
-					adminOnly.PUT("/users/:id/unblock", adminHandler.UnblockUser)
-					adminOnly.PUT("/users/:id/role", adminHandler.ChangeUserRole)
-					adminOnly.POST("/users/batch-block", adminHandler.BatchBlockUsers)
-					adminOnly.DELETE("/users/:id", adminHandler.DeleteUser)
+					adminOnly.GET("/users", middleware.RequirePermission(permissionService, "users.list"), adminHandler.ListUsers)
+					adminOnly.GET("/users/:id", middleware.RequirePermission(permissionService, "users.detail"), adminHandler.GetUser)
+					adminOnly.GET("/users/:id/listings", middleware.RequirePermission(permissionService, "users.detail"), adminHandler.ListUserListings)
+					adminOnly.GET("/users/:id/subscriptions", middleware.RequirePermission(permissionService, "users.detail"), adminHandler.ListUserSubscriptions)
+					adminOnly.PUT("/users/:id/block", middleware.RequirePermission(permissionService, "users.block"), adminHandler.BlockUser)
+					adminOnly.PUT("/users/:id/unblock", middleware.RequirePermission(permissionService, "users.block"), adminHandler.UnblockUser)
+					adminOnly.PUT("/users/:id/role", middleware.RequirePermission(permissionService, "users.role"), adminHandler.ChangeUserRole)
+					adminOnly.POST("/users/batch-block", middleware.RequirePermission(permissionService, "users.batch_block"), adminHandler.BatchBlockUsers)
+					adminOnly.DELETE("/users/:id", middleware.RequirePermission(permissionService, "users.block"), adminHandler.DeleteUser)
 				}
 
 				// Plan management — owner only
 				ownerOnly := admin.Group("")
 				ownerOnly.Use(middleware.RequireRole("owner"))
 				{
-					ownerOnly.GET("/plans", subHandler.ListAllPlans)
-					ownerOnly.POST("/plans", subHandler.CreatePlan)
-					ownerOnly.PUT("/plans/:id", subHandler.UpdatePlan)
-					ownerOnly.DELETE("/plans/:id", subHandler.DeletePlan)
+					ownerOnly.GET("/plans", middleware.RequirePermission(permissionService, "sub.plans"), subHandler.ListAllPlans)
+					ownerOnly.POST("/plans", middleware.RequirePermission(permissionService, "sub.plans"), subHandler.CreatePlan)
+					ownerOnly.PUT("/plans/:id", middleware.RequirePermission(permissionService, "sub.plans"), subHandler.UpdatePlan)
+					ownerOnly.DELETE("/plans/:id", middleware.RequirePermission(permissionService, "sub.plans"), subHandler.DeletePlan)
 				}
 			}
 		}
