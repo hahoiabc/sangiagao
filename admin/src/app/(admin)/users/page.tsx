@@ -170,7 +170,7 @@ function RolePermissionsTab() {
   }, [token]);
 
   function togglePerm(role: string, key: string) {
-    if (role === "owner" || role === "guest") return;
+    if (role === "owner") return;
     const perm = permissionGroups.flatMap(g => g.permissions).find(p => p.key === key);
     if (perm?.locked) return;
 
@@ -275,9 +275,8 @@ function RolePermissionsTab() {
                     {permissionRoles.map(role => {
                       const checked = perms[role]?.[perm.key] ?? false;
                       const isOwner = role === "owner";
-                      const isGuest = role === "guest";
                       const isLocked = perm.locked && role !== "owner";
-                      const disabled = isOwner || isGuest || isLocked;
+                      const disabled = isOwner || isLocked;
 
                       return (
                         <td key={role} className="px-2 py-2.5 text-center">
