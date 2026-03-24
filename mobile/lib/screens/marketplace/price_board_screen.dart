@@ -149,20 +149,6 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
               ],
             ),
           ),
-          // Column header row
-          Container(
-            color: theme.colorScheme.surfaceContainerHighest,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                const Expanded(
-                  child: Text('Sản phẩm', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                ),
-                const Text('Giá thấp nhất', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                const SizedBox(width: 32),
-              ],
-            ),
-          ),
           // Product rows
           ...cat.products.asMap().entries.map((entry) {
                 final i = entry.key;

@@ -89,21 +89,13 @@ export default function PriceBoardPage() {
                     <span className="text-xs font-normal text-white/70">{cat.products.length} SP</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-0">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b text-muted-foreground">
-                          <th className="text-left py-2 pr-4 font-medium">Sản phẩm</th>
-                          <th className="text-right py-2 px-4 font-medium">Giá thấp nhất</th>
-                          <th className="text-center py-2 px-4 font-medium">Tin đăng</th>
-                          <th className="text-center py-2 pl-4 font-medium"></th>
-                        </tr>
-                      </thead>
                       <tbody>
                         {cat.products.map((p) => (
                           <tr key={p.product_key} className="border-b last:border-0 hover:bg-muted/50">
-                            <td className="py-3 pr-4">
+                            <td className="py-3 pl-5 pr-4">
                               <div className="flex items-center gap-2">
                                 <span className="font-medium">{p.product_label}</span>
                                 {p.sponsor_logo && (
@@ -127,7 +119,7 @@ export default function PriceBoardPage() {
                                 <span className="text-muted-foreground">0</span>
                               )}
                             </td>
-                            <td className="py-3 pl-4 text-center">
+                            <td className="py-3 pl-4 pr-5 text-center">
                               {p.listing_count > 0 && (
                                 <Link
                                   href={`/san-giao-dich?category=${cat.category_key}&rice_type=${p.product_key}&sort=price_asc`}
