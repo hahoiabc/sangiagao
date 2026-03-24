@@ -16,7 +16,7 @@ import { toast } from "sonner";
 
 export default function ListingDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { user, token } = useAuth();
+  const { user, token, hasPermission } = useAuth();
   const router = useRouter();
   const [listing, setListing] = useState<ListingDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,7 +30,7 @@ export default function ListingDetailPage() {
   const [reportDesc, setReportDesc] = useState("");
   const [submittingReport, setSubmittingReport] = useState(false);
 
-  const [needsLogin, setNeedsLogin] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
     if (id) {
@@ -38,7 +38,9 @@ export default function ListingDetailPage() {
         .then(setListing)
         .catch((err) => {
           if (err?.status === 403) {
-            setNeedsLogin(true);
+            setErrorMsg(token
+              ? "Không có quyền thực hiện - Cần gia hạn gói dịch vụ"
+              : "Đăng nhập để xem chi tiết");
           } else {
             toast.error("Không tìm thấy tin đăng");
           }
@@ -48,30 +50,35 @@ export default function ListingDetailPage() {
   }, [id, token]);
 
   async function handleContact() {
-    if (!token || !user) {
-      router.push("/dang-nhap");
+    if (!hasPermission("chat.send")) {
+      toast.error(token ? "Không có quyền thực hiện - Cần gia hạn gói dịch vụ" : "Đăng nhập để tiếp tục");
+      if (!token) router.push("/dang-nhap");
       return;
     }
     if (!listing?.seller || !id) return;
     setContacting(true);
     try {
-      const conv = await createConversation(token, listing.seller.id, listing.id);
+      const conv = await createConversation(token!, listing.seller.id, listing.id);
       // Auto-send listing_link if not already sent today (like mobile)
       try {
-        const msgs = await getMessages(token, conv.id, 1, 30);
+        const msgs = await getMessages(token!, conv.id, 1, 30);
         const today = new Date().toDateString();
         const alreadySent = msgs.data.some(
           (m) => m.type === "listing_link" && m.content === `listing://${id}` && new Date(m.created_at).toDateString() === today
         );
         if (!alreadySent) {
-          await sendMessage(token, conv.id, `listing://${id}`, "listing_link");
+          await sendMessage(token!, conv.id, `listing://${id}`, "listing_link");
         }
       } catch {
         // ignore - still navigate to chat
       }
       router.push(`/tin-nhan/${conv.id}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Không thể liên hệ");
+      if ((err as { status?: number })?.status === 403) {
+        toast.error("Không có quyền thực hiện - Cần gia hạn gói dịch vụ");
+      } else {
+        toast.error(err instanceof Error ? err.message : "Không thể liên hệ");
+      }
     } finally {
       setContacting(false);
     }
@@ -79,17 +86,19 @@ export default function ListingDetailPage() {
 
   async function handleReport(e: React.FormEvent) {
     e.preventDefault();
-    if (!token || !id) {
-      router.push("/dang-nhap");
+    if (!hasPermission("reports.create")) {
+      toast.error(token ? "Không có quyền thực hiện - Cần gia hạn gói dịch vụ" : "Đăng nhập để tiếp tục");
+      if (!token) router.push("/dang-nhap");
       return;
     }
+    if (!id) return;
     if (!reportReason) {
       toast.error("Vui lòng chọn lý do");
       return;
     }
     setSubmittingReport(true);
     try {
-      await createReport(token, "listing", id, reportReason, reportDesc || undefined);
+      await createReport(token!, "listing", id, reportReason, reportDesc || undefined);
       toast.success("Đã gửi báo cáo");
       setShowReport(false);
       setReportReason("");
@@ -115,13 +124,18 @@ export default function ListingDetailPage() {
   if (!listing) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-12 text-center">
-        {needsLogin ? (
+        {errorMsg ? (
           <>
-            <p className="text-lg font-medium text-foreground mb-2">Đăng nhập để xem chi tiết</p>
-            <p className="text-muted-foreground mb-6">Bạn cần đăng nhập để xem chi tiết sản phẩm và nhà cung cấp</p>
-            <Link href="/dang-nhap">
-              <Button className="gap-2">Đăng nhập</Button>
-            </Link>
+            <p className="text-lg font-medium text-foreground mb-2">{errorMsg}</p>
+            {!token ? (
+              <Link href="/dang-nhap">
+                <Button className="gap-2 mt-4">Đăng nhập</Button>
+              </Link>
+            ) : (
+              <Link href="/goi-thanh-vien">
+                <Button className="gap-2 mt-4">Xem gói dịch vụ</Button>
+              </Link>
+            )}
           </>
         ) : (
           <>

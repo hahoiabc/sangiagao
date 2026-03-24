@@ -61,9 +61,9 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     }
   }
 
-  if (res.status === 403 && !token) {
-    window.location.href = "/dang-nhap";
-    throw new ApiError(403, "forbidden", "Vui lòng đăng nhập để tiếp tục");
+  if (res.status === 403) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(403, body.error || "forbidden", body.message || "Bạn không có quyền thực hiện thao tác này");
   }
 
   if (!res.ok) {
