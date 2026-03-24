@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export function middleware(request: NextRequest) {
-  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
-
   const isProd = process.env.NODE_ENV === "production";
 
   const csp = isProd
     ? [
         "default-src 'self'",
-        `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+        "script-src 'self' 'unsafe-inline'",
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' https: data: blob:",
         "font-src 'self' data:",
@@ -17,7 +15,7 @@ export function middleware(request: NextRequest) {
       ].join("; ")
     : [
         "default-src 'self'",
-        `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' http: https: data: blob:",
         "font-src 'self' data:",
@@ -25,10 +23,7 @@ export function middleware(request: NextRequest) {
         "frame-ancestors 'none'",
       ].join("; ");
 
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-nonce", nonce);
-
-  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  const response = NextResponse.next();
   response.headers.set("Content-Security-Policy", csp);
 
   return response;
