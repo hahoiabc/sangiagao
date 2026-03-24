@@ -125,7 +125,7 @@ export default function PriceBoardPage() {
                             <td className="py-3 pl-4 text-center">
                               {p.listing_count > 0 && (
                                 <Link
-                                  href={`/san-giao-dich?category=${cat.category_key}&rice_type=${p.product_key}`}
+                                  href={`/san-giao-dich?category=${cat.category_key}&rice_type=${p.product_key}&sort=price_asc`}
                                 >
                                   <Button variant="ghost" size="sm" className="gap-1">
                                     <Eye className="h-3.5 w-3.5" />
