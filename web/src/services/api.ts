@@ -353,17 +353,17 @@ export async function getListingDetail(id: string, token?: string) {
   return request<ListingDetail>(`/marketplace/${id}`, { token });
 }
 
-export async function getPublicProfile(userId: string) {
-  return request<PublicProfile>(`/users/${userId}/profile`);
+export async function getPublicProfile(userId: string, token?: string) {
+  return request<PublicProfile>(`/users/${userId}/profile`, { token });
 }
 
-export async function getSellerRatings(userId: string, page: number, limit: number) {
+export async function getSellerRatings(userId: string, page: number, limit: number, token?: string) {
   const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-  return request<PaginatedResponse<Rating>>(`/users/${userId}/ratings?${params}`);
+  return request<PaginatedResponse<Rating>>(`/users/${userId}/ratings?${params}`, { token });
 }
 
-export async function getRatingSummary(userId: string) {
-  return request<RatingSummary>(`/users/${userId}/rating-summary`);
+export async function getRatingSummary(userId: string, token?: string) {
+  return request<RatingSummary>(`/users/${userId}/rating-summary`, { token });
 }
 
 // --- Protected ---

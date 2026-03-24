@@ -52,9 +52,9 @@ export default function SellerProfilePage() {
   useEffect(() => {
     if (!id) return;
     Promise.all([
-      getPublicProfile(id),
-      getSellerRatings(id, 1, 20),
-      getRatingSummary(id),
+      getPublicProfile(id, token || undefined),
+      getSellerRatings(id, 1, 20, token || undefined),
+      getRatingSummary(id, token || undefined),
     ])
       .then(([p, r, s]) => {
         setProfile(p);
@@ -67,7 +67,7 @@ export default function SellerProfilePage() {
       })
       .catch(() => toast.error("Không tìm thấy người bán"))
       .finally(() => setLoading(false));
-  }, [id, user]);
+  }, [id, user, token]);
 
   async function handleContact() {
     if (!token || !user) {
