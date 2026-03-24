@@ -8,9 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getPriceBoard, type PriceBoardResponse } from "@/services/api";
+import { useAuth } from "@/lib/auth";
 import { formatPrice, timeAgo } from "@/lib/utils";
 
 export default function PriceBoardPage() {
+  const { token } = useAuth();
   const [data, setData] = useState<PriceBoardResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -47,12 +49,14 @@ export default function PriceBoardPage() {
                 Xem tin đăng
               </Button>
             </Link>
-            <Link href="/dang-ky">
-              <Button variant="outline" size="lg" className="gap-2 border-white text-white hover:bg-white/20">
-                <Users className="h-4 w-4" />
-                Đăng Ký Miễn Phí
-              </Button>
-            </Link>
+            {!token && (
+              <Link href="/dang-ky">
+                <Button size="lg" className="gap-2 bg-yellow-400 text-gray-900 hover:bg-yellow-300 border-0">
+                  <Users className="h-4 w-4" />
+                  Đăng Ký Miễn Phí
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </section>
