@@ -301,6 +301,37 @@ func (r *UserRepo) UnblockUser(ctx context.Context, id string) (*model.User, err
 	return r.scanUser(row)
 }
 
+func (r *UserRepo) GetByIDs(ctx context.Context, ids []string) ([]*model.User, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT `+userColumns+` FROM users WHERE id = ANY($1)`, ids,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var users []*model.User
+	for rows.Next() {
+		u, err := r.scanUser(rows)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+	return users, nil
+}
+
+func (r *UserRepo) BatchBlock(ctx context.Context, ids []string, reason string) (int, error) {
+	tag, err := r.pool.Exec(ctx,
+		`UPDATE users SET is_blocked = true, block_reason = $2
+		 WHERE id = ANY($1) AND is_blocked = false`,
+		ids, reason,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return int(tag.RowsAffected()), nil
+}
+
 func (r *UserRepo) ListUsers(ctx context.Context, search string, page, limit int) ([]*model.User, int, error) {
 	offset := (page - 1) * limit
 
@@ -391,25 +422,31 @@ func (r *UserRepo) ListUsers(ctx context.Context, search string, page, limit int
 }
 
 func (r *UserRepo) GetDashboardStats(ctx context.Context) (map[string]int, error) {
-	stats := make(map[string]int)
+	// Single query with subqueries — 1 DB round-trip instead of 6
+	const q = `SELECT
+		(SELECT COUNT(*) FROM users),
+		(SELECT COUNT(*) FROM listings WHERE status != 'deleted'),
+		(SELECT COUNT(*) FROM listings WHERE status = 'active'),
+		(SELECT COUNT(*) FROM subscriptions WHERE status = 'active' AND expires_at > NOW()),
+		(SELECT COUNT(*) FROM reports WHERE status = 'pending'),
+		(SELECT COUNT(*) FROM ratings)`
 
-	queries := map[string]string{
-		"total_users":          `SELECT COUNT(*) FROM users`,
-		"total_listings":       `SELECT COUNT(*) FROM listings WHERE status != 'deleted'`,
-		"active_listings":      `SELECT COUNT(*) FROM listings WHERE status = 'active'`,
-		"active_subscriptions": `SELECT COUNT(*) FROM subscriptions WHERE status = 'active' AND expires_at > NOW()`,
-		"pending_reports":      `SELECT COUNT(*) FROM reports WHERE status = 'pending'`,
-		"total_ratings":        `SELECT COUNT(*) FROM ratings`,
+	var totalUsers, totalListings, activeListings, activeSubs, pendingReports, totalRatings int
+	err := r.pool.QueryRow(ctx, q).Scan(
+		&totalUsers, &totalListings, &activeListings, &activeSubs, &pendingReports, &totalRatings,
+	)
+	if err != nil {
+		return nil, err
 	}
 
-	for key, q := range queries {
-		var count int
-		if err := r.pool.QueryRow(ctx, q).Scan(&count); err != nil {
-			return nil, err
-		}
-		stats[key] = count
-	}
-	return stats, nil
+	return map[string]int{
+		"total_users":          totalUsers,
+		"total_listings":       totalListings,
+		"active_listings":      activeListings,
+		"active_subscriptions": activeSubs,
+		"pending_reports":      pendingReports,
+		"total_ratings":        totalRatings,
+	}, nil
 }
 
 type MonthCount struct {

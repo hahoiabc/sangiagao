@@ -21,23 +21,24 @@ interface AuthContextType {
   isLoading: boolean;
 }
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1";
+
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [permissions, setPermissions] = useState<PermissionMap>({});
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch permissions and refresh every 60s so admin changes apply quickly
   useEffect(() => {
     function fetchPermissions() {
-      if (!token) {
+      if (!user) {
         getGuestPermissions()
           .then((res) => setPermissions(res.permissions))
           .catch(() => setPermissions({}));
       } else {
-        getMyPermissions(token)
+        getMyPermissions()
           .then((res) => setPermissions(res.permissions))
           .catch(() => setPermissions({}));
       }
@@ -45,41 +46,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchPermissions();
     const interval = setInterval(fetchPermissions, 60000);
     return () => clearInterval(interval);
-  }, [token]);
+  }, [user]);
 
   useEffect(() => {
+    // Migrate: clean up old token storage
+    localStorage.removeItem("web_token");
+    localStorage.removeItem("web_refresh_token");
+
     const savedUser = localStorage.getItem("web_user");
-    const savedToken = localStorage.getItem("web_token");
-    if (savedUser && savedToken) {
+    if (savedUser) {
       try {
         setUser(JSON.parse(savedUser));
-        setToken(savedToken);
       } catch {
         localStorage.removeItem("web_user");
-        localStorage.removeItem("web_token");
-        localStorage.removeItem("web_refresh_token");
       }
     }
     setIsLoading(false);
   }, []);
 
   const login = useCallback(
-    (user: AuthUser, accessToken: string, refreshToken: string) => {
+    (user: AuthUser, _accessToken: string, _refreshToken: string) => {
+      // Tokens are now stored in httpOnly cookies by the backend.
+      // We only store user info in localStorage for UI state.
       setUser(user);
-      setToken(accessToken);
       localStorage.setItem("web_user", JSON.stringify(user));
-      localStorage.setItem("web_token", accessToken);
-      localStorage.setItem("web_refresh_token", refreshToken);
     },
     []
   );
 
   const logout = useCallback(() => {
+    // Call backend to clear httpOnly cookies
+    fetch(`${API_BASE}/auth/logout`, { method: "POST", credentials: "include" }).catch(() => {});
     localStorage.removeItem("web_user");
-    localStorage.removeItem("web_token");
-    localStorage.removeItem("web_refresh_token");
     setUser(null);
-    setToken(null);
     setPermissions({});
     window.location.href = "/dang-nhap";
   }, []);
@@ -94,8 +93,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user, permissions]
   );
 
+  // token is kept in the interface for backward compatibility but always null
+  // (auth is handled via httpOnly cookies now)
   return (
-    <AuthContext.Provider value={{ user, token, permissions, hasPermission, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token: null, permissions, hasPermission, login, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
@@ -108,8 +109,7 @@ export function useAuth() {
 }
 
 export function clearAuth() {
+  fetch(`${API_BASE}/auth/logout`, { method: "POST", credentials: "include" }).catch(() => {});
   localStorage.removeItem("web_user");
-  localStorage.removeItem("web_token");
-  localStorage.removeItem("web_refresh_token");
   window.location.href = "/dang-nhap";
 }

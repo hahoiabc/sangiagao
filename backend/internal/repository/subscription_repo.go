@@ -196,18 +196,20 @@ type SubRevenueStats struct {
 func (r *SubscriptionRepo) GetRevenueStats(ctx context.Context) (*SubRevenueStats, error) {
 	stats := &SubRevenueStats{}
 
-	// Overall counts
-	err := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM subscriptions`).Scan(&stats.TotalSubscriptions)
+	// Single query for all aggregate counts
+	err := r.pool.QueryRow(ctx, `
+		SELECT
+			COUNT(*),
+			COUNT(*) FILTER (WHERE status = 'active' AND expires_at > NOW()),
+			COUNT(*) FILTER (WHERE status = 'expired' OR expires_at <= NOW()),
+			COUNT(*) FILTER (WHERE plan = 'paid'),
+			COUNT(*) FILTER (WHERE plan = 'free_trial'),
+			COALESCE(SUM(amount) FILTER (WHERE plan = 'paid'), 0)
+		FROM subscriptions
+	`).Scan(&stats.TotalSubscriptions, &stats.ActiveCount, &stats.ExpiredCount, &stats.PaidCount, &stats.TrialCount, &stats.TotalRevenue)
 	if err != nil {
 		return nil, err
 	}
-	r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM subscriptions WHERE status = 'active' AND expires_at > NOW()`).Scan(&stats.ActiveCount)
-	r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM subscriptions WHERE status = 'expired' OR expires_at <= NOW()`).Scan(&stats.ExpiredCount)
-	r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM subscriptions WHERE plan = 'paid'`).Scan(&stats.PaidCount)
-	r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM subscriptions WHERE plan = 'free_trial'`).Scan(&stats.TrialCount)
-
-	// Total revenue from actual amount column
-	r.pool.QueryRow(ctx, `SELECT COALESCE(SUM(amount), 0) FROM subscriptions WHERE plan = 'paid'`).Scan(&stats.TotalRevenue)
 
 	// Monthly breakdown (last 12 months)
 	rows, err := r.pool.Query(ctx,

@@ -26,10 +26,12 @@ func (r *ConversationRepo) FindOrCreate(ctx context.Context, buyerID, sellerID s
 	var conv model.Conversation
 
 	// Try to find existing conversation between these two users (either direction)
+	// Uses idx_conversations_participants index: LEAST/GREATEST
 	err := r.pool.QueryRow(ctx,
 		`SELECT id, member_id, seller_id, listing_id, last_message_at, created_at
 		 FROM conversations
-		 WHERE (member_id = $1 AND seller_id = $2) OR (member_id = $2 AND seller_id = $1)
+		 WHERE LEAST(member_id, seller_id) = LEAST($1::uuid, $2::uuid)
+		   AND GREATEST(member_id, seller_id) = GREATEST($1::uuid, $2::uuid)
 		 ORDER BY last_message_at DESC LIMIT 1`,
 		buyerID, sellerID,
 	).Scan(&conv.ID, &conv.MemberID, &conv.SellerID, &conv.ListingID, &conv.LastMessageAt, &conv.CreatedAt)

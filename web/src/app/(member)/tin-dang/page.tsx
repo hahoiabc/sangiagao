@@ -74,7 +74,7 @@ export default function MyListingsPage() {
                     {/* Thumbnail */}
                     <div className="h-20 w-20 rounded-md bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
                       {listing.images.length > 0 ? (
-                        <img src={listing.images[0]} alt="" className="h-full w-full object-cover" />
+                        <img src={listing.images[0]} alt={listing.title} loading="lazy" className="h-full w-full object-cover" />
                       ) : (
                         <Package className="h-6 w-6 text-muted-foreground/40" />
                       )}
@@ -112,7 +112,7 @@ export default function MyListingsPage() {
                         <div className="flex gap-1.5 mt-2 overflow-x-auto">
                           {listing.images.slice(0, 3).map((img, i) => (
                             <div key={i} className="h-14 w-14 rounded-md overflow-hidden bg-muted flex-shrink-0">
-                              <img src={img} alt="" className="h-full w-full object-cover" />
+                              <img src={img} alt={listing.title} loading="lazy" className="h-full w-full object-cover" />
                             </div>
                           ))}
                         </div>

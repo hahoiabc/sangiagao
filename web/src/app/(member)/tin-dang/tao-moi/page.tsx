@@ -268,9 +268,9 @@ export default function CreateListingPage() {
                 <div>
                   <label className="text-sm font-medium mb-1 block">Vụ mùa</label>
                   <Input
+                    type="date"
                     value={form.harvest_season}
                     onChange={(e) => updateForm(fi, "harvest_season", e.target.value)}
-                    placeholder="VD: Đông Xuân 2025-2026"
                   />
                 </div>
 
@@ -292,7 +292,7 @@ export default function CreateListingPage() {
                   <div className="flex flex-wrap gap-3">
                     {form.images.map((img, i) => (
                       <div key={i} className="relative w-24 h-24 rounded-lg overflow-hidden border">
-                        <img src={img.preview} alt="" className="w-full h-full object-cover" />
+                        <img src={img.preview} alt="Ảnh sản phẩm" className="w-full h-full object-cover" />
                         <button
                           type="button"
                           onClick={() => removeImage(fi, i)}

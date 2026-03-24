@@ -18,7 +18,10 @@ func NewRatingHandler(ratingService RatingServiceInterface) *RatingHandler {
 }
 
 func (h *RatingHandler) Create(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := requireUserID(c)
+	if c.IsAborted() {
+		return
+	}
 
 	var req model.CreateRatingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

@@ -123,3 +123,8 @@ func (s *UserService) ChangePhone(ctx context.Context, userID, newPhone string) 
 
 	return s.userRepo.UpdatePhone(ctx, userID, newPhone)
 }
+
+// DeleteAccount permanently deletes the user's account and all associated data.
+func (s *UserService) DeleteAccount(ctx context.Context, userID string) error {
+	return s.userRepo.DeleteUser(ctx, userID)
+}

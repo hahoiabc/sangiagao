@@ -47,7 +47,7 @@ export function Navbar() {
     }
 
     fetchUnread();
-    intervalRef.current = setInterval(fetchUnread, 10000);
+    intervalRef.current = setInterval(fetchUnread, 30000);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);

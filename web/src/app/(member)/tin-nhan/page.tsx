@@ -33,8 +33,8 @@ export default function ConversationsPage() {
 
     fetch();
 
-    // Poll every 5 seconds like mobile
-    intervalRef.current = setInterval(fetch, 5000);
+    // Poll every 15 seconds
+    intervalRef.current = setInterval(fetch, 15000);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);

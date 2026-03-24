@@ -360,7 +360,7 @@ func TestAddImage_MaxImages(t *testing.T) {
 
 	w := doRequest(r, "POST", "/listings/l-1/images", `{"url":"img4.jpg"}`)
 	assert.Equal(t, 409, w.Code)
-	assert.Contains(t, w.Body.String(), "maximum 1 image")
+	assert.Contains(t, w.Body.String(), "Tối đa")
 }
 
 func TestAddImage_NotOwner(t *testing.T) {

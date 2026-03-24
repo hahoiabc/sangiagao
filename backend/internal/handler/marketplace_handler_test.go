@@ -30,7 +30,7 @@ func doGet(r *gin.Engine, path string) *httptest.ResponseRecorder {
 
 func TestBrowse_Success(t *testing.T) {
 	svc := new(mockListingService)
-	h := NewMarketplaceHandler(svc)
+	h := NewMarketplaceHandler(svc, nil)
 	r := marketplaceRouter(h)
 
 	listings := []*model.Listing{{ID: "l-1", Images: []string{}}, {ID: "l-2", Images: []string{}}}
@@ -45,7 +45,7 @@ func TestBrowse_Success(t *testing.T) {
 
 func TestBrowse_WithPagination(t *testing.T) {
 	svc := new(mockListingService)
-	h := NewMarketplaceHandler(svc)
+	h := NewMarketplaceHandler(svc, nil)
 	r := marketplaceRouter(h)
 
 	svc.On("Browse", mock.Anything, 2, 10).Return([]*model.Listing{}, 0, nil)
@@ -57,7 +57,7 @@ func TestBrowse_WithPagination(t *testing.T) {
 
 func TestBrowse_ServerError(t *testing.T) {
 	svc := new(mockListingService)
-	h := NewMarketplaceHandler(svc)
+	h := NewMarketplaceHandler(svc, nil)
 	r := marketplaceRouter(h)
 
 	svc.On("Browse", mock.Anything, mock.Anything, mock.Anything).Return(nil, 0, assert.AnError)
@@ -70,7 +70,7 @@ func TestBrowse_ServerError(t *testing.T) {
 
 func TestSearch_ByQuery(t *testing.T) {
 	svc := new(mockListingService)
-	h := NewMarketplaceHandler(svc)
+	h := NewMarketplaceHandler(svc, nil)
 	r := marketplaceRouter(h)
 
 	listings := []*model.Listing{{ID: "l-1", Images: []string{}}}
@@ -85,7 +85,7 @@ func TestSearch_ByQuery(t *testing.T) {
 
 func TestSearch_ByFilters(t *testing.T) {
 	svc := new(mockListingService)
-	h := NewMarketplaceHandler(svc)
+	h := NewMarketplaceHandler(svc, nil)
 	r := marketplaceRouter(h)
 
 	svc.On("Search", mock.Anything, mock.MatchedBy(func(f *model.ListingFilter) bool {
@@ -100,7 +100,7 @@ func TestSearch_ByFilters(t *testing.T) {
 
 func TestSearch_WithMinQty(t *testing.T) {
 	svc := new(mockListingService)
-	h := NewMarketplaceHandler(svc)
+	h := NewMarketplaceHandler(svc, nil)
 	r := marketplaceRouter(h)
 
 	svc.On("Search", mock.Anything, mock.MatchedBy(func(f *model.ListingFilter) bool {
@@ -113,7 +113,7 @@ func TestSearch_WithMinQty(t *testing.T) {
 
 func TestSearch_ServerError(t *testing.T) {
 	svc := new(mockListingService)
-	h := NewMarketplaceHandler(svc)
+	h := NewMarketplaceHandler(svc, nil)
 	r := marketplaceRouter(h)
 
 	svc.On("Search", mock.Anything, mock.Anything).Return(nil, 0, assert.AnError)
@@ -126,7 +126,7 @@ func TestSearch_ServerError(t *testing.T) {
 
 func TestGetDetail_Success(t *testing.T) {
 	svc := new(mockListingService)
-	h := NewMarketplaceHandler(svc)
+	h := NewMarketplaceHandler(svc, nil)
 	r := marketplaceRouter(h)
 
 	detail := &model.ListingDetail{
@@ -143,7 +143,7 @@ func TestGetDetail_Success(t *testing.T) {
 
 func TestGetDetail_NotFound(t *testing.T) {
 	svc := new(mockListingService)
-	h := NewMarketplaceHandler(svc)
+	h := NewMarketplaceHandler(svc, nil)
 	r := marketplaceRouter(h)
 
 	svc.On("GetDetail", mock.Anything, "bad").Return(nil, repository.ErrListingNotFound)

@@ -19,7 +19,10 @@ func NewListingHandler(listingService ListingServiceInterface) *ListingHandler {
 }
 
 func (h *ListingHandler) Create(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := requireUserID(c)
+	if c.IsAborted() {
+		return
+	}
 
 	var req model.CreateListingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -46,7 +49,10 @@ func (h *ListingHandler) Create(c *gin.Context) {
 }
 
 func (h *ListingHandler) BatchCreate(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := requireUserID(c)
+	if c.IsAborted() {
+		return
+	}
 
 	var items []model.CreateListingRequest
 	if err := c.ShouldBindJSON(&items); err != nil {
@@ -94,7 +100,10 @@ func (h *ListingHandler) Get(c *gin.Context) {
 }
 
 func (h *ListingHandler) Update(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := requireUserID(c)
+	if c.IsAborted() {
+		return
+	}
 	id := c.Param("id")
 
 	var req model.UpdateListingRequest
@@ -120,7 +129,10 @@ func (h *ListingHandler) Update(c *gin.Context) {
 }
 
 func (h *ListingHandler) Delete(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := requireUserID(c)
+	if c.IsAborted() {
+		return
+	}
 	id := c.Param("id")
 
 	err := h.listingService.Delete(c.Request.Context(), userID, id)

@@ -155,7 +155,6 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                           separatorBuilder: (_, __) => const SizedBox(height: 10),
                           itemBuilder: (context, index) {
                             final listing = _listings[index];
-                            final stt = (_page - 1) * _limit + index + 1;
                             return Card(
                               clipBehavior: Clip.antiAlias,
                               margin: EdgeInsets.zero,

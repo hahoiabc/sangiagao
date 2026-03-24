@@ -159,3 +159,17 @@ func (h *UserHandler) ChangePhone(c *gin.Context) {
 
 	c.JSON(http.StatusOK, user)
 }
+
+func (h *UserHandler) DeleteAccount(c *gin.Context) {
+	userID := requireUserID(c)
+	if c.IsAborted() {
+		return
+	}
+
+	if err := h.userService.DeleteAccount(c.Request.Context(), userID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Xóa tài khoản thất bại"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Tài khoản đã được xóa thành công"})
+}

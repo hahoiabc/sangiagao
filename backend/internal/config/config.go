@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -35,6 +36,8 @@ type Config struct {
 	CORSOrigins        string
 	RequestTimeout     time.Duration
 	PhoneEncryptKey    string
+	CookieDomain       string
+	CookieSecure       bool
 }
 
 func Load() *Config {
@@ -66,6 +69,8 @@ func Load() *Config {
 		CORSOrigins:        getEnv("CORS_ORIGINS", "http://localhost:3000,http://localhost:8080"),
 		RequestTimeout:     parseDuration(getEnv("REQUEST_TIMEOUT", "30s")),
 		PhoneEncryptKey:    getEnv("PHONE_ENCRYPT_KEY", ""),
+		CookieDomain:       getEnv("COOKIE_DOMAIN", ""),
+		CookieSecure:       getEnv("COOKIE_SECURE", "false") == "true",
 	}
 }
 
@@ -81,6 +86,23 @@ func (c *Config) Validate() error {
 	}
 	if len(c.PhoneEncryptKey) != 64 {
 		return fmt.Errorf("PHONE_ENCRYPT_KEY must be exactly 64 hex characters (32 bytes)")
+	}
+	if c.AppEnv == "production" {
+		if c.CORSOrigins == "" || c.CORSOrigins == "*" {
+			return fmt.Errorf("CORS_ORIGINS must be explicitly set in production (not empty or '*')")
+		}
+		if c.DBPass == "rice_secret_dev" {
+			return fmt.Errorf("DB_PASSWORD must be changed from default in production")
+		}
+		if c.MinIOSecretKey == "rice_minio_secret_dev" {
+			return fmt.Errorf("MINIO_SECRET_KEY must be changed from default in production")
+		}
+		if strings.Contains(c.RedisURL, "r1c3_r3d1s_s3cur3_d3v") {
+			return fmt.Errorf("REDIS_URL must be changed from default in production")
+		}
+		if c.DBSSLMode == "disable" {
+			return fmt.Errorf("DB_SSL_MODE must not be 'disable' in production (use 'require' or 'verify-full')")
+		}
 	}
 	return nil
 }

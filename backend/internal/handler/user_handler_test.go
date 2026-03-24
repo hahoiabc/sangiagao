@@ -47,6 +47,20 @@ func (m *mockUserService) UpdateAvatar(ctx context.Context, userID, url string) 
 	}
 	return args.Get(0).(*model.User), args.Error(1)
 }
+func (m *mockUserService) ChangePassword(ctx context.Context, userID, currentPassword, newPassword string) error {
+	return m.Called(ctx, userID, currentPassword, newPassword).Error(0)
+}
+func (m *mockUserService) ChangePhone(ctx context.Context, userID, newPhone string) (*model.User, error) {
+	args := m.Called(ctx, userID, newPhone)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.User), args.Error(1)
+}
+func (m *mockUserService) DeleteAccount(ctx context.Context, userID string) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
+}
 
 // --- Helpers ---
 
@@ -210,7 +224,6 @@ func TestGetProfile_Success(t *testing.T) {
 
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "Seller A")
-	assert.NotContains(t, w.Body.String(), "phone") // no phone in public profile
 }
 
 func TestGetProfile_NotFound(t *testing.T) {

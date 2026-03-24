@@ -66,12 +66,23 @@ func (m *mockUserRepo) UpdateAvatar(ctx context.Context, id, url string) (*model
 	}
 	return args.Get(0).(*model.User), args.Error(1)
 }
+func (m *mockUserRepo) GetByIDs(ctx context.Context, ids []string) ([]*model.User, error) {
+	args := m.Called(ctx, ids)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*model.User), args.Error(1)
+}
 func (m *mockUserRepo) BlockUser(ctx context.Context, id, reason string) (*model.User, error) {
 	args := m.Called(ctx, id, reason)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*model.User), args.Error(1)
+}
+func (m *mockUserRepo) BatchBlock(ctx context.Context, ids []string, reason string) (int, error) {
+	args := m.Called(ctx, ids, reason)
+	return args.Int(0), args.Error(1)
 }
 func (m *mockUserRepo) UnblockUser(ctx context.Context, id string) (*model.User, error) {
 	args := m.Called(ctx, id)
@@ -114,6 +125,27 @@ func (m *mockUserRepo) GetPasswordHash(ctx context.Context, phone string) (strin
 }
 func (m *mockUserRepo) UpdatePassword(ctx context.Context, phone, passwordHash string) error {
 	return m.Called(ctx, phone, passwordHash).Error(0)
+}
+func (m *mockUserRepo) DeleteUser(ctx context.Context, id string) error {
+	return m.Called(ctx, id).Error(0)
+}
+func (m *mockUserRepo) GetPasswordHashByID(ctx context.Context, userID string) (string, error) {
+	args := m.Called(ctx, userID)
+	return args.String(0), args.Error(1)
+}
+func (m *mockUserRepo) UpdatePasswordByID(ctx context.Context, userID, passwordHash string) error {
+	return m.Called(ctx, userID, passwordHash).Error(0)
+}
+func (m *mockUserRepo) UpdatePhone(ctx context.Context, userID, newPhone string) (*model.User, error) {
+	args := m.Called(ctx, userID, newPhone)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.User), args.Error(1)
+}
+func (m *mockUserRepo) PhoneExists(ctx context.Context, phone string) (bool, error) {
+	args := m.Called(ctx, phone)
+	return args.Bool(0), args.Error(1)
 }
 
 type mockOTPRepo struct{ mock.Mock }

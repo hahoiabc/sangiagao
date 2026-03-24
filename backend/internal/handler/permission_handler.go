@@ -72,7 +72,12 @@ func (h *PermissionHandler) GetMyPermissions(c *gin.Context) {
 		return
 	}
 
-	perms, ok := matrix[role.(string)]
+	roleStr, ok := role.(string)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	perms, ok := matrix[roleStr]
 	if !ok {
 		perms = make(map[string]bool)
 	}

@@ -136,11 +136,11 @@ export default function EditListingPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-1 block">Mùa gặt</label>
+              <label className="text-sm font-medium mb-1 block">Vụ mùa</label>
               <Input
+                type="date"
                 value={harvestSeason}
                 onChange={(e) => setHarvestSeason(e.target.value)}
-                placeholder="VD: Đông Xuân 2025-2026"
               />
             </div>
 

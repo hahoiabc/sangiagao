@@ -47,6 +47,8 @@ class User {
 
   bool get hasAcceptedTos => acceptedTosAt != null;
   bool get isMember => role == 'member';
+  bool get isSeller => role == 'seller';
+  bool get isBuyer => role == 'member';
 }
 
 class PublicProfile {

@@ -14,7 +14,7 @@ class MainShell extends ConsumerStatefulWidget {
   ConsumerState<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends ConsumerState<MainShell> {
+class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserver {
   int? _daysLeft;
   bool _isActive = false;
   bool _bannerDismissed = false;
@@ -22,25 +22,20 @@ class _MainShellState extends ConsumerState<MainShell> {
   bool _subChecked = false;
   Timer? _unreadPollTimer;
   Timer? _permPollTimer;
+  bool _isAuthenticated = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final user = ref.read(authProvider).user;
-    final isAuth = user != null;
+    _isAuthenticated = user != null;
 
-    if (isAuth) {
+    if (_isAuthenticated) {
       _checkSubscription();
       ref.read(unreadCountProvider.notifier).refresh();
       ref.read(permissionProvider.notifier).load();
-      _unreadPollTimer = Timer.periodic(
-        const Duration(seconds: 10),
-        (_) => ref.read(unreadCountProvider.notifier).refresh(),
-      );
-      _permPollTimer = Timer.periodic(
-        const Duration(seconds: 60),
-        (_) => ref.read(permissionProvider.notifier).load(),
-      );
+      _startTimers();
     } else {
       // Guest: load guest permissions, skip subscription check
       setState(() => _subChecked = true);
@@ -52,10 +47,40 @@ class _MainShellState extends ConsumerState<MainShell> {
     }
   }
 
-  @override
-  void dispose() {
+  void _startTimers() {
     _unreadPollTimer?.cancel();
     _permPollTimer?.cancel();
+    _unreadPollTimer = Timer.periodic(
+      const Duration(seconds: 15),
+      (_) => ref.read(unreadCountProvider.notifier).refresh(),
+    );
+    _permPollTimer = Timer.periodic(
+      const Duration(seconds: 60),
+      (_) => ref.read(permissionProvider.notifier).load(),
+    );
+  }
+
+  void _stopTimers() {
+    _unreadPollTimer?.cancel();
+    _unreadPollTimer = null;
+    _permPollTimer?.cancel();
+    _permPollTimer = null;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _stopTimers();
+    } else if (state == AppLifecycleState.resumed && _isAuthenticated) {
+      ref.read(unreadCountProvider.notifier).refresh();
+      _startTimers();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _stopTimers();
     super.dispose();
   }
 

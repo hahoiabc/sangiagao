@@ -8,6 +8,9 @@
 
 set -e
 
+# Trap errors and log them
+trap 'echo "[ERROR] Backup thất bại tại dòng $LINENO. Exit code: $?" >&2' ERR
+
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 DATE_LABEL=$(date +"%Y-%m-%d %H:%M:%S")
 PG_BACKUP_DIR="/backup/postgres"
@@ -38,6 +41,10 @@ PGPASSWORD="$POSTGRES_PASSWORD" pg_dump \
   --compress=6 \
   -f "$PG_FILE"
 
+if [ ! -s "$PG_FILE" ]; then
+  echo "[PostgreSQL] ERROR: Backup file rỗng hoặc không tồn tại!" >&2
+  exit 1
+fi
 PG_SIZE=$(du -h "$PG_FILE" | cut -f1)
 echo "[PostgreSQL] Backup thành công: $PG_FILE ($PG_SIZE)"
 
@@ -58,6 +65,10 @@ mongodump \
   --out="$MONGO_FILE" \
   --gzip
 
+if [ ! -d "$MONGO_FILE" ]; then
+  echo "[MongoDB] ERROR: Backup thư mục không tồn tại!" >&2
+  exit 1
+fi
 MONGO_SIZE=$(du -sh "$MONGO_FILE" | cut -f1)
 echo "[MongoDB] Backup thành công: $MONGO_FILE ($MONGO_SIZE)"
 

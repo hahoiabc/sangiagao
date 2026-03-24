@@ -25,11 +25,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
     _checkAuth();
   }
 
+  /// Whether the last auth check found a blocked account.
+  bool wasBlocked = false;
+
   Future<void> _checkAuth() async {
     final token = await _api.getToken();
     if (token != null) {
       try {
         final user = await _api.getMe();
+        if (user.isBlocked) {
+          wasBlocked = true;
+          await _api.logout();
+          state = const AuthState(status: AuthStatus.unauthenticated);
+          return;
+        }
+        wasBlocked = false;
         state = AuthState(status: AuthStatus.authenticated, user: user);
       } catch (_) {
         state = const AuthState(status: AuthStatus.unauthenticated);
@@ -98,6 +108,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> refreshUser() async {
     final user = await _api.getMe();
     state = state.copyWith(user: user);
+  }
+
+  Future<void> deleteAccount() async {
+    await _api.deleteAccount();
+    state = const AuthState(status: AuthStatus.unauthenticated);
   }
 
   Future<void> logout() async {

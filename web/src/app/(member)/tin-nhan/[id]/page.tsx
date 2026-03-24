@@ -642,7 +642,7 @@ export default function ChatRoomPage() {
                         {msg.type === "recalled" ? (
                           <p className="italic text-xs opacity-70">{msg.content}</p>
                         ) : msg.type === "image" ? (
-                          <img src={msg.content} alt="" className="max-w-full rounded-lg cursor-pointer" onClick={() => window.open(msg.content, "_blank")} />
+                          <img src={msg.content} alt="Hình ảnh tin nhắn" loading="lazy" className="max-w-full rounded-lg cursor-pointer" onClick={() => window.open(msg.content, "_blank")} />
                         ) : msg.type === "audio" ? (
                           <audio controls src={msg.content} className="max-w-[250px]" />
                         ) : msg.type === "listing_link" ? (
@@ -723,7 +723,7 @@ export default function ChatRoomPage() {
         <div className="flex gap-2 pt-3 pb-1 overflow-x-auto">
           {selectedImages.map((img, i) => (
             <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border flex-shrink-0">
-              <img src={img.preview} alt="" className="w-full h-full object-cover" />
+              <img src={img.preview} alt="Ảnh đính kèm" className="w-full h-full object-cover" />
               <button
                 type="button"
                 onClick={() => removeImage(i)}

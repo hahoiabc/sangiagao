@@ -21,9 +21,10 @@ type NotificationCreator interface {
 }
 
 type SubscriptionService struct {
-	subRepo  SubscriptionRepository
-	planRepo PlanRepository
-	notifier NotificationCreator
+	subRepo   SubscriptionRepository
+	planRepo  PlanRepository
+	notifier  NotificationCreator
+	onExpiry  func(ctx context.Context) // called when listings are hidden due to expiry
 }
 
 func NewSubscriptionService(subRepo SubscriptionRepository, planRepo PlanRepository) *SubscriptionService {
@@ -32,6 +33,10 @@ func NewSubscriptionService(subRepo SubscriptionRepository, planRepo PlanReposit
 
 func (s *SubscriptionService) SetNotifier(n NotificationCreator) {
 	s.notifier = n
+}
+
+func (s *SubscriptionService) SetOnExpiry(fn func(ctx context.Context)) {
+	s.onExpiry = fn
 }
 
 type SubscriptionStatus struct {
@@ -159,6 +164,9 @@ func (s *SubscriptionService) RunExpiryCron(ctx context.Context) {
 	}
 	if hidden > 0 {
 		log.Printf("Hidden %d listings due to expired subscriptions", hidden)
+		if s.onExpiry != nil {
+			s.onExpiry(ctx)
+		}
 	}
 
 	// Notify users whose subscriptions expire within 72 hours

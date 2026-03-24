@@ -19,11 +19,15 @@ import '../screens/profile/subscription_screen.dart';
 import '../screens/profile/change_password_screen.dart';
 import '../screens/profile/change_phone_screen.dart';
 import '../screens/profile/privacy_policy_screen.dart';
+import '../screens/profile/terms_of_service_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
 import '../screens/feedback/feedback_screen.dart';
 import '../screens/feedback/feedback_history_screen.dart';
 import '../screens/splash_screen.dart';
 import '../widgets/main_shell.dart';
+
+final _uuidRegex = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$');
+bool _isValidId(String? id) => id != null && _uuidRegex.hasMatch(id);
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -40,7 +44,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isPublic = publicRoutes.contains(loc) ||
           loc.startsWith('/marketplace') ||
           loc.startsWith('/seller') ||
-          loc == '/privacy-policy';
+          loc == '/privacy-policy' ||
+          loc == '/terms-of-service';
       if (!isAuth && !isPublic) {
         return '/marketplace';
       }
@@ -71,22 +76,26 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/marketplace/:id',
+            redirect: (_, state) => _isValidId(state.pathParameters['id']) ? null : '/marketplace',
             builder: (_, state) => ListingDetailScreen(id: state.pathParameters['id']!),
           ),
           GoRoute(path: '/my-listings', builder: (_, __) => const MyListingsScreen()),
           GoRoute(path: '/create-listing', builder: (_, __) => const CreateListingScreen()),
           GoRoute(
             path: '/edit-listing/:id',
+            redirect: (_, state) => _isValidId(state.pathParameters['id']) ? null : '/my-listings',
             builder: (_, state) => EditListingScreen(listingId: state.pathParameters['id']!),
           ),
           GoRoute(path: '/inbox', builder: (_, __) => const InboxScreen()),
           GoRoute(
             path: '/chat/:id',
+            redirect: (_, state) => _isValidId(state.pathParameters['id']) ? null : '/inbox',
             builder: (_, state) => ChatScreen(conversationId: state.pathParameters['id']!),
           ),
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
           GoRoute(
             path: '/seller/:id',
+            redirect: (_, state) => _isValidId(state.pathParameters['id']) ? null : '/marketplace',
             builder: (_, state) => SellerProfileScreen(sellerId: state.pathParameters['id']!),
           ),
           GoRoute(path: '/subscription', builder: (_, __) => const SubscriptionScreen()),
@@ -96,6 +105,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/feedback', builder: (_, __) => const FeedbackScreen()),
           GoRoute(path: '/feedback-history', builder: (_, __) => const FeedbackHistoryScreen()),
           GoRoute(path: '/privacy-policy', builder: (_, __) => const PrivacyPolicyScreen()),
+          GoRoute(path: '/terms-of-service', builder: (_, __) => const TermsOfServiceScreen()),
         ],
       ),
     ],

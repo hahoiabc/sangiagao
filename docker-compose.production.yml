@@ -131,7 +131,7 @@ services:
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_NAME: ${POSTGRES_DB}
-      DB_SSL_MODE: disable
+      DB_SSL_MODE: ${DB_SSL_MODE:-require}
       REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379"
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRY: ${JWT_EXPIRY}
@@ -146,6 +146,8 @@ services:
       SMS_PROVIDER: ${SMS_PROVIDER:-mock}
       SMS_API_KEY: ${SMS_API_KEY:-}
       CORS_ORIGINS: ${CORS_ORIGINS:-https://admin.yourdomain.com}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
+      COOKIE_SECURE: "true"
       RATE_LIMIT_RPS: "30"
       RATE_LIMIT_BURST: "50"
     depends_on:

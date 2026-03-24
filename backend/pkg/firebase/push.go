@@ -46,6 +46,7 @@ type fcmNotification struct {
 }
 
 func (s *FCMSender) SendToTokens(ctx context.Context, tokens []string, title, body string, data map[string]string) error {
+	var failCount int
 	for _, token := range tokens {
 		msg := fcmMessage{
 			To: token,
@@ -58,11 +59,13 @@ func (s *FCMSender) SendToTokens(ctx context.Context, tokens []string, title, bo
 
 		payload, err := json.Marshal(msg)
 		if err != nil {
+			failCount++
 			continue
 		}
 
 		req, err := http.NewRequestWithContext(ctx, "POST", "https://fcm.googleapis.com/fcm/send", bytes.NewReader(payload))
 		if err != nil {
+			failCount++
 			continue
 		}
 		req.Header.Set("Content-Type", "application/json")
@@ -70,14 +73,22 @@ func (s *FCMSender) SendToTokens(ctx context.Context, tokens []string, title, bo
 
 		resp, err := s.httpClient.Do(req)
 		if err != nil {
-			log.Printf("FCM send error for token %s: %v", token[:10], err)
+			log.Printf("FCM send error for token %s...: %v", token[:min(10, len(token))], err)
+			failCount++
 			continue
 		}
 		resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			log.Printf("FCM send failed for token %s: status %d", token[:10], resp.StatusCode)
+			log.Printf("FCM send failed for token %s...: status %d", token[:min(10, len(token))], resp.StatusCode)
+			failCount++
 		}
+	}
+	if failCount > 0 && failCount == len(tokens) {
+		return fmt.Errorf("FCM: all %d notifications failed to send", failCount)
+	}
+	if failCount > 0 {
+		log.Printf("FCM: %d/%d notifications failed", failCount, len(tokens))
 	}
 	return nil
 }

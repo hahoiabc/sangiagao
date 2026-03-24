@@ -11,7 +11,7 @@ import { useAuth } from "@/lib/auth";
 import { getMe, updateMe, uploadImage, updateMyAvatar, type User } from "@/services/api";
 
 export default function ProfilePage() {
-  const { token, user: authUser, login } = useAuth();
+  const { user: authUser, login } = useAuth();
   const [profile, setProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -29,16 +29,15 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!token) return;
     setLoading(true);
-    getMe(token)
+    getMe()
       .then((data) => {
         setProfile(data);
         syncForm(data);
       })
       .catch(() => setError("Không thể tải thông tin tài khoản"))
       .finally(() => setLoading(false));
-  }, [token]);
+  }, []);
 
   function syncForm(data: User) {
     setName(data.name || "");
@@ -51,7 +50,7 @@ export default function ProfilePage() {
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !token) return;
+    if (!file) return;
 
     if (!file.type.startsWith("image/")) {
       setError("Vui lòng chọn file ảnh");
@@ -66,13 +65,12 @@ export default function ProfilePage() {
     setMessage("");
     setError("");
     try {
-      const { url } = await uploadImage(token, file, "avatars");
-      const updated = await updateMyAvatar(token, url);
+      const { url } = await uploadImage(file, "avatars");
+      const updated = await updateMyAvatar(url);
       setProfile(updated);
       // Sync avatar to auth context so header/sidebar update immediately
       if (authUser) {
-        const refreshToken = localStorage.getItem("admin_refresh_token") || "";
-        login({ ...authUser, avatar_url: updated.avatar_url || undefined }, token, refreshToken);
+        login({ ...authUser, avatar_url: updated.avatar_url || undefined }, "", "");
       }
       toast.success("Cập nhật ảnh đại diện thành công");
     } catch (err) {
@@ -85,12 +83,12 @@ export default function ProfilePage() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    if (!token || !authUser) return;
+    if (!authUser) return;
     setSaving(true);
     setMessage("");
     setError("");
     try {
-      const updated = await updateMe(token, {
+      const updated = await updateMe({
         name: name || undefined,
         address: address || undefined,
         province: province || undefined,
@@ -102,8 +100,7 @@ export default function ProfilePage() {
       syncForm(updated);
 
       // Update auth context so sidebar/header reflect changes immediately
-      const refreshToken = localStorage.getItem("admin_refresh_token") || "";
-      login({ ...authUser, name: updated.name || undefined, avatar_url: updated.avatar_url || undefined }, token, refreshToken);
+      login({ ...authUser, name: updated.name || undefined, avatar_url: updated.avatar_url || undefined }, "", "");
 
       toast.success("Cập nhật thành công");
     } catch (err) {

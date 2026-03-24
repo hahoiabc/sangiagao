@@ -99,7 +99,7 @@ export default function PriceBoardPage() {
                               <div className="flex items-center gap-2">
                                 <span className="font-medium">{p.product_label}</span>
                                 {p.sponsor_logo && (
-                                  <img src={p.sponsor_logo} alt="" className="h-5 w-auto" />
+                                  <img src={p.sponsor_logo} alt="Logo tài trợ" loading="lazy" className="h-5 w-auto" />
                                 )}
                               </div>
                             </td>
