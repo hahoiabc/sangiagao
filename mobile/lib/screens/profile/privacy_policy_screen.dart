@@ -90,7 +90,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
       '6. Quyền của bạn',
       '• Truy cập: Xem thông tin cá nhân trong trang Tài khoản\n'
           '• Chỉnh sửa: Cập nhật hồ sơ, đổi mật khẩu, đổi số điện thoại\n'
-          '• Xóa: Yêu cầu xóa tài khoản và dữ liệu liên quan bằng cách liên hệ quản trị viên\n'
+          '• Xóa: Xóa tài khoản và dữ liệu liên quan trong mục Tài khoản → Xóa tài khoản\n'
           '• Rút đồng ý: Ngừng sử dụng Dịch vụ bất kỳ lúc nào',
     ),
     (

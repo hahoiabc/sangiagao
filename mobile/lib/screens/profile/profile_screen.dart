@@ -112,6 +112,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
+  Future<void> _deleteAccount() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Xóa tài khoản'),
+        content: const Text(
+          'Bạn có chắc chắn muốn xóa tài khoản? '
+          'Hành động này không thể hoàn tác. Tất cả dữ liệu của bạn sẽ bị xóa vĩnh viễn.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Huỷ')),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Xóa tài khoản'),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      try {
+        await ref.read(authProvider.notifier).deleteAccount();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Lỗi: $e')),
+          );
+        }
+      }
+    }
+  }
+
   Future<void> _logout() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -328,6 +360,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
               const Divider(),
               ListTile(
+                leading: const Icon(Icons.description_outlined),
+                title: const Text('Điều khoản sử dụng'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/terms-of-service'),
+              ),
+              ListTile(
                 leading: const Icon(Icons.privacy_tip_outlined),
                 title: const Text('Chính sách bảo mật'),
                 trailing: const Icon(Icons.chevron_right),
@@ -337,6 +375,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 leading: const Icon(Icons.logout, color: AppColors.error),
                 title: const Text('Đăng xuất', style: TextStyle(color: AppColors.error)),
                 onTap: _logout,
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_forever, color: AppColors.error),
+                title: const Text('Xóa tài khoản', style: TextStyle(color: AppColors.error)),
+                onTap: _deleteAccount,
               ),
             ],
           ],

@@ -16,3 +16,14 @@
 -dontwarn com.google.android.play.core.splitcompat.SplitCompatApplication
 -dontwarn com.google.android.play.core.splitinstall.**
 -dontwarn com.google.android.play.core.tasks.**
+
+# WebSocket
+-keep class org.java_websocket.** { *; }
+-dontwarn org.java_websocket.**
+
+# Keep JSON model classes (Flutter uses dart:convert, but native side needs these)
+-keep class com.sangiagao.rice_marketplace.** { *; }
+
+# Kotlin
+-dontwarn kotlin.**
+-keep class kotlin.** { *; }
