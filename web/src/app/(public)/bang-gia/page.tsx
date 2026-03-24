@@ -24,26 +24,31 @@ export default function PriceBoardPage() {
   return (
     <div>
       {/* Hero */}
-      <section className="bg-gradient-to-br from-primary/10 via-background to-accent/5 py-12 sm:py-16">
-        <div className="mx-auto max-w-7xl px-4 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-            <Wheat className="h-8 w-8 text-primary" />
+      <section className="relative py-12 sm:py-16 overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url('/rice-field-bg.jpg')" }}
+        />
+        <div className="absolute inset-0 bg-black/40" />
+        <div className="relative mx-auto max-w-7xl px-4 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm">
+            <Wheat className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
+          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3 drop-shadow-lg">
             Sàn Giá Gạo
           </h1>
-          <p className="text-lg text-muted-foreground mb-6 max-w-xl mx-auto">
+          <p className="text-lg text-white/90 mb-6 max-w-xl mx-auto drop-shadow">
             Bảng giá gạo cập nhật liên tục từ các thành viên trên toàn quốc
           </p>
           <div className="flex items-center justify-center gap-3">
             <Link href="/san-giao-dich">
-              <Button size="lg" className="gap-2">
+              <Button size="lg" className="gap-2 bg-white text-primary hover:bg-white/90">
                 <TrendingUp className="h-4 w-4" />
                 Xem tin đăng
               </Button>
             </Link>
             <Link href="/dang-ky">
-              <Button variant="outline" size="lg" className="gap-2">
+              <Button variant="outline" size="lg" className="gap-2 border-white text-white hover:bg-white/20">
                 <Users className="h-4 w-4" />
                 Đăng Ký Miễn Phí
               </Button>

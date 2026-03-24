@@ -34,35 +34,46 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primary,
-      body: Center(
-        child: FadeTransition(
-          opacity: _fadeIn,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'SanGiaGao.vn',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: 1.0,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Đơn giản & Hiệu quả',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                  color: Colors.white.withValues(alpha: 0.85),
-                  letterSpacing: 0.3,
-                ),
-              ),
-            ],
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            'assets/images/rice-field-bg.jpg',
+            fit: BoxFit.cover,
           ),
-        ),
+          Container(color: Colors.black.withValues(alpha: 0.4)),
+          Center(
+            child: FadeTransition(
+              opacity: _fadeIn,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'SanGiaGao.vn',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 1.0,
+                      shadows: [Shadow(blurRadius: 10, color: Colors.black54)],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Đơn giản & Hiệu quả',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.white.withValues(alpha: 0.9),
+                      letterSpacing: 0.3,
+                      shadows: [Shadow(blurRadius: 8, color: Colors.black54)],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
