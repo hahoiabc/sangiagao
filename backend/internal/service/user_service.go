@@ -124,6 +124,21 @@ func (s *UserService) ChangePhone(ctx context.Context, userID, newPhone string) 
 	return s.userRepo.UpdatePhone(ctx, userID, newPhone)
 }
 
+// VerifyPassword checks that the given password matches the user's stored hash.
+func (s *UserService) VerifyPassword(ctx context.Context, userID, password string) error {
+	hash, err := s.userRepo.GetPasswordHashByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("get password: %w", err)
+	}
+	if hash == "" {
+		return ErrWrongPassword
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)); err != nil {
+		return ErrWrongPassword
+	}
+	return nil
+}
+
 // DeleteAccount permanently deletes the user's account and all associated data.
 func (s *UserService) DeleteAccount(ctx context.Context, userID string) error {
 	return s.userRepo.DeleteUser(ctx, userID)

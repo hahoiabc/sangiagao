@@ -29,22 +29,22 @@ function getTextColor(percent: number) {
 }
 
 export default function MonitoringPage() {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   const fetchStats = useCallback(async () => {
-    if (!token) return;
+    if (!user) return;
     try {
-      const data = await getSystemStats(token);
+      const data = await getSystemStats("");
       setStats(data);
     } catch {
       // ignore
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [user]);
 
   useEffect(() => {
     fetchStats();

@@ -38,21 +38,21 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export default function DashboardPage() {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const [stats, setStats] = useState<Record<string, number>>({});
   const [charts, setCharts] = useState<DashboardCharts | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!token) return;
+    if (!user) return;
     Promise.all([
-      getDashboardStats(token),
-      getDashboardCharts(token),
+      getDashboardStats(""),
+      getDashboardCharts(""),
     ])
       .then(([s, c]) => { setStats(s); setCharts(c); })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [user]);
 
   return (
     <div className="space-y-6">

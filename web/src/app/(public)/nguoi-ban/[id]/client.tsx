@@ -7,7 +7,7 @@ import { ArrowLeft, MapPin, MessageCircle, Star, Flag, Calendar } from "lucide-r
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import {
@@ -179,6 +179,7 @@ export default function SellerProfilePage() {
         <CardContent className="p-6">
           <div className="flex items-start gap-4">
             <Avatar className="h-16 w-16">
+              {profile.avatar_url && <AvatarImage src={profile.avatar_url} alt={profile.name || "Avatar"} />}
               <AvatarFallback className="bg-primary/10 text-primary font-bold text-xl">
                 {(profile.name || "?").charAt(0).toUpperCase()}
               </AvatarFallback>

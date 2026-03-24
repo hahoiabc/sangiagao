@@ -30,7 +30,7 @@ const statusTabs = [
 ];
 
 export default function ReportsPage() {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -43,10 +43,10 @@ export default function ReportsPage() {
   const limit = 20;
 
   const fetchReports = useCallback(async () => {
-    if (!token) return;
+    if (!user) return;
     setLoading(true);
     try {
-      const res = await listReports(token, page, limit, status);
+      const res = await listReports("", page, limit, status);
       setReports(res.data);
       setTotal(res.total);
     } catch (err) {
@@ -54,7 +54,7 @@ export default function ReportsPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, page, status]);
+  }, [user, page, status]);
 
   useEffect(() => {
     fetchReports();
@@ -66,9 +66,9 @@ export default function ReportsPage() {
   }
 
   async function handleResolve() {
-    if (!token || !resolveDialog || !selectedAction) return;
+    if (!user || !resolveDialog || !selectedAction) return;
     try {
-      await resolveReport(token, resolveDialog.id, selectedAction, adminNote || undefined);
+      await resolveReport("", resolveDialog.id, selectedAction, adminNote || undefined);
       toast.success("Đã xử lý báo cáo");
       setResolveDialog(null);
       setSelectedAction("");

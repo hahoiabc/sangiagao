@@ -6,7 +6,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   try {
-    const res = await fetch(`${API_BASE}/users/${id}/public`, { next: { revalidate: 60 } });
+    const res = await fetch(`${API_BASE}/users/${id}/profile`, { next: { revalidate: 60 } });
     if (res.ok) {
       const profile = await res.json();
       const name = profile.name || "Người bán";

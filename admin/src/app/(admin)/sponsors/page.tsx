@@ -19,7 +19,7 @@ import {
 } from "@/services/api";
 
 export default function SponsorsPage() {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const [sponsors, setSponsors] = useState<ProductSponsor[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -38,10 +38,10 @@ export default function SponsorsPage() {
   const limit = 20;
 
   const fetchSponsors = useCallback(async () => {
-    if (!token) return;
+    if (!user) return;
     setLoading(true);
     try {
-      const res = await listSponsors(token, page, limit);
+      const res = await listSponsors("", page, limit);
       setSponsors(res.data);
       setTotal(res.total);
     } catch (err) {
@@ -49,17 +49,17 @@ export default function SponsorsPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, page]);
+  }, [user, page]);
 
   const fetchCatalog = useCallback(async () => {
-    if (!token) return;
+    if (!user) return;
     try {
-      const data = await getProductCatalog(token);
+      const data = await getProductCatalog("");
       setCatalog(data);
     } catch (err) {
       console.error(err);
     }
-  }, [token]);
+  }, [user]);
 
   useEffect(() => {
     fetchSponsors();
@@ -85,17 +85,17 @@ export default function SponsorsPage() {
   }
 
   async function handleSubmit() {
-    if (!token || !formProductKey || !formLogoUrl || !formSponsorName) return;
+    if (!user || !formProductKey || !formLogoUrl || !formSponsorName) return;
     setSubmitting(true);
     try {
       if (editingSponsor) {
-        await updateSponsor(token, editingSponsor.id, {
+        await updateSponsor("", editingSponsor.id, {
           logo_url: formLogoUrl,
           sponsor_name: formSponsorName,
           is_active: formIsActive,
         });
       } else {
-        await createSponsor(token, {
+        await createSponsor("", {
           product_key: formProductKey,
           logo_url: formLogoUrl,
           sponsor_name: formSponsorName,
@@ -112,9 +112,9 @@ export default function SponsorsPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!token || !confirm("Xóa tài trợ này?")) return;
+    if (!user || !confirm("Xóa tài trợ này?")) return;
     try {
-      await deleteSponsor(token, id);
+      await deleteSponsor("", id);
       toast.success("Đã xóa tài trợ");
       fetchSponsors();
     } catch {

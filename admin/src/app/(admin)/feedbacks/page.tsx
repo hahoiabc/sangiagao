@@ -13,7 +13,7 @@ import { useAuth } from "@/lib/auth";
 import { listFeedbacks, replyFeedback, type Feedback } from "@/services/api";
 
 export default function FeedbacksPage() {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -25,10 +25,10 @@ export default function FeedbacksPage() {
   const limit = 20;
 
   const fetchFeedbacks = useCallback(async () => {
-    if (!token) return;
+    if (!user) return;
     setLoading(true);
     try {
-      const res = await listFeedbacks(token, page, limit);
+      const res = await listFeedbacks("", page, limit);
       setFeedbacks(res.data);
       setTotal(res.total);
     } catch (err) {
@@ -36,7 +36,7 @@ export default function FeedbacksPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, page]);
+  }, [user, page]);
 
   useEffect(() => {
     fetchFeedbacks();
@@ -48,10 +48,10 @@ export default function FeedbacksPage() {
   }
 
   async function handleReply() {
-    if (!token || !replyDialog || !replyText.trim()) return;
+    if (!user || !replyDialog || !replyText.trim()) return;
     setSending(true);
     try {
-      await replyFeedback(token, replyDialog.id, replyText.trim());
+      await replyFeedback("", replyDialog.id, replyText.trim());
       toast.success("Đã gửi phản hồi");
       setReplyDialog(null);
       setReplyText("");

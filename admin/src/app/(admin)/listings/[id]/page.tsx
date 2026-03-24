@@ -12,7 +12,7 @@ import { useAuth } from "@/lib/auth";
 import { getListingDetail, deleteListing, type ListingDetail } from "@/services/api";
 
 export default function ListingDetailPage() {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
@@ -23,27 +23,27 @@ export default function ListingDetailPage() {
   const [deleteDialog, setDeleteDialog] = useState(false);
 
   const fetchDetail = useCallback(async () => {
-    if (!token || !id) return;
+    if (!user || !id) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await getListingDetail(token, id);
+      const data = await getListingDetail("", id);
       setListing(data);
     } catch {
       setError("Không tìm thấy tin đăng.");
     } finally {
       setLoading(false);
     }
-  }, [token, id]);
+  }, [user, id]);
 
   useEffect(() => {
     fetchDetail();
   }, [fetchDetail]);
 
   async function handleDelete() {
-    if (!token || !listing) return;
+    if (!user || !listing) return;
     try {
-      await deleteListing(token, listing.id);
+      await deleteListing("", listing.id);
       router.push("/listings");
     } catch (err) {
       console.error(err);

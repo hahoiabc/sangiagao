@@ -18,7 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export default function ListingsPage() {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const [categories, setCategories] = useState<CatalogCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("gao_deo_thom");
@@ -32,8 +32,8 @@ export default function ListingsPage() {
 
   // Fetch categories once
   useEffect(() => {
-    if (!token) return;
-    listCatalogCategories(token).then(cats => {
+    if (!user) return;
+    listCatalogCategories("").then(cats => {
       const sorted = cats.sort((a, b) => a.sort_order - b.sort_order);
       setCategories(sorted);
       // Nếu category mặc định không tồn tại, chọn category đầu tiên
@@ -42,13 +42,13 @@ export default function ListingsPage() {
         setSelectedCategory(active[0].key);
       }
     }).catch(console.error);
-  }, [token]);
+  }, [user]);
 
   const fetchListings = useCallback(async () => {
-    if (!token) return;
+    if (!user) return;
     setLoading(true);
     try {
-      const res = await browseListings(token, page, limit, selectedCategory);
+      const res = await browseListings("", page, limit, selectedCategory);
       setListings(res.data);
       setTotal(res.total);
     } catch (err) {
@@ -56,7 +56,7 @@ export default function ListingsPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, page, selectedCategory]);
+  }, [user, page, selectedCategory]);
 
   useEffect(() => {
     fetchListings();
@@ -69,9 +69,9 @@ export default function ListingsPage() {
   }
 
   async function handleDelete() {
-    if (!token || !deleteDialog) return;
+    if (!user || !deleteDialog) return;
     try {
-      await deleteListing(token, deleteDialog.id);
+      await deleteListing("", deleteDialog.id);
       toast.success("Đã xóa tin đăng");
       setDeleteDialog(null);
       fetchListings();

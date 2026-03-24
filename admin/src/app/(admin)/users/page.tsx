@@ -123,7 +123,7 @@ const permissionGroups: PermissionGroup[] = [
 
 // ── Role Permission Tab component ──
 function RolePermissionsTab() {
-  const { token } = useAuth();
+  const { user } = useAuth();
 
   // Build initial state from defaults
   const buildInitialPerms = (): PermissionMatrix => {
@@ -147,9 +147,9 @@ function RolePermissionsTab() {
 
   // Load permissions from API
   useEffect(() => {
-    if (!token) return;
+    if (!user) return;
     setLoading(true);
-    getPermissions(token)
+    getPermissions("")
       .then((matrix) => {
         // Merge API data with defaults (ensure all keys exist)
         const merged = buildInitialPerms();
@@ -167,7 +167,7 @@ function RolePermissionsTab() {
         toast.error("Không thể tải cấu hình quyền hạn");
       })
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [user]);
 
   function togglePerm(role: string, key: string) {
     if (role === "owner") return;
@@ -182,10 +182,10 @@ function RolePermissionsTab() {
   }
 
   async function handleSave() {
-    if (!token) return;
+    if (!user) return;
     setSaving(true);
     try {
-      await savePermissions(token, perms);
+      await savePermissions("", perms);
       setSavedPerms(perms);
       toast.success("Đã lưu cấu hình quyền hạn");
       setHasChanges(false);
@@ -312,7 +312,7 @@ function RolePermissionsTab() {
 
 // ── Main page ──
 export default function UsersPage() {
-  const { token, user: currentUser } = useAuth();
+  const { user: currentUser } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"users" | "roles">("users");
   const [users, setUsers] = useState<User[]>([]);
@@ -338,10 +338,10 @@ export default function UsersPage() {
   const limit = 20;
 
   const fetchUsers = useCallback(async () => {
-    if (!token) return;
+    if (!currentUser) return;
     setLoading(true);
     try {
-      const res = await listUsers(token, search, page, limit);
+      const res = await listUsers("", search, page, limit);
       setUsers(res.data);
       setTotal(res.total);
     } catch (err) {
@@ -349,16 +349,16 @@ export default function UsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, search, page]);
+  }, [currentUser, search, page]);
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
 
   async function handleBlock() {
-    if (!token || !blockDialog || !blockReason) return;
+    if (!currentUser || !blockDialog || !blockReason) return;
     try {
-      await blockUser(token, blockDialog.id, blockReason);
+      await blockUser("", blockDialog.id, blockReason);
       toast.success("Đã khóa tài khoản");
       setBlockDialog(null);
       setBlockReason("");
@@ -369,9 +369,9 @@ export default function UsersPage() {
   }
 
   async function handleUnblock(userId: string) {
-    if (!token) return;
+    if (!currentUser) return;
     try {
-      await unblockUser(token, userId);
+      await unblockUser("", userId);
       toast.success("Đã mở khóa tài khoản");
       fetchUsers();
     } catch {
@@ -380,7 +380,7 @@ export default function UsersPage() {
   }
 
   async function handleActivateSub() {
-    if (!token || !subDialog) return;
+    if (!currentUser || !subDialog) return;
     setSubError("");
     const d = parseInt(subDays);
     if (!d || d <= 0 || d > 365) {
@@ -388,7 +388,7 @@ export default function UsersPage() {
       return;
     }
     try {
-      await activateSubscription(token, subDialog.id, d);
+      await activateSubscription("", subDialog.id, d);
       toast.success("Đã kích hoạt gói dịch vụ");
       setSubDialog(null);
       setSubDays("30");
@@ -399,9 +399,9 @@ export default function UsersPage() {
   }
 
   async function handleChangeRole() {
-    if (!token || !roleDialog || !newRole) return;
+    if (!currentUser || !roleDialog || !newRole) return;
     try {
-      await changeUserRole(token, roleDialog.id, newRole);
+      await changeUserRole("", roleDialog.id, newRole);
       const roleLabel = rolesData.find(r => r.key === newRole)?.label;
       toast.success(`Đã đổi vai trò ${roleDialog.name || roleDialog.phone} thành ${roleLabel}`);
       setRoleDialog(null);

@@ -52,6 +52,12 @@ type ReadReceiptEvent struct {
 	ReaderID       string `json:"reader_id"`
 }
 
+// TypingEvent is broadcast when a user is typing.
+type TypingEvent struct {
+	Event  string `json:"event"`
+	UserID string `json:"user_id"`
+}
+
 func (c *Client) ReadPump() {
 	defer func() {
 		c.Hub.Leave(c.ConversationID, c)

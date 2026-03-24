@@ -61,6 +61,9 @@ func (m *mockUserService) DeleteAccount(ctx context.Context, userID string) erro
 	args := m.Called(ctx, userID)
 	return args.Error(0)
 }
+func (m *mockUserService) VerifyPassword(ctx context.Context, userID, password string) error {
+	return m.Called(ctx, userID, password).Error(0)
+}
 
 // --- Helpers ---
 

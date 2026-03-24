@@ -25,7 +25,7 @@ import {
 } from "@/services/api";
 
 export default function UserDetailPage() {
-  const { token, user: currentUser } = useAuth();
+  const { user: currentUser } = useAuth();
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
@@ -56,40 +56,40 @@ export default function UserDetailPage() {
   const [subDays, setSubDays] = useState("30");
 
   const fetchUser = useCallback(async () => {
-    if (!token || !id) return;
+    if (!currentUser || !id) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await getUserDetail(token, id);
+      const data = await getUserDetail("", id);
       setUser(data);
     } catch {
       setError("Không tìm thấy người dùng.");
     } finally {
       setLoading(false);
     }
-  }, [token, id]);
+  }, [currentUser, id]);
 
   const fetchListings = useCallback(async () => {
-    if (!token) return;
+    if (!currentUser) return;
     try {
-      const res = await listUserListings(token, id, listingsPage, listingsLimit);
+      const res = await listUserListings("", id, listingsPage, listingsLimit);
       setListings(res.data || []);
       setListingsTotal(res.total);
     } catch {
       // Non-critical
     }
-  }, [token, id, listingsPage]);
+  }, [currentUser, id, listingsPage]);
 
   const fetchSubscriptions = useCallback(async () => {
-    if (!token) return;
+    if (!currentUser) return;
     try {
-      const res = await listUserSubscriptions(token, id, subsPage, subsLimit);
+      const res = await listUserSubscriptions("", id, subsPage, subsLimit);
       setSubscriptions(res.data || []);
       setSubsTotal(res.total);
     } catch {
       // Non-critical
     }
-  }, [token, id, subsPage]);
+  }, [currentUser, id, subsPage]);
 
   useEffect(() => {
     fetchUser();
@@ -98,9 +98,9 @@ export default function UserDetailPage() {
   }, [fetchUser, fetchListings, fetchSubscriptions]);
 
   async function handleBlock() {
-    if (!token || !blockReason) return;
+    if (!currentUser || !blockReason) return;
     try {
-      await blockUser(token, id, blockReason);
+      await blockUser("", id, blockReason);
       toast.success("Đã khóa tài khoản");
       setBlockDialog(false);
       setBlockReason("");
@@ -111,9 +111,9 @@ export default function UserDetailPage() {
   }
 
   async function handleUnblock() {
-    if (!token) return;
+    if (!currentUser) return;
     try {
-      await unblockUser(token, id);
+      await unblockUser("", id);
       toast.success("Đã mở khóa tài khoản");
       fetchUser();
     } catch {
@@ -122,9 +122,9 @@ export default function UserDetailPage() {
   }
 
   async function handleDeleteUser() {
-    if (!token) return;
+    if (!currentUser) return;
     try {
-      await deleteUser(token, id);
+      await deleteUser("", id);
       toast.success("Đã xóa tài khoản");
       router.push("/users");
     } catch {
@@ -138,7 +138,7 @@ export default function UserDetailPage() {
   const [subError, setSubError] = useState("");
 
   async function handleActivateSub() {
-    if (!token) return;
+    if (!currentUser) return;
     setSubError("");
     const d = parseInt(subDays);
     if (!d || d <= 0 || d > 365) {
@@ -146,7 +146,7 @@ export default function UserDetailPage() {
       return;
     }
     try {
-      await activateSubscription(token, id, d);
+      await activateSubscription("", id, d);
       toast.success("Đã kích hoạt gói dịch vụ");
       setSubDialog(false);
       setSubDays("30");
@@ -183,9 +183,9 @@ export default function UserDetailPage() {
   }
 
   async function confirmChangeRole() {
-    if (!token || !roleChangeDialog) return;
+    if (!currentUser || !roleChangeDialog) return;
     try {
-      const updated = await changeUserRole(token, id, roleChangeDialog);
+      const updated = await changeUserRole("", id, roleChangeDialog);
       setUser(updated);
       toast.success("Đã thay đổi vai trò");
     } catch {

@@ -137,6 +137,8 @@ func (h *WSHandler) handleMessage(client *wsPkg.Client, rawMsg []byte) {
 		h.handleSendMessage(client, wsMsg.Data)
 	case "mark_read":
 		h.handleMarkRead(client)
+	case "typing":
+		h.handleTyping(client)
 	default:
 		log.Printf("WS: unknown event %q from user %s", wsMsg.Event, client.UserID)
 	}
@@ -172,12 +174,16 @@ func (h *WSHandler) handleSendMessage(client *wsPkg.Client, data json.RawMessage
 }
 
 func (h *WSHandler) handleMarkRead(client *wsPkg.Client) {
-	// The GetMessages service already marks as read; this is an explicit mark_read
-	// We call the underlying chat service — but we need a MarkRead method.
-	// For now, broadcast read receipt to the room.
 	h.hub.Broadcast(client.ConversationID, wsPkg.ReadReceiptEvent{
 		Event:          "read_receipt",
 		ConversationID: client.ConversationID,
 		ReaderID:       client.UserID,
+	})
+}
+
+func (h *WSHandler) handleTyping(client *wsPkg.Client) {
+	h.hub.Broadcast(client.ConversationID, wsPkg.TypingEvent{
+		Event:  "typing",
+		UserID: client.UserID,
 	})
 }

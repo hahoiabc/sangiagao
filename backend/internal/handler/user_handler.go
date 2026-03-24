@@ -166,6 +166,19 @@ func (h *UserHandler) DeleteAccount(c *gin.Context) {
 		return
 	}
 
+	var req struct {
+		Password string `json:"password" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Vui lòng nhập mật khẩu xác nhận"})
+		return
+	}
+
+	if err := h.userService.VerifyPassword(c.Request.Context(), userID, req.Password); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Mật khẩu không đúng"})
+		return
+	}
+
 	if err := h.userService.DeleteAccount(c.Request.Context(), userID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Xóa tài khoản thất bại"})
 		return

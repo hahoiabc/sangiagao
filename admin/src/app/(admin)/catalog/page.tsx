@@ -103,7 +103,7 @@ function SortableProductRow({ prod, openEditProd, handleDeleteProd }: {
 }
 
 export default function CatalogPage() {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const [tab, setTab] = useState<"categories" | "products">("categories");
   const [categories, setCategories] = useState<CatalogCategory[]>([]);
   const [products, setProducts] = useState<CatalogProduct[]>([]);
@@ -134,12 +134,12 @@ export default function CatalogPage() {
   );
 
   const fetchData = useCallback(async () => {
-    if (!token) return;
+    if (!user) return;
     setLoading(true);
     try {
       const [cats, prods] = await Promise.all([
-        listCatalogCategories(token),
-        listCatalogProducts(token),
+        listCatalogCategories(""),
+        listCatalogProducts(""),
       ]);
       setCategories(cats);
       setProducts(prods);
@@ -148,14 +148,14 @@ export default function CatalogPage() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [user]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
   // Drag-and-drop handlers
   async function handleCatDragEnd(event: DragEndEvent) {
     const { active, over } = event;
-    if (!over || active.id === over.id || !token) return;
+    if (!over || active.id === over.id || !user) return;
 
     const oldIndex = categories.findIndex(c => c.id === active.id);
     const newIndex = categories.findIndex(c => c.id === over.id);
@@ -171,7 +171,7 @@ export default function CatalogPage() {
       await Promise.all(
         updates
           .filter((cat, i) => cat.sort_order !== categories[categories.findIndex(c => c.id === cat.id)]?.sort_order || oldIndex === i || newIndex === i)
-          .map(cat => updateCatalogCategory(token, cat.id, { sort_order: cat.sort_order }))
+          .map(cat => updateCatalogCategory("", cat.id, { sort_order: cat.sort_order }))
       );
       toast.success("Đã cập nhật thứ tự danh mục");
     } catch {
@@ -182,7 +182,7 @@ export default function CatalogPage() {
 
   async function handleGroupedProdDragEnd(event: DragEndEvent, categoryId: string) {
     const { active, over } = event;
-    if (!over || active.id === over.id || !token) return;
+    if (!over || active.id === over.id || !user) return;
 
     const catProds = products.filter(p => p.category_id === categoryId).sort((a, b) => a.sort_order - b.sort_order);
     const oldIndex = catProds.findIndex(p => p.id === active.id);
@@ -202,7 +202,7 @@ export default function CatalogPage() {
       await Promise.all(
         updatedProds
           .filter((prod, i) => prod.sort_order !== catProds[i]?.sort_order)
-          .map(prod => updateCatalogProduct(token, prod.id, { sort_order: prod.sort_order }))
+          .map(prod => updateCatalogProduct("", prod.id, { sort_order: prod.sort_order }))
       );
       toast.success("Đã cập nhật thứ tự sản phẩm");
     } catch {
@@ -221,13 +221,13 @@ export default function CatalogPage() {
     setShowCatForm(true);
   }
   async function handleCatSubmit() {
-    if (!token || !catKey || !catLabel) return;
+    if (!user || !catKey || !catLabel) return;
     setSubmitting(true);
     try {
       if (editingCat) {
-        await updateCatalogCategory(token, editingCat.id, { label: catLabel, icon: catIcon, sort_order: catSortOrder, is_active: catIsActive });
+        await updateCatalogCategory("", editingCat.id, { label: catLabel, icon: catIcon, sort_order: catSortOrder, is_active: catIsActive });
       } else {
-        await createCatalogCategory(token, { key: catKey, label: catLabel, icon: catIcon || undefined });
+        await createCatalogCategory("", { key: catKey, label: catLabel, icon: catIcon || undefined });
       }
       toast.success(editingCat ? "Đã cập nhật danh mục" : "Đã thêm danh mục");
       setShowCatForm(false); fetchData();
@@ -235,8 +235,8 @@ export default function CatalogPage() {
     finally { setSubmitting(false); }
   }
   async function handleDeleteCat(id: string) {
-    if (!token || !confirm("Xóa danh mục này? Tất cả sản phẩm trong danh mục sẽ bị xóa theo.")) return;
-    try { await deleteCatalogCategory(token, id); toast.success("Đã xóa danh mục"); fetchData(); }
+    if (!user || !confirm("Xóa danh mục này? Tất cả sản phẩm trong danh mục sẽ bị xóa theo.")) return;
+    try { await deleteCatalogCategory("", id); toast.success("Đã xóa danh mục"); fetchData(); }
     catch { toast.error("Xóa danh mục thất bại"); }
   }
 
@@ -250,13 +250,13 @@ export default function CatalogPage() {
     setShowProdForm(true);
   }
   async function handleProdSubmit() {
-    if (!token || !prodKey || !prodLabel || !prodCategoryId) return;
+    if (!user || !prodKey || !prodLabel || !prodCategoryId) return;
     setSubmitting(true);
     try {
       if (editingProd) {
-        await updateCatalogProduct(token, editingProd.id, { label: prodLabel, category_id: prodCategoryId, sort_order: prodSortOrder, is_active: prodIsActive });
+        await updateCatalogProduct("", editingProd.id, { label: prodLabel, category_id: prodCategoryId, sort_order: prodSortOrder, is_active: prodIsActive });
       } else {
-        await createCatalogProduct(token, { key: prodKey, label: prodLabel, category_id: prodCategoryId });
+        await createCatalogProduct("", { key: prodKey, label: prodLabel, category_id: prodCategoryId });
       }
       toast.success(editingProd ? "Đã cập nhật sản phẩm" : "Đã thêm sản phẩm");
       setShowProdForm(false); fetchData();
@@ -264,8 +264,8 @@ export default function CatalogPage() {
     finally { setSubmitting(false); }
   }
   async function handleDeleteProd(id: string) {
-    if (!token || !confirm("Xóa sản phẩm này?")) return;
-    try { await deleteCatalogProduct(token, id); toast.success("Đã xóa sản phẩm"); fetchData(); }
+    if (!user || !confirm("Xóa sản phẩm này?")) return;
+    try { await deleteCatalogProduct("", id); toast.success("Đã xóa sản phẩm"); fetchData(); }
     catch { toast.error("Xóa sản phẩm thất bại"); }
   }
 

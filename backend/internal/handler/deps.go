@@ -29,6 +29,7 @@ type UserServiceInterface interface {
 	ChangePassword(ctx context.Context, userID, currentPassword, newPassword string) error
 	ChangePhone(ctx context.Context, userID, newPhone string) (*model.User, error)
 	DeleteAccount(ctx context.Context, userID string) error
+	VerifyPassword(ctx context.Context, userID, password string) error
 }
 
 type ListingServiceInterface interface {

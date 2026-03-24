@@ -7,7 +7,7 @@ import { ArrowLeft, MapPin, Package, MessageCircle, Star, Flag, X, ChevronLeft, 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getListingDetail, createConversation, createReport, getMessages, sendMessage, type ListingDetail } from "@/services/api";
 import { formatPrice, formatQuantity, formatDate, timeAgo } from "@/lib/utils";
@@ -267,6 +267,7 @@ export default function ListingDetailPage() {
                 <Link href={`/nguoi-ban/${listing.seller.id}`} className="block mb-4 hover:opacity-80">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-12 w-12">
+                      {listing.seller.avatar_url && <AvatarImage src={listing.seller.avatar_url} alt={listing.seller.name || "Avatar"} />}
                       <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                         {(listing.seller.name || "?").charAt(0).toUpperCase()}
                       </AvatarFallback>

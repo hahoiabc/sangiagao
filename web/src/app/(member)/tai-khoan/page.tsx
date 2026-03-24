@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import {
   User, Save, KeyRound, Phone, Eye, EyeOff, Crown, MessageSquareText,
-  ChevronRight, LogOut, Camera, Pencil, X,
+  ChevronRight, LogOut, Camera, Pencil, X, Trash2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  getMe, updateMe, changePassword, changePhone, sendOTP, uploadImage, updateMyAvatar,
+  getMe, updateMe, changePassword, changePhone, sendOTP, uploadImage, updateMyAvatar, deleteAccount,
   type User as UserType,
 } from "@/services/api";
 import { useAuth } from "@/lib/auth";
@@ -23,7 +23,7 @@ import Link from "next/link";
 import LocationPicker from "@/components/location-picker";
 
 export default function ProfilePage() {
-  const { token, logout, user: authUser } = useAuth();
+  const { logout, user: authUser } = useAuth();
   const { themeKey, setThemeKey } = useThemeColor();
   const [profile, setProfile] = useState<UserType | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,9 +55,14 @@ export default function ProfilePage() {
   const [phoneStep, setPhoneStep] = useState<"input" | "otp">("input");
   const [phoneSaving, setPhoneSaving] = useState(false);
 
+  // Delete account state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
   useEffect(() => {
-    if (token) {
-      getMe(token)
+    if (authUser) {
+      getMe("")
         .then((u) => {
           setProfile(u);
           initForm(u);
@@ -65,7 +70,7 @@ export default function ProfilePage() {
         .catch(() => {})
         .finally(() => setLoading(false));
     }
-  }, [token]);
+  }, [authUser]);
 
   function initForm(u: UserType) {
     setFormName(u.name || "");
@@ -88,7 +93,7 @@ export default function ProfilePage() {
   // Avatar upload
   async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !token) return;
+    if (!file || !authUser) return;
 
     // Validate file
     if (!file.type.startsWith("image/")) {
@@ -102,8 +107,8 @@ export default function ProfilePage() {
 
     setUploadingAvatar(true);
     try {
-      const { url } = await uploadImage(token, file, "avatars");
-      const updated = await updateMyAvatar(token, url);
+      const { url } = await uploadImage("", file, "avatars");
+      const updated = await updateMyAvatar("", url);
       setProfile(updated);
       toast.success("Cập nhật ảnh đại diện thành công");
     } catch (err) {
@@ -116,7 +121,7 @@ export default function ProfilePage() {
 
   // Save profile
   async function handleSave() {
-    if (!token) return;
+    if (!authUser) return;
 
     const trimmedName = formName.trim();
     if (trimmedName.length < 4 || trimmedName.length > 60) {
@@ -131,7 +136,7 @@ export default function ProfilePage() {
 
     setSaving(true);
     try {
-      const updated = await updateMe(token, {
+      const updated = await updateMe("", {
         name: trimmedName,
         province: formProvinceRef.current || "",
         ward: formWardRef.current || "",
@@ -152,7 +157,7 @@ export default function ProfilePage() {
   // Change password
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
-    if (!token) return;
+    if (!authUser) return;
 
     if (pwNew.length < 6) {
       toast.error("Mật khẩu phải có ít nhất 6 ký tự");
@@ -177,7 +182,7 @@ export default function ProfilePage() {
 
     setPwSaving(true);
     try {
-      await changePassword(token, pwCurrent, pwNew);
+      await changePassword("", pwCurrent, pwNew);
       toast.success("Đổi mật khẩu thành công");
       setPwCurrent("");
       setPwNew("");
@@ -209,10 +214,10 @@ export default function ProfilePage() {
 
   async function handleChangePhone(e: React.FormEvent) {
     e.preventDefault();
-    if (!token) return;
+    if (!authUser) return;
     setPhoneSaving(true);
     try {
-      const updated = await changePhone(token, newPhone, phoneOtp);
+      const updated = await changePhone("", newPhone, phoneOtp);
       setProfile(updated);
       toast.success("Đổi số điện thoại thành công");
       setNewPhone("");
@@ -222,6 +227,22 @@ export default function ProfilePage() {
       toast.error(err instanceof Error ? err.message : "Đổi số điện thoại thất bại");
     } finally {
       setPhoneSaving(false);
+    }
+  }
+
+  // Delete account
+  async function handleDeleteAccount(e: React.FormEvent) {
+    e.preventDefault();
+    if (!authUser || !deletePassword) return;
+    setDeleting(true);
+    try {
+      await deleteAccount("", deletePassword);
+      toast.success("Tài khoản đã được xóa");
+      logout();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Xóa tài khoản thất bại");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -600,6 +621,56 @@ export default function ProfilePage() {
                     onClick={() => { setPhoneStep("input"); setPhoneOtp(""); }}
                   >
                     Quay lại
+                  </Button>
+                </div>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Delete Account */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-destructive flex items-center gap-2">
+              <Trash2 className="h-4 w-4" />
+              Xoá tài khoản
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!showDeleteConfirm ? (
+              <div>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Xoá tài khoản sẽ xoá toàn bộ dữ liệu của bạn và không thể khôi phục.
+                </p>
+                <Button variant="destructive" size="sm" onClick={() => setShowDeleteConfirm(true)}>
+                  Xoá tài khoản
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleDeleteAccount} className="space-y-4">
+                <p className="text-sm text-destructive font-medium">
+                  Nhập mật khẩu để xác nhận xoá tài khoản. Hành động này không thể hoàn tác.
+                </p>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Mật khẩu xác nhận</label>
+                  <Input
+                    type="password"
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    placeholder="Nhập mật khẩu"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button type="submit" variant="destructive" size="sm" disabled={deleting || !deletePassword}>
+                    {deleting ? "Đang xoá..." : "Xác nhận xoá"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setShowDeleteConfirm(false); setDeletePassword(""); }}
+                  >
+                    Huỷ
                   </Button>
                 </div>
               </form>

@@ -128,7 +128,7 @@ function getDefaultDateRange() {
 }
 
 export default function RevenuePage() {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const [stats, setStats] = useState<SubRevenueStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -146,43 +146,43 @@ export default function RevenuePage() {
   const [trendDailyData, setTrendDailyData] = useState<SubDailyRevenueReport | null>(null);
 
   const fetchStats = useCallback(async () => {
-    if (!token) return;
+    if (!user) return;
     setLoading(true);
     try {
-      const data = await getSubscriptionRevenueStats(token);
+      const data = await getSubscriptionRevenueStats("");
       setStats(data);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [user]);
 
   const fetchDaily = useCallback(async () => {
-    if (!token || !dailyFrom || !dailyTo) return;
+    if (!user || !dailyFrom || !dailyTo) return;
     setDailyLoading(true);
     try {
-      const data = await getDailyRevenue(token, dailyFrom, dailyTo);
+      const data = await getDailyRevenue("", dailyFrom, dailyTo);
       setDailyReport(data);
     } catch (err) {
       console.error(err);
     } finally {
       setDailyLoading(false);
     }
-  }, [token, dailyFrom, dailyTo]);
+  }, [user, dailyFrom, dailyTo]);
 
   const fetchTrendDaily = useCallback(async () => {
-    if (!token) return;
+    if (!user) return;
     try {
       const to = new Date();
       const from = new Date();
       from.setFullYear(from.getFullYear() - 1);
-      const data = await getDailyRevenue(token, formatDate(from), formatDate(to));
+      const data = await getDailyRevenue("", formatDate(from), formatDate(to));
       setTrendDailyData(data);
     } catch (err) {
       console.error(err);
     }
-  }, [token]);
+  }, [user]);
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
   useEffect(() => { fetchDaily(); }, [fetchDaily]);

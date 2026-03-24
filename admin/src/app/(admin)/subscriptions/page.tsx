@@ -32,7 +32,7 @@ type PlanFormData = {
 };
 
 export default function SubscriptionsPage() {
-  const { token, user: currentUser } = useAuth();
+  const { user: currentUser } = useAuth();
   const isOwner = currentUser?.role === "owner";
 
   const [users, setUsers] = useState<User[]>([]);
@@ -62,20 +62,20 @@ export default function SubscriptionsPage() {
   const limit = 20;
 
   const fetchPlans = useCallback(async () => {
-    if (!token) return;
+    if (!currentUser) return;
     try {
-      const res = await getSubscriptionPlans(token);
+      const res = await getSubscriptionPlans("");
       setPlans(res.plans || []);
     } catch (err) {
       console.error(err);
     }
-  }, [token]);
+  }, [currentUser]);
 
   const fetchAllPlans = useCallback(async () => {
-    if (!token || !isOwner) return;
+    if (!currentUser || !isOwner) return;
     setPlansLoading(true);
     try {
-      const res = await listAllPlans(token);
+      const res = await listAllPlans("");
       setAllPlans(res.plans || []);
     } catch (err) {
       console.error(err);
@@ -83,13 +83,13 @@ export default function SubscriptionsPage() {
     } finally {
       setPlansLoading(false);
     }
-  }, [token, isOwner]);
+  }, [currentUser, isOwner]);
 
   const fetchUsers = useCallback(async () => {
-    if (!token) return;
+    if (!currentUser) return;
     setLoading(true);
     try {
-      const res = await listUsers(token, search, page, limit);
+      const res = await listUsers("", search, page, limit);
       setUsers(res.data.filter((u) => u.role !== "admin"));
       setTotal(res.total);
     } catch (err) {
@@ -97,7 +97,7 @@ export default function SubscriptionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, search, page]);
+  }, [currentUser, search, page]);
 
   useEffect(() => {
     fetchPlans();
@@ -106,11 +106,11 @@ export default function SubscriptionsPage() {
   }, [fetchPlans, fetchUsers, fetchAllPlans, isOwner]);
 
   async function handleActivate() {
-    if (!token || !activateDialog) return;
+    if (!currentUser || !activateDialog) return;
     setActivateError("");
     setActivating(true);
     try {
-      await activateSubscription(token, activateDialog.id, selectedMonths);
+      await activateSubscription("", activateDialog.id, selectedMonths);
       const plan = plans.find(p => p.months === selectedMonths);
       toast.success(`Đã kích hoạt gói ${plan?.label} (${formatVND(plan?.amount || 0)}) cho ${activateDialog.name || activateDialog.phone}`);
       setActivateDialog(null);
@@ -139,7 +139,7 @@ export default function SubscriptionsPage() {
   }
 
   async function handleSavePlan() {
-    if (!token) return;
+    if (!currentUser) return;
     if (!planForm.label.trim() || planForm.months <= 0 || planForm.amount < 0) {
       setPlanError("Vui lòng nhập đầy đủ thông tin hợp lệ");
       return;
@@ -148,7 +148,7 @@ export default function SubscriptionsPage() {
     setPlanError("");
     try {
       if (editingPlan) {
-        await updatePlan(token, editingPlan.id, {
+        await updatePlan("", editingPlan.id, {
           months: planForm.months,
           amount: planForm.amount,
           label: planForm.label,
@@ -156,7 +156,7 @@ export default function SubscriptionsPage() {
         });
         toast.success("Đã cập nhật gói dịch vụ");
       } else {
-        await createPlan(token, {
+        await createPlan("", {
           months: planForm.months,
           amount: planForm.amount,
           label: planForm.label,
@@ -174,10 +174,10 @@ export default function SubscriptionsPage() {
   }
 
   async function handleDeletePlan() {
-    if (!token || !deleteTarget) return;
+    if (!currentUser || !deleteTarget) return;
     setDeleting(true);
     try {
-      await deletePlan(token, deleteTarget.id);
+      await deletePlan("", deleteTarget.id);
       toast.success(`Đã xóa gói "${deleteTarget.label}"`);
       setDeleteTarget(null);
       fetchAllPlans();

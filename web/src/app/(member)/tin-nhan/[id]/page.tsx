@@ -32,12 +32,6 @@ import { toast } from "sonner";
 const MAX_CHAT_IMAGES = 10;
 const RECALL_LIMIT_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-// Phoenix WebSocket protocol helpers
-let wsRef = 0;
-function nextRef() {
-  return String(++wsRef);
-}
-
 function formatDateHeader(dateStr: string) {
   const d = new Date(dateStr);
   const now = new Date();
@@ -139,7 +133,6 @@ export default function ChatRoomPage() {
 
   // WebSocket
   const wsSocketRef = useRef<WebSocket | null>(null);
-  const heartbeatRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const [wsConnected, setWsConnected] = useState(false);
 
   // Typing indicator
@@ -154,12 +147,12 @@ export default function ChatRoomPage() {
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
-  // --- WebSocket connection ---
+  // --- WebSocket connection (Go backend, cookie-based auth) ---
   const connectWs = useCallback(() => {
-    if (!token || !convId) return;
+    if (!convId) return;
 
     const wsUrl = typeof window !== "undefined"
-      ? `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/socket/websocket?token=${token}`
+      ? `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/api/v1/ws?conversation_id=${convId}`
       : "";
 
     if (!wsUrl) return;
@@ -168,54 +161,47 @@ export default function ChatRoomPage() {
     wsSocketRef.current = ws;
 
     ws.onopen = () => {
-      // Join channel
-      ws.send(JSON.stringify({
-        topic: `chat:${convId}`,
-        event: "phx_join",
-        payload: {},
-        ref: nextRef(),
-      }));
+      setWsConnected(true);
+      // Stop polling when WS connected
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = undefined;
+      }
     };
 
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
 
-        if (data.event === "phx_reply" && data.payload?.status === "ok" && data.topic === `chat:${convId}`) {
-          setWsConnected(true);
-          // Stop polling when WS connected
-          if (pollingRef.current) {
-            clearInterval(pollingRef.current);
-            pollingRef.current = undefined;
-          }
-        }
-
-        if (data.event === "new_message" && data.topic === `chat:${convId}`) {
+        if (data.event === "new_message" && data.message) {
           const msg: Message = {
-            id: data.payload.id,
-            conversation_id: data.payload.conversation_id,
-            sender_id: data.payload.sender_id,
-            content: data.payload.content,
-            type: data.payload.type,
-            created_at: data.payload.timestamp || data.payload.created_at,
+            id: data.message.id,
+            conversation_id: data.message.conversation_id,
+            sender_id: data.message.sender_id,
+            content: data.message.content,
+            type: data.message.type,
+            created_at: data.message.created_at,
           };
           setMessages((prev) => {
             if (prev.some((m) => m.id === msg.id)) return prev;
             return [...prev, msg];
           });
-          // Mark as read if from other user
           if (msg.sender_id !== user?.id) {
-            markConversationRead(token, convId).catch(() => {});
+            markConversationRead(token ?? "", convId).catch(() => {});
           }
           setTypingUser(null);
         }
 
-        if (data.event === "typing" && data.topic === `chat:${convId}`) {
-          if (data.payload.user_id !== user?.id) {
-            setTypingUser(data.payload.user_id);
+        if (data.event === "typing") {
+          if (data.user_id !== user?.id) {
+            setTypingUser(data.user_id);
             if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
             typingTimeoutRef.current = setTimeout(() => setTypingUser(null), 3000);
           }
+        }
+
+        if (data.event === "read_receipt") {
+          // Could update read status UI in future
         }
       } catch {
         // ignore parse errors
@@ -224,8 +210,7 @@ export default function ChatRoomPage() {
 
     ws.onclose = () => {
       setWsConnected(false);
-      // Restart polling as fallback
-      if (!pollingRef.current && token && convId) {
+      if (!pollingRef.current && convId) {
         startPolling();
       }
     };
@@ -233,24 +218,12 @@ export default function ChatRoomPage() {
     ws.onerror = () => {
       // will trigger onclose
     };
-
-    // Heartbeat every 30s
-    heartbeatRef.current = setInterval(() => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({
-          topic: "phoenix",
-          event: "heartbeat",
-          payload: {},
-          ref: nextRef(),
-        }));
-      }
-    }, 30000);
-  }, [token, convId, user?.id]);
+  }, [convId, user?.id]);
 
   function startPolling() {
     pollingRef.current = setInterval(async () => {
       try {
-        const res = await getMessages(token!, convId!, 1, 100);
+        const res = await getMessages(token ?? "", convId!, 1, 100);
         setMessages((res.data ?? []).reverse());
       } catch {
         // ignore
@@ -258,7 +231,7 @@ export default function ChatRoomPage() {
     }, 3000);
   }
 
-  // Send typing event
+  // Send typing event via WebSocket
   function sendTyping() {
     const now = Date.now();
     if (now - lastTypingSentRef.current < 2000) return;
@@ -266,24 +239,19 @@ export default function ChatRoomPage() {
 
     const ws = wsSocketRef.current;
     if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        topic: `chat:${convId}`,
-        event: "typing",
-        payload: {},
-        ref: nextRef(),
-      }));
+      ws.send(JSON.stringify({ event: "typing" }));
     }
   }
 
   // --- Init ---
   useEffect(() => {
-    if (!token || !convId) return;
+    if (!user || !convId) return;
 
     async function fetchMessages() {
       try {
-        const res = await getMessages(token!, convId!, 1, 100);
+        const res = await getMessages(token ?? "", convId!, 1, 100);
         setMessages((res.data ?? []).reverse());
-        markConversationRead(token!, convId!).catch(() => {});
+        markConversationRead(token ?? "", convId!).catch(() => {});
       } catch {
         // ignore
       } finally {
@@ -299,7 +267,6 @@ export default function ChatRoomPage() {
 
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
-      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       const ws = wsSocketRef.current;
       if (ws) {
@@ -307,7 +274,7 @@ export default function ChatRoomPage() {
         wsSocketRef.current = null;
       }
     };
-  }, [token, convId, connectWs]);
+  }, [convId, connectWs]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

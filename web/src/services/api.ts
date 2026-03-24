@@ -322,6 +322,14 @@ export async function changePhone(token: string, newPhone: string, code: string)
   });
 }
 
+export async function deleteAccount(token: string, password: string) {
+  return request<{ message: string }>("/users/me", {
+    token,
+    method: "DELETE",
+    body: JSON.stringify({ password }),
+  });
+}
+
 // --- Public ---
 export async function getPriceBoard() {
   return request<PriceBoardResponse>("/marketplace/price-board");
