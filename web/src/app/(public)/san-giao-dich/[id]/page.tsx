@@ -34,7 +34,7 @@ export default function ListingDetailPage() {
 
   useEffect(() => {
     if (id) {
-      getListingDetail(id)
+      getListingDetail(id, token || undefined)
         .then(setListing)
         .catch((err) => {
           if (err?.status === 403) {
@@ -45,7 +45,7 @@ export default function ListingDetailPage() {
         })
         .finally(() => setLoading(false));
     }
-  }, [id]);
+  }, [id, token]);
 
   async function handleContact() {
     if (!token || !user) {

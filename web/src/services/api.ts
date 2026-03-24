@@ -349,8 +349,8 @@ export async function searchMarketplace(params: {
   return request<PaginatedResponse<Listing>>(`/marketplace/search?${sp}`);
 }
 
-export async function getListingDetail(id: string) {
-  return request<ListingDetail>(`/marketplace/${id}`);
+export async function getListingDetail(id: string, token?: string) {
+  return request<ListingDetail>(`/marketplace/${id}`, { token });
 }
 
 export async function getPublicProfile(userId: string) {
