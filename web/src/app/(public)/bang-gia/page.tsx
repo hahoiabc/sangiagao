@@ -79,8 +79,8 @@ export default function PriceBoardPage() {
         ) : data ? (
           <div className="space-y-6">
             {data.categories.map((cat) => (
-              <Card key={cat.category_key}>
-                <CardHeader className="py-4 px-5 bg-gradient-to-r from-green-800 to-green-600 rounded-t-lg">
+              <Card key={cat.category_key} className="py-0 gap-0 overflow-hidden">
+                <CardHeader className="py-4 px-5 bg-gradient-to-r from-green-800 to-green-600">
                   <CardTitle className="text-base flex items-center gap-3 text-white">
                     <span className="flex items-center justify-center h-8 w-8 rounded-lg bg-white/20">
                       <Wheat className="h-4.5 w-4.5 text-white" />
