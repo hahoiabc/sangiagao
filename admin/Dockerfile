@@ -6,7 +6,7 @@ RUN npm ci
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NEXT_PUBLIC_API_URL=https://sangiagao.vn/api/v1
+ENV NEXT_PUBLIC_API_URL=https://admin.sangiagao.vn/api/v1
 RUN npm run build
 
 FROM node:22-alpine
