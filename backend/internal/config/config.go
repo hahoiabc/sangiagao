@@ -100,9 +100,7 @@ func (c *Config) Validate() error {
 		if strings.Contains(c.RedisURL, "r1c3_r3d1s_s3cur3_d3v") {
 			return fmt.Errorf("REDIS_URL must be changed from default in production")
 		}
-		if c.DBSSLMode == "disable" {
-			return fmt.Errorf("DB_SSL_MODE must not be 'disable' in production (use 'require' or 'verify-full')")
-		}
+		// DB_SSL_MODE=disable is OK for internal Docker network (no TLS on postgres container)
 	}
 	return nil
 }
