@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Wheat, TrendingUp, Eye, Users } from "lucide-react";
+import { Wheat, Eye, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,12 +45,6 @@ export default function PriceBoardPage() {
             Bảng giá gạo cập nhật liên tục từ các thành viên trên toàn quốc
           </p>
           <div className="flex items-center justify-center gap-3">
-            <Link href="/san-giao-dich">
-              <Button size="lg" className="gap-2 bg-white text-primary hover:bg-white/90">
-                <TrendingUp className="h-4 w-4" />
-                Xem tin đăng
-              </Button>
-            </Link>
             {!token && (
               <Link href="/dang-ky">
                 <Button size="lg" className="gap-2 bg-yellow-400 text-gray-900 hover:bg-yellow-300 border-0">
