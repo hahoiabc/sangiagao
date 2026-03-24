@@ -16,6 +16,7 @@ import {
   type User as UserType,
 } from "@/services/api";
 import { useAuth } from "@/lib/auth";
+import { useThemeColor, THEME_OPTIONS } from "@/lib/theme-color";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils";
 import Link from "next/link";
@@ -23,6 +24,7 @@ import LocationPicker from "@/components/location-picker";
 
 export default function ProfilePage() {
   const { token, logout, user: authUser } = useAuth();
+  const { themeKey, setThemeKey } = useThemeColor();
   const [profile, setProfile] = useState<UserType | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -426,6 +428,27 @@ export default function ProfilePage() {
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </Link>
+                {/* Theme color picker */}
+                <div className="p-3">
+                  <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                    <span className="h-5 w-5 flex items-center justify-center">🎨</span>
+                    Màu chủ đạo
+                  </p>
+                  <div className="flex gap-2">
+                    {THEME_OPTIONS.map((t) => (
+                      <button
+                        key={t.key}
+                        type="button"
+                        onClick={() => setThemeKey(t.key)}
+                        className={`h-8 w-8 rounded-full border-2 transition-all ${
+                          themeKey === t.key ? "border-foreground scale-110" : "border-transparent hover:scale-105"
+                        }`}
+                        style={{ backgroundColor: t.hex }}
+                        title={t.label}
+                      />
+                    ))}
+                  </div>
+                </div>
                 <button
                   type="button"
                   onClick={handleLogout}

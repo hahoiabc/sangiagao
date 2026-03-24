@@ -62,6 +62,37 @@ class AppColors {
 class AppTheme {
   AppTheme._();
 
+  static ThemeData withPrimary(Color primary, Color primaryDark, Color primaryLight) {
+    final colorScheme = ColorScheme(
+      brightness: Brightness.light,
+      primary: primary,
+      onPrimary: AppColors.onPrimary,
+      primaryContainer: primaryLight.withValues(alpha: 0.3),
+      onPrimaryContainer: primaryDark,
+      secondary: AppColors.secondary,
+      onSecondary: Colors.black,
+      secondaryContainer: const Color(0xFFFFF8E1),
+      onSecondaryContainer: const Color(0xFF3E2723),
+      tertiary: AppColors.info,
+      onTertiary: Colors.white,
+      error: AppColors.error,
+      onError: Colors.white,
+      errorContainer: const Color(0xFFFFDAD6),
+      onErrorContainer: const Color(0xFF410002),
+      surface: AppColors.surface,
+      onSurface: AppColors.textPrimary,
+      onSurfaceVariant: AppColors.textSecondary,
+      outline: AppColors.border,
+      outlineVariant: AppColors.divider,
+      surfaceContainerHighest: const Color(0xFFE8EBE0),
+      surfaceContainerHigh: const Color(0xFFEDF0E5),
+      surfaceContainerLow: const Color(0xFFF5F7F0),
+      surfaceContainer: const Color(0xFFF0F2EB),
+    );
+
+    return _buildTheme(colorScheme, primary, primaryDark);
+  }
+
   static ThemeData get light {
     const colorScheme = ColorScheme(
       brightness: Brightness.light,
@@ -90,6 +121,10 @@ class AppTheme {
       surfaceContainer: Color(0xFFF0F2EB),
     );
 
+    return _buildTheme(colorScheme, AppColors.primary, AppColors.primaryDark);
+  }
+
+  static ThemeData _buildTheme(ColorScheme colorScheme, Color primary, Color primaryDark) {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
@@ -139,13 +174,13 @@ class AppTheme {
         backgroundColor: AppColors.surface,
         surfaceTintColor: Colors.transparent,
         shadowColor: AppColors.border,
-        indicatorColor: AppColors.primary.withValues(alpha: 0.12),
+        indicatorColor: primary.withValues(alpha: 0.12),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return const TextStyle(
+            return TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: AppColors.primary,
+              color: primary,
               letterSpacing: 0.2,
             );
           }
@@ -158,7 +193,7 @@ class AppTheme {
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return const IconThemeData(color: AppColors.primary, size: 24);
+            return IconThemeData(color: primary, size: 24);
           }
           return const IconThemeData(color: AppColors.textHint, size: 24);
         }),
@@ -167,7 +202,7 @@ class AppTheme {
       // --- Buttons ---
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: AppColors.primary,
+          backgroundColor: primary,
           foregroundColor: AppColors.onPrimary,
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -177,16 +212,16 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primary,
+          foregroundColor: primary,
           minimumSize: const Size(double.infinity, 52),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          side: const BorderSide(color: AppColors.primary, width: 1.5),
+          side: BorderSide(color: primary, width: 1.5),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.3),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.primary,
+          foregroundColor: primary,
           textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
@@ -207,7 +242,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+          borderSide: BorderSide(color: primary, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -221,13 +256,13 @@ class AppTheme {
         hintStyle: const TextStyle(color: AppColors.textHint, fontSize: 14),
         prefixIconColor: AppColors.textHint,
         suffixIconColor: AppColors.textHint,
-        floatingLabelStyle: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500),
+        floatingLabelStyle: TextStyle(color: primary, fontWeight: FontWeight.w500),
       ),
 
       // --- Chip ---
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.surfaceVariant,
-        selectedColor: AppColors.primary.withValues(alpha: 0.12),
+        selectedColor: primary.withValues(alpha: 0.12),
         labelStyle: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         side: const BorderSide(color: AppColors.border),
@@ -316,36 +351,36 @@ class AppTheme {
       ),
 
       // --- FloatingActionButton ---
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: AppColors.primary,
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: primary,
         foregroundColor: AppColors.onPrimary,
         elevation: 3,
-        shape: CircleBorder(),
+        shape: const CircleBorder(),
       ),
 
       // --- TabBar ---
-      tabBarTheme: const TabBarThemeData(
-        labelColor: AppColors.primary,
+      tabBarTheme: TabBarThemeData(
+        labelColor: primary,
         unselectedLabelColor: AppColors.textHint,
-        indicatorColor: AppColors.primary,
-        labelStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        unselectedLabelStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
+        indicatorColor: primary,
+        labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        unselectedLabelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
       ),
 
       // --- ProgressIndicator ---
-      progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: AppColors.primary,
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: primary,
         linearTrackColor: AppColors.divider,
       ),
 
       // --- Switch ---
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return AppColors.primary;
+          if (states.contains(WidgetState.selected)) return primary;
           return AppColors.textHint;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return AppColors.primary.withValues(alpha: 0.3);
+          if (states.contains(WidgetState.selected)) return primary.withValues(alpha: 0.3);
           return AppColors.border;
         }),
       ),
