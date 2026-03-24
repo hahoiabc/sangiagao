@@ -303,7 +303,6 @@ services:
         apk add --no-cache postgresql16-client mongodb-tools dcron tzdata &&
         cp /usr/share/zoneinfo/Asia/Ho_Chi_Minh /etc/localtime &&
         echo "Asia/Ho_Chi_Minh" > /etc/timezone &&
-        chmod +x /backup.sh &&
         echo "0 2 * * * /backup.sh >> /backup/backup.log 2>&1" | crontab - &&
         echo "[$(date)] Backup scheduler started - daily at 02:00 AM" >> /backup/backup.log &&
         crond -f -l 2
