@@ -137,7 +137,11 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
           borderRadius: BorderRadius.circular(16),
           gradient: LinearGradient(
             colors: isActive
-                ? [AppColors.primaryDark, AppColors.primary, AppColors.primaryLight]
+                ? [
+                    Theme.of(context).colorScheme.onPrimaryContainer,
+                    Theme.of(context).colorScheme.primary,
+                    Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 1.0),
+                  ]
                 : [const Color(0xFFC62828), AppColors.error, const Color(0xFFEF5350)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,

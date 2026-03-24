@@ -105,9 +105,12 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
           // Category header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [AppColors.primaryDark, AppColors.primary],
+                colors: [
+                  theme.colorScheme.onPrimaryContainer,
+                  theme.colorScheme.primary,
+                ],
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
               ),

@@ -9,10 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getPriceBoard, type PriceBoardResponse } from "@/services/api";
 import { useAuth } from "@/lib/auth";
+import { useThemeColor } from "@/lib/theme-color";
 import { formatPrice, timeAgo } from "@/lib/utils";
 
 export default function PriceBoardPage() {
   const { token } = useAuth();
+  const { currentTheme } = useThemeColor();
   const [data, setData] = useState<PriceBoardResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -84,7 +86,7 @@ export default function PriceBoardPage() {
           <div className="space-y-6">
             {data.categories.map((cat) => (
               <Card key={cat.category_key} className="py-0 gap-0 overflow-hidden">
-                <CardHeader className="py-4 px-5 bg-gradient-to-r from-green-800 to-green-600">
+                <CardHeader className="py-4 px-5" style={{ background: `linear-gradient(to right, ${currentTheme.hexDark}, ${currentTheme.hex})` }}>
                   <CardTitle className="text-base flex items-center gap-3 text-white">
                     <span className="flex items-center justify-center h-8 w-8 rounded-lg bg-white/20">
                       <Wheat className="h-4.5 w-4.5 text-white" />

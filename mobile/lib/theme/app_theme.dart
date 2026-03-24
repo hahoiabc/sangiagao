@@ -63,6 +63,15 @@ class AppTheme {
   AppTheme._();
 
   static ThemeData withPrimary(Color primary, Color primaryDark, Color primaryLight) {
+    // Derive tinted surface colors from primary
+    final scaffoldBg = Color.lerp(Colors.white, primary, 0.04)!;
+    final containerLow = Color.lerp(Colors.white, primary, 0.03)!;
+    final container = Color.lerp(Colors.white, primary, 0.05)!;
+    final containerHigh = Color.lerp(Colors.white, primary, 0.07)!;
+    final containerHighest = Color.lerp(Colors.white, primary, 0.09)!;
+    final borderColor = Color.lerp(Colors.white, primary, 0.12)!;
+    final dividerColor = Color.lerp(Colors.white, primary, 0.08)!;
+
     final colorScheme = ColorScheme(
       brightness: Brightness.light,
       primary: primary,
@@ -82,15 +91,15 @@ class AppTheme {
       surface: AppColors.surface,
       onSurface: AppColors.textPrimary,
       onSurfaceVariant: AppColors.textSecondary,
-      outline: AppColors.border,
-      outlineVariant: AppColors.divider,
-      surfaceContainerHighest: const Color(0xFFE8EBE0),
-      surfaceContainerHigh: const Color(0xFFEDF0E5),
-      surfaceContainerLow: const Color(0xFFF5F7F0),
-      surfaceContainer: const Color(0xFFF0F2EB),
+      outline: borderColor,
+      outlineVariant: dividerColor,
+      surfaceContainerHighest: containerHighest,
+      surfaceContainerHigh: containerHigh,
+      surfaceContainerLow: containerLow,
+      surfaceContainer: container,
     );
 
-    return _buildTheme(colorScheme, primary, primaryDark);
+    return _buildTheme(colorScheme, primary, primaryDark, scaffoldBg: scaffoldBg);
   }
 
   static ThemeData get light {
@@ -124,11 +133,11 @@ class AppTheme {
     return _buildTheme(colorScheme, AppColors.primary, AppColors.primaryDark);
   }
 
-  static ThemeData _buildTheme(ColorScheme colorScheme, Color primary, Color primaryDark) {
+  static ThemeData _buildTheme(ColorScheme colorScheme, Color primary, Color primaryDark, {Color? scaffoldBg}) {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: AppColors.background,
+      scaffoldBackgroundColor: scaffoldBg ?? AppColors.background,
       fontFamily: null, // system font for Vietnamese
 
       // --- AppBar ---
@@ -454,6 +463,13 @@ class AppStyles {
   // Gradient for subscription/premium sections
   static LinearGradient get primaryGradient => const LinearGradient(
         colors: [AppColors.primaryDark, AppColors.primary, AppColors.primaryLight],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+
+  /// Dynamic gradient that follows the current theme
+  static LinearGradient primaryGradientOf(ColorScheme cs) => LinearGradient(
+        colors: [cs.onPrimaryContainer, cs.primary, cs.primaryContainer.withValues(alpha: 1.0)],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       );
