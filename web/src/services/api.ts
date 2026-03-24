@@ -340,8 +340,9 @@ export async function searchMarketplace(params: {
   limit?: number;
 }) {
   const sp = new URLSearchParams();
+  const keyMap: Record<string, string> = { rice_type: "type" };
   Object.entries(params).forEach(([k, v]) => {
-    if (v !== undefined && v !== "") sp.set(k, String(v));
+    if (v !== undefined && v !== "") sp.set(keyMap[k] || k, String(v));
   });
   if (!sp.has("page")) sp.set("page", "1");
   if (!sp.has("limit")) sp.set("limit", "20");
