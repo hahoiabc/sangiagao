@@ -1,5 +1,9 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../config/env.dart';
 import '../models/user.dart';
 import '../models/listing.dart';
 import '../models/conversation.dart';
@@ -7,19 +11,39 @@ import '../models/rating.dart';
 import '../models/price_board.dart';
 import '../models/product_catalog.dart';
 
+/// Trusted hostnames for TLS certificate validation.
+const _trustedHosts = ['sangiagao.vn', 'www.sangiagao.vn'];
+
+Dio _createDio() {
+  final dio = Dio(BaseOptions(
+    baseUrl: ApiService.baseUrl,
+    connectTimeout: const Duration(seconds: 10),
+    receiveTimeout: const Duration(seconds: 15),
+    sendTimeout: const Duration(seconds: 15),
+  ));
+
+  // In production, reject certificates for untrusted hosts
+  if (!kDebugMode) {
+    (dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
+      final client = HttpClient();
+      client.badCertificateCallback = (X509Certificate cert, String host, int port) {
+        return _trustedHosts.contains(host);
+      };
+      return client;
+    };
+  }
+
+  return dio;
+}
+
 class ApiService {
-  static const String baseUrl = 'https://sangiagao.vn/api/v1';
+  static const String baseUrl = Env.apiBaseUrl;
 
   final Dio _dio;
   final FlutterSecureStorage _storage;
 
   ApiService({Dio? dio, FlutterSecureStorage? storage})
-      : _dio = dio ?? Dio(BaseOptions(
-          baseUrl: baseUrl,
-          connectTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 15),
-          sendTimeout: const Duration(seconds: 15),
-        )),
+      : _dio = dio ?? _createDio(),
         _storage = storage ?? const FlutterSecureStorage() {
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
@@ -38,6 +62,9 @@ class ApiService {
             opts.headers['Authorization'] = 'Bearer $token';
             final response = await _dio.fetch(opts);
             return handler.resolve(response);
+          } else {
+            // Refresh failed — clear tokens to force re-login
+            await _storage.deleteAll();
           }
         }
         return handler.next(error);
@@ -50,7 +77,7 @@ class ApiService {
       final refreshToken = await _storage.read(key: 'refresh_token');
       if (refreshToken == null) return false;
 
-      final res = await Dio(BaseOptions(baseUrl: baseUrl)).post(
+      final res = await _createDio().post(
         '/auth/refresh',
         data: {'refresh_token': refreshToken},
       );
@@ -138,7 +165,14 @@ class ApiService {
     return User.fromJson(res.data);
   }
 
+  static const _maxImageBytes = 5 * 1024 * 1024; // 5 MB
+  static const _maxAudioBytes = 10 * 1024 * 1024; // 10 MB
+
   Future<String> uploadImage(String filePath, String folder) async {
+    final file = File(filePath);
+    if (await file.length() > _maxImageBytes) {
+      throw Exception('Ảnh không được vượt quá 5 MB');
+    }
     final formData = FormData.fromMap({
       'image': await MultipartFile.fromFile(filePath),
       'folder': folder,
@@ -148,6 +182,10 @@ class ApiService {
   }
 
   Future<String> uploadAudio(String filePath) async {
+    final file = File(filePath);
+    if (await file.length() > _maxAudioBytes) {
+      throw Exception('File âm thanh không được vượt quá 10 MB');
+    }
     final formData = FormData.fromMap({
       'audio': await MultipartFile.fromFile(filePath, contentType: DioMediaType('audio', 'm4a')),
     });
@@ -360,6 +398,11 @@ class ApiService {
   }
 
   // --- Account ---
+  Future<void> deleteAccount() async {
+    await _dio.delete('/users/me');
+    await _storage.deleteAll();
+  }
+
   Future<void> changePasswordAuth(String currentPassword, String newPassword) async {
     await _dio.post('/users/me/password', data: {
       'current_password': currentPassword,

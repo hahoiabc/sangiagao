@@ -76,6 +76,10 @@ func (m *mockChatService) MarkConversationRead(ctx context.Context, userID, conv
 	args := m.Called(ctx, userID, conversationID)
 	return args.Error(0)
 }
+func (m *mockChatService) IsParticipant(ctx context.Context, conversationID, userID string) (bool, error) {
+	args := m.Called(ctx, conversationID, userID)
+	return args.Bool(0), args.Error(1)
+}
 
 func setupConvRouter(h *ConversationHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)

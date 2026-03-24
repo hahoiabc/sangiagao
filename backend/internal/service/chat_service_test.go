@@ -79,7 +79,7 @@ func (m *mockConvRepo) RecallMessages(ctx context.Context, messageIDs []string) 
 
 func TestChatCreateConversation_Success(t *testing.T) {
 	repo := new(mockConvRepo)
-	svc := NewChatService(repo)
+	svc := NewChatService(repo, nil)
 
 	req := &model.CreateConversationRequest{SellerID: "seller-1"}
 	repo.On("FindOrCreate", mock.Anything, "buyer-1", "seller-1", (*string)(nil)).
@@ -92,7 +92,7 @@ func TestChatCreateConversation_Success(t *testing.T) {
 
 func TestChatCreateConversation_SelfChat(t *testing.T) {
 	repo := new(mockConvRepo)
-	svc := NewChatService(repo)
+	svc := NewChatService(repo, nil)
 
 	req := &model.CreateConversationRequest{SellerID: "user-1"}
 	_, err := svc.CreateConversation(context.Background(), "user-1", req)
@@ -101,7 +101,7 @@ func TestChatCreateConversation_SelfChat(t *testing.T) {
 
 func TestChatCreateConversation_WithListingID(t *testing.T) {
 	repo := new(mockConvRepo)
-	svc := NewChatService(repo)
+	svc := NewChatService(repo, nil)
 
 	listingID := "listing-1"
 	req := &model.CreateConversationRequest{SellerID: "seller-1", ListingID: &listingID}
@@ -115,7 +115,7 @@ func TestChatCreateConversation_WithListingID(t *testing.T) {
 
 func TestChatListConversations_Success(t *testing.T) {
 	repo := new(mockConvRepo)
-	svc := NewChatService(repo)
+	svc := NewChatService(repo, nil)
 
 	convs := []*model.Conversation{{ID: "conv-1"}, {ID: "conv-2"}}
 	repo.On("ListByUser", mock.Anything, "user-1", 1, 20).Return(convs, 2, nil)
@@ -128,7 +128,7 @@ func TestChatListConversations_Success(t *testing.T) {
 
 func TestChatListConversations_DefaultPagination(t *testing.T) {
 	repo := new(mockConvRepo)
-	svc := NewChatService(repo)
+	svc := NewChatService(repo, nil)
 
 	repo.On("ListByUser", mock.Anything, "user-1", 1, 20).Return([]*model.Conversation{}, 0, nil)
 
@@ -139,7 +139,7 @@ func TestChatListConversations_DefaultPagination(t *testing.T) {
 
 func TestChatSendMessage_Success(t *testing.T) {
 	repo := new(mockConvRepo)
-	svc := NewChatService(repo)
+	svc := NewChatService(repo, nil)
 
 	repo.On("IsParticipant", mock.Anything, "conv-1", "user-1").Return(true, nil)
 	repo.On("SendMessage", mock.Anything, "conv-1", "user-1", "Hello", "text").
@@ -154,7 +154,7 @@ func TestChatSendMessage_Success(t *testing.T) {
 
 func TestChatSendMessage_NotParticipant(t *testing.T) {
 	repo := new(mockConvRepo)
-	svc := NewChatService(repo)
+	svc := NewChatService(repo, nil)
 
 	repo.On("IsParticipant", mock.Anything, "conv-1", "user-1").Return(false, nil)
 
@@ -165,7 +165,7 @@ func TestChatSendMessage_NotParticipant(t *testing.T) {
 
 func TestChatSendMessage_ConversationNotFound(t *testing.T) {
 	repo := new(mockConvRepo)
-	svc := NewChatService(repo)
+	svc := NewChatService(repo, nil)
 
 	repo.On("IsParticipant", mock.Anything, "conv-999", "user-1").
 		Return(false, repository.ErrConversationNotFound)
@@ -177,7 +177,7 @@ func TestChatSendMessage_ConversationNotFound(t *testing.T) {
 
 func TestChatGetMessages_Success(t *testing.T) {
 	repo := new(mockConvRepo)
-	svc := NewChatService(repo)
+	svc := NewChatService(repo, nil)
 
 	repo.On("IsParticipant", mock.Anything, "conv-1", "user-1").Return(true, nil)
 	repo.On("MarkRead", mock.Anything, "conv-1", "user-1").Return(nil)
@@ -192,7 +192,7 @@ func TestChatGetMessages_Success(t *testing.T) {
 
 func TestChatGetMessages_NotParticipant(t *testing.T) {
 	repo := new(mockConvRepo)
-	svc := NewChatService(repo)
+	svc := NewChatService(repo, nil)
 
 	repo.On("IsParticipant", mock.Anything, "conv-1", "user-1").Return(false, nil)
 
@@ -202,7 +202,7 @@ func TestChatGetMessages_NotParticipant(t *testing.T) {
 
 func TestChatGetMessages_DefaultPagination(t *testing.T) {
 	repo := new(mockConvRepo)
-	svc := NewChatService(repo)
+	svc := NewChatService(repo, nil)
 
 	repo.On("IsParticipant", mock.Anything, "conv-1", "user-1").Return(true, nil)
 	repo.On("MarkRead", mock.Anything, "conv-1", "user-1").Return(nil)
@@ -215,7 +215,7 @@ func TestChatGetMessages_DefaultPagination(t *testing.T) {
 
 func TestChatSendMessage_ImageType(t *testing.T) {
 	repo := new(mockConvRepo)
-	svc := NewChatService(repo)
+	svc := NewChatService(repo, nil)
 
 	repo.On("IsParticipant", mock.Anything, "conv-1", "user-1").Return(true, nil)
 	repo.On("SendMessage", mock.Anything, "conv-1", "user-1", "https://img.com/photo.jpg", "image").

@@ -19,6 +19,7 @@ type RateLimiterStore struct {
 	limiters map[string]*ipLimiter
 	rps      rate.Limit
 	burst    int
+	stop     chan struct{}
 }
 
 func NewRateLimiterStore(rps int, burst int) *RateLimiterStore {
@@ -26,18 +27,29 @@ func NewRateLimiterStore(rps int, burst int) *RateLimiterStore {
 		limiters: make(map[string]*ipLimiter),
 		rps:      rate.Limit(rps),
 		burst:    burst,
+		stop:     make(chan struct{}),
 	}
 
 	// Cleanup stale entries every 5 minutes
 	go func() {
 		ticker := time.NewTicker(5 * time.Minute)
 		defer ticker.Stop()
-		for range ticker.C {
-			store.cleanup()
+		for {
+			select {
+			case <-ticker.C:
+				store.cleanup()
+			case <-store.stop:
+				return
+			}
 		}
 	}()
 
 	return store
+}
+
+// Stop terminates the background cleanup goroutine.
+func (s *RateLimiterStore) Stop() {
+	close(s.stop)
 }
 
 const maxLimiterEntries = 10000

@@ -20,11 +20,12 @@ var (
 
 type ChatService struct {
 	convRepo ConversationRepository
+	userRepo UserRepository
 	cache    cache.Cache
 }
 
-func NewChatService(convRepo ConversationRepository) *ChatService {
-	return &ChatService{convRepo: convRepo}
+func NewChatService(convRepo ConversationRepository, userRepo UserRepository) *ChatService {
+	return &ChatService{convRepo: convRepo, userRepo: userRepo}
 }
 
 func (s *ChatService) SetCache(c cache.Cache) {
@@ -68,6 +69,17 @@ func (s *ChatService) ListConversations(ctx context.Context, userID string, page
 }
 
 func (s *ChatService) SendMessage(ctx context.Context, userID, conversationID string, req *model.SendMessageRequest) (*model.Message, error) {
+	// Check if sender is blocked
+	if s.userRepo != nil {
+		user, err := s.userRepo.GetByID(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		if user.IsBlocked {
+			return nil, ErrUserBlocked
+		}
+	}
+
 	ok, err := s.convRepo.IsParticipant(ctx, conversationID, userID)
 	if err != nil {
 		if errors.Is(err, repository.ErrConversationNotFound) {
@@ -161,7 +173,21 @@ func (s *ChatService) DeleteMessages(ctx context.Context, userID, conversationID
 	if !ok {
 		return ErrNotParticipant
 	}
+	// Verify ownership of each message
+	for _, msgID := range messageIDs {
+		msg, err := s.convRepo.GetMessageByID(ctx, msgID)
+		if err != nil {
+			return ErrMessageNotFound
+		}
+		if msg.ConversationID != conversationID || msg.SenderID != userID {
+			return ErrNotMessageOwner
+		}
+	}
 	return s.convRepo.DeleteMessages(ctx, messageIDs)
+}
+
+func (s *ChatService) IsParticipant(ctx context.Context, conversationID, userID string) (bool, error) {
+	return s.convRepo.IsParticipant(ctx, conversationID, userID)
 }
 
 func (s *ChatService) RecallMessages(ctx context.Context, userID, conversationID string, messageIDs []string) error {
@@ -171,6 +197,19 @@ func (s *ChatService) RecallMessages(ctx context.Context, userID, conversationID
 	}
 	if !ok {
 		return ErrNotParticipant
+	}
+	// Verify ownership and recall window for each message
+	for _, msgID := range messageIDs {
+		msg, err := s.convRepo.GetMessageByID(ctx, msgID)
+		if err != nil {
+			return ErrMessageNotFound
+		}
+		if msg.ConversationID != conversationID || msg.SenderID != userID {
+			return ErrNotMessageOwner
+		}
+		if time.Since(msg.CreatedAt) > 24*time.Hour {
+			return ErrRecallExpired
+		}
 	}
 	return s.convRepo.RecallMessages(ctx, messageIDs)
 }

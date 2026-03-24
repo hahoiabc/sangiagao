@@ -146,35 +146,48 @@ type BatchDeleteResult struct {
 
 func (s *AdminService) BatchBlockUsers(ctx context.Context, userIDs []string, reason, callerRole string) (*BatchBlockResult, error) {
 	result := &BatchBlockResult{Errors: []BatchItemError{}}
+
+	// Fetch all users in a single query
+	users, err := s.userRepo.GetByIDs(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	userMap := make(map[string]*model.User, len(users))
+	for _, u := range users {
+		userMap[u.ID] = u
+	}
+
+	// Filter: separate blockable IDs from errors
+	var blockableIDs []string
 	for _, id := range userIDs {
-		target, err := s.userRepo.GetByID(ctx, id)
-		if err != nil {
-			result.Errors = append(result.Errors, BatchItemError{ID: id, Error: err.Error()})
+		target, ok := userMap[id]
+		if !ok {
+			result.Errors = append(result.Errors, BatchItemError{ID: id, Error: "user not found"})
 			continue
 		}
 		if target.Role == "owner" || (target.Role == "admin" && callerRole != "owner") {
 			result.Errors = append(result.Errors, BatchItemError{ID: id, Error: ErrCannotModifyAdmin.Error()})
 			continue
 		}
-		_, err = s.userRepo.BlockUser(ctx, id, reason)
-		if err != nil {
-			result.Errors = append(result.Errors, BatchItemError{ID: id, Error: err.Error()})
-			continue
-		}
-		result.Blocked++
+		blockableIDs = append(blockableIDs, id)
 	}
+
+	// Single batch UPDATE for all blockable users
+	if len(blockableIDs) > 0 {
+		blocked, err := s.userRepo.BatchBlock(ctx, blockableIDs, reason)
+		if err != nil {
+			return nil, err
+		}
+		result.Blocked = blocked
+	}
+
 	return result, nil
 }
 
 func (s *AdminService) BatchDeleteListings(ctx context.Context, listingIDs []string) (*BatchDeleteResult, error) {
-	result := &BatchDeleteResult{Errors: []BatchItemError{}}
-	for _, id := range listingIDs {
-		err := s.listingRepo.SoftDelete(ctx, id)
-		if err != nil {
-			result.Errors = append(result.Errors, BatchItemError{ID: id, Error: err.Error()})
-			continue
-		}
-		result.Deleted++
+	deleted, err := s.listingRepo.BatchSoftDelete(ctx, listingIDs)
+	if err != nil {
+		return nil, err
 	}
-	return result, nil
+	return &BatchDeleteResult{Deleted: deleted, Errors: []BatchItemError{}}, nil
 }

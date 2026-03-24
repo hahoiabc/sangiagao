@@ -13,6 +13,10 @@ const (
 	pongWait       = 60 * time.Second
 	pingPeriod     = (pongWait * 9) / 10
 	maxMessageSize = 4096
+
+	// Rate limiting: max 10 messages per second per client
+	rateLimitBurst    = 10
+	rateLimitInterval = time.Second
 )
 
 // Client represents a single WebSocket connection.
@@ -23,6 +27,10 @@ type Client struct {
 	Send           chan []byte
 	Hub            *Hub
 	OnMessage      func(client *Client, msg []byte) // callback for incoming messages
+
+	// Rate limiting
+	msgCount  int
+	windowEnd time.Time
 }
 
 // WSMessage is the generic envelope for WebSocket events.
@@ -66,6 +74,16 @@ func (c *Client) ReadPump() {
 			break
 		}
 		if c.OnMessage != nil {
+			now := time.Now()
+			if now.After(c.windowEnd) {
+				c.msgCount = 0
+				c.windowEnd = now.Add(rateLimitInterval)
+			}
+			c.msgCount++
+			if c.msgCount > rateLimitBurst {
+				log.Printf("WS: rate limit exceeded for user %s", c.UserID)
+				continue
+			}
 			c.OnMessage(c, message)
 		}
 	}

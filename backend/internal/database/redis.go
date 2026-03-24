@@ -37,6 +37,13 @@ func NewRedisClient(rawURL string) (*redis.Client, error) {
 		return nil, err
 	}
 
+	opts.PoolSize = 30
+	opts.MinIdleConns = 5
+	opts.DialTimeout = 5 * time.Second
+	opts.ReadTimeout = 3 * time.Second
+	opts.WriteTimeout = 3 * time.Second
+	opts.ConnMaxIdleTime = 5 * time.Minute
+	opts.ConnMaxLifetime = 30 * time.Minute
 	client := redis.NewClient(opts)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

@@ -133,6 +133,17 @@ func (r *ListingRepo) SoftDelete(ctx context.Context, id string) error {
 	return nil
 }
 
+func (r *ListingRepo) BatchSoftDelete(ctx context.Context, ids []string) (int, error) {
+	tag, err := r.pool.Exec(ctx,
+		`UPDATE listings SET status = 'deleted', deleted_at = NOW()
+		 WHERE id = ANY($1) AND status != 'deleted'`, ids,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return int(tag.RowsAffected()), nil
+}
+
 func (r *ListingRepo) ListByUser(ctx context.Context, userID string, page, limit int) ([]*model.Listing, int, error) {
 	offset := (page - 1) * limit
 
@@ -330,6 +341,7 @@ func (r *ListingRepo) GetDetailWithSeller(ctx context.Context, id string) (*mode
 	if err := json.Unmarshal(imagesJSON, &d.Images); err != nil || d.Images == nil {
 		d.Images = []string{}
 	}
+	d.Seller.Phone = model.MaskPhone(d.Seller.Phone)
 	return &d, nil
 }
 

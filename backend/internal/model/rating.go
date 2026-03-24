@@ -14,7 +14,7 @@ type Rating struct {
 type CreateRatingRequest struct {
 	SellerID string `json:"seller_id" binding:"required"`
 	Stars    int    `json:"stars" binding:"required,min=1,max=5"`
-	Comment  string `json:"comment" binding:"omitempty,min=10"`
+	Comment  string `json:"comment" binding:"omitempty,min=10,max=1000"`
 }
 
 type RatingSummary struct {

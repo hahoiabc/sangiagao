@@ -14,9 +14,9 @@ type Feedback struct {
 }
 
 type CreateFeedbackRequest struct {
-	Content string `json:"content" binding:"required"`
+	Content string `json:"content" binding:"required,max=2000"`
 }
 
 type ReplyFeedbackRequest struct {
-	Reply string `json:"reply" binding:"required"`
+	Reply string `json:"reply" binding:"required,max=2000"`
 }

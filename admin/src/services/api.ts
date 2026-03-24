@@ -1,5 +1,11 @@
 import { clearAuth } from "@/lib/auth";
 
+function getCSRFToken(): string {
+  if (typeof document === "undefined") return "";
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
 
 interface RequestOptions extends RequestInit {
@@ -7,28 +13,19 @@ interface RequestOptions extends RequestInit {
 }
 
 let isRefreshing = false;
-let refreshPromise: Promise<string> | null = null;
+let refreshPromise: Promise<void> | null = null;
 
-async function tryRefreshToken(): Promise<string> {
-  const savedRefresh = localStorage.getItem("admin_refresh_token");
-  if (!savedRefresh) {
-    throw new Error("No refresh token");
-  }
-
+async function tryRefreshToken(): Promise<void> {
   const res = await fetch(`${API_BASE}/auth/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh_token: savedRefresh }),
+    credentials: "include",
+    body: JSON.stringify({}),
   });
 
   if (!res.ok) {
     throw new Error("Refresh failed");
   }
-
-  const data = await res.json();
-  localStorage.setItem("admin_token", data.access_token);
-  localStorage.setItem("admin_refresh_token", data.refresh_token);
-  return data.access_token;
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -37,26 +34,31 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     "Content-Type": "application/json",
     ...(init.headers as Record<string, string>),
   };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+  // Token header is optional — httpOnly cookies are the primary auth mechanism
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  // CSRF token for state-changing requests (cookie-based auth)
+  const method = (init.method || "GET").toUpperCase();
+  if (["POST", "PUT", "DELETE", "PATCH"].includes(method)) {
+    const csrf = getCSRFToken();
+    if (csrf) headers["X-CSRF-Token"] = csrf;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+  const res = await fetch(`${API_BASE}${path}`, { ...init, headers, credentials: "include" });
 
-  // Auto-refresh on 401 for authenticated requests
-  if (res.status === 401 && token) {
+  // Auto-refresh on 401
+  if (res.status === 401) {
     try {
       if (!isRefreshing) {
         isRefreshing = true;
         refreshPromise = tryRefreshToken();
       }
-      const newToken = await refreshPromise!;
+      await refreshPromise!;
       isRefreshing = false;
       refreshPromise = null;
 
-      // Retry with new token
-      headers["Authorization"] = `Bearer ${newToken}`;
-      const retryRes = await fetch(`${API_BASE}${path}`, { ...init, headers });
+      // Retry with new cookies (no need to set header — cookie is automatic)
+      const retryRes = await fetch(`${API_BASE}${path}`, { ...init, headers, credentials: "include" });
 
       if (!retryRes.ok) {
         const body = await retryRes.json().catch(() => ({}));
@@ -505,7 +507,7 @@ export async function replyFeedback(token: string, id: string, reply: string) {
 }
 
 // --- Profile (current admin) ---
-export async function getMe(token: string) {
+export async function getMe(token?: string) {
   return request<User>("/users/me", { token });
 }
 
@@ -518,28 +520,42 @@ export interface UpdateProfileData {
   org_name?: string;
 }
 
-export async function updateMe(token: string, data: UpdateProfileData) {
-  return request<User>("/users/me", { token, method: "PUT", body: JSON.stringify(data) });
+export async function updateMe(dataOrToken: UpdateProfileData | string, data?: UpdateProfileData) {
+  // Support both updateMe(data) and legacy updateMe(token, data)
+  const actualData = typeof dataOrToken === "string" ? data! : dataOrToken;
+  const token = typeof dataOrToken === "string" ? dataOrToken : undefined;
+  return request<User>("/users/me", { token, method: "PUT", body: JSON.stringify(actualData) });
 }
 
-export async function updateMyAvatar(token: string, url: string) {
-  return request<User>("/users/me/avatar", { token, method: "POST", body: JSON.stringify({ url }) });
+export async function updateMyAvatar(urlOrToken: string, url?: string) {
+  // Support both updateMyAvatar(url) and legacy updateMyAvatar(token, url)
+  const actualUrl = url ?? urlOrToken;
+  const token = url ? urlOrToken : undefined;
+  return request<User>("/users/me/avatar", { token, method: "POST", body: JSON.stringify({ url: actualUrl }) });
 }
 
 // --- Upload ---
-export async function uploadImage(token: string, file: File, folder: "avatars" | "listings") {
+export async function uploadImage(fileOrToken: File | string, fileOrFolder: File | "avatars" | "listings", folder?: "avatars" | "listings") {
+  // Support both uploadImage(file, folder) and legacy uploadImage(token, file, folder)
+  const token = typeof fileOrToken === "string" ? fileOrToken : undefined;
+  const actualFile = typeof fileOrToken === "string" ? fileOrFolder as File : fileOrToken;
+  const actualFolder = typeof fileOrToken === "string" ? folder! : fileOrFolder as "avatars" | "listings";
   const formData = new FormData();
-  formData.append("image", file);
-  formData.append("folder", folder);
+  formData.append("image", actualFile);
+  formData.append("folder", actualFolder);
 
-  const doUpload = (t: string) =>
-    fetch(`${API_BASE}/upload/image`, {
+  const doUpload = (t?: string) => {
+    const headers: Record<string, string> = {};
+    if (t) headers["Authorization"] = `Bearer ${t}`;
+    return fetch(`${API_BASE}/upload/image`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${t}` },
+      headers,
       body: formData,
+      credentials: "include",
     });
+  };
 
-  let res = await doUpload(token);
+  let res = await doUpload(token || undefined);
 
   // Auto-refresh on 401
   if (res.status === 401) {
@@ -548,10 +564,10 @@ export async function uploadImage(token: string, file: File, folder: "avatars" |
         isRefreshing = true;
         refreshPromise = tryRefreshToken();
       }
-      const newToken = await refreshPromise!;
+      await refreshPromise!;
       isRefreshing = false;
       refreshPromise = null;
-      res = await doUpload(newToken);
+      res = await doUpload();
     } catch {
       isRefreshing = false;
       refreshPromise = null;

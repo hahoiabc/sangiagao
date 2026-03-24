@@ -35,10 +35,18 @@ type PublicProfile struct {
 	CreatedAt   time.Time  `json:"created_at"`
 }
 
+// MaskPhone returns a masked version of a phone number, e.g. "****799".
+func MaskPhone(phone string) string {
+	if len(phone) <= 3 {
+		return "****"
+	}
+	return "****" + phone[len(phone)-3:]
+}
+
 func (u *User) ToPublicProfile() *PublicProfile {
 	return &PublicProfile{
 		ID:          u.ID,
-		Phone:       u.Phone,
+		Phone:       MaskPhone(u.Phone),
 		Role:        u.Role,
 		Name:        u.Name,
 		AvatarURL:   u.AvatarURL,
@@ -51,12 +59,12 @@ func (u *User) ToPublicProfile() *PublicProfile {
 }
 
 type RegisterRequest struct {
-	Phone    string `json:"phone" binding:"required"`
-	Name     string `json:"name" binding:"required"`
-	Password string `json:"password" binding:"required,min=6"`
-	Province string `json:"province"`
-	Ward     string `json:"ward"`
-	Code     string `json:"code" binding:"required"`
+	Phone    string `json:"phone" binding:"required,max=15"`
+	Name     string `json:"name" binding:"required,max=100"`
+	Password string `json:"password" binding:"required,min=6,max=128"`
+	Province string `json:"province" binding:"omitempty,max=100"`
+	Ward     string `json:"ward" binding:"omitempty,max=100"`
+	Code     string `json:"code" binding:"required,max=10"`
 }
 
 type LoginRequest struct {
@@ -65,12 +73,12 @@ type LoginRequest struct {
 }
 
 type UpdateProfileRequest struct {
-	Name        *string `json:"name"`
-	Role        *string `json:"role"`
-	Address     *string `json:"address"`
-	Province    *string `json:"province"`
-	Ward        *string `json:"ward"`
-	Description *string `json:"description"`
-	OrgName     *string `json:"org_name"`
+	Name        *string `json:"name" binding:"omitempty,max=100"`
+	Role        *string `json:"role" binding:"omitempty,max=20"`
+	Address     *string `json:"address" binding:"omitempty,max=200"`
+	Province    *string `json:"province" binding:"omitempty,max=100"`
+	Ward        *string `json:"ward" binding:"omitempty,max=100"`
+	Description *string `json:"description" binding:"omitempty,max=2000"`
+	OrgName     *string `json:"org_name" binding:"omitempty,max=200"`
 	AcceptTOS   *bool   `json:"accept_tos"`
 }

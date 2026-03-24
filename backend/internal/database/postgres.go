@@ -18,6 +18,9 @@ func NewPostgresPool(dsn string) (*pgxpool.Pool, error) {
 	}
 	config.MaxConns = 50
 	config.MinConns = 5
+	config.MaxConnLifetime = 30 * time.Minute
+	config.MaxConnIdleTime = 5 * time.Minute
+	config.HealthCheckPeriod = 1 * time.Minute
 
 	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {

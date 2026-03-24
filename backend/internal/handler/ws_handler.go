@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -32,6 +33,7 @@ func NewWSHandler(hub *wsPkg.Hub, jwtManager *jwtpkg.Manager, chatService ChatSe
 	// Parse allowed origins
 	if allowedOrigins == "" || allowedOrigins == "*" {
 		h.allowedOrigins = nil // nil means allow all (dev mode)
+		log.Println("[WARN] WebSocket: allowing all origins — this should only be used in development")
 	} else {
 		for _, o := range strings.Split(allowedOrigins, ",") {
 			o = strings.TrimSpace(o)
@@ -62,19 +64,43 @@ func NewWSHandler(hub *wsPkg.Hub, jwtManager *jwtpkg.Manager, chatService ChatSe
 }
 
 // Connect handles WebSocket upgrade.
-// Query params: token (JWT), conversation_id
+// Token can be provided via: Authorization header or access_token cookie.
+// Query param: conversation_id (required)
 func (h *WSHandler) Connect(c *gin.Context) {
-	token := c.Query("token")
 	conversationID := c.Query("conversation_id")
+	if conversationID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing conversation_id"})
+		return
+	}
 
-	if token == "" || conversationID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing token or conversation_id"})
+	// Extract token: Authorization header > cookie
+	token := ""
+	if header := c.GetHeader("Authorization"); header != "" {
+		token = strings.TrimPrefix(header, "Bearer ")
+		if token == header {
+			token = ""
+		}
+	}
+	if token == "" {
+		if cookie, err := c.Cookie("access_token"); err == nil && cookie != "" {
+			token = cookie
+		}
+	}
+	if token == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing authorization"})
 		return
 	}
 
 	claims, err := h.jwtManager.ValidateToken(token)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		return
+	}
+
+	// Validate user is a participant in the conversation before upgrading
+	ok, err := h.chatService.IsParticipant(c.Request.Context(), conversationID, claims.UserID)
+	if err != nil || !ok {
+		c.JSON(http.StatusForbidden, gin.H{"error": "not a participant in this conversation"})
 		return
 	}
 
@@ -125,8 +151,11 @@ func (h *WSHandler) handleSendMessage(client *wsPkg.Client, data json.RawMessage
 		return
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	msg, err := h.chatService.SendMessage(
-		context.Background(),
+		ctx,
 		client.UserID,
 		client.ConversationID,
 		&req,

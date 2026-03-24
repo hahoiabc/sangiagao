@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../theme/app_theme.dart';
+import '../providers/providers.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeIn;
+  bool _minDelayDone = false;
+  bool _navigated = false;
 
   @override
   void initState() {
@@ -21,8 +24,47 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _controller.forward();
 
     Future.delayed(const Duration(milliseconds: 2500), () {
-      if (mounted) context.go('/marketplace');
+      if (mounted) {
+        _minDelayDone = true;
+        _tryNavigate();
+      }
     });
+  }
+
+  void _tryNavigate() {
+    if (_navigated || !_minDelayDone || !mounted) return;
+    final authState = ref.read(authProvider);
+    if (authState.status == AuthStatus.unknown) return;
+
+    _navigated = true;
+
+    // Check if user was blocked
+    final authNotifier = ref.read(authProvider.notifier);
+    if (authNotifier.wasBlocked) {
+      authNotifier.wasBlocked = false;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => AlertDialog(
+          title: const Text('Tài khoản bị khóa'),
+          content: const Text(
+            'Tài khoản của bạn đã bị khóa bởi quản trị viên. '
+            'Nếu bạn cho rằng đây là nhầm lẫn, vui lòng liên hệ hỗ trợ.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                context.go('/marketplace');
+              },
+              child: const Text('Đã hiểu'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      context.go('/marketplace');
+    }
   }
 
   @override
@@ -33,6 +75,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
+    // Watch auth state to trigger navigation when auth resolves
+    ref.listen<AuthState>(authProvider, (_, __) => _tryNavigate());
+
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,

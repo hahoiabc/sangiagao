@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/sangiagao/rice-marketplace/internal/config"
 	"github.com/sangiagao/rice-marketplace/internal/database"
@@ -25,25 +27,33 @@ import (
 )
 
 func main() {
+	// Setup structured logging
+	logHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})
+	slog.SetDefault(slog.New(logHandler))
+
 	cfg := config.Load()
 	if err := cfg.Validate(); err != nil {
-		log.Fatal("Config validation failed: ", err)
+		slog.Error("Config validation failed", "error", err)
+		os.Exit(1)
 	}
 
 	// --- Database connections ---
 	pgPool, err := database.NewPostgresPool(cfg.DBDSN())
 	if err != nil {
-		log.Fatal("PostgreSQL connection failed:", err)
+		slog.Error("PostgreSQL connection failed", "error", err)
+		os.Exit(1)
 	}
 	defer pgPool.Close()
-	log.Println("PostgreSQL connected")
+	slog.Info("PostgreSQL connected")
 
 	// Redis (optional — used for caching)
 	redisClient, err := database.NewRedisClient(cfg.RedisURL)
 	if err != nil {
-		log.Println("Redis connection failed (non-fatal):", err)
+		slog.Warn("Redis connection failed (non-fatal)", "error", err)
 	} else {
-		log.Println("Redis connected")
+		slog.Info("Redis connected")
 	}
 
 	// --- MinIO Storage ---
@@ -58,12 +68,12 @@ func main() {
 	}
 	minioClient, minioErr := storage.NewMinIOClient(minioCfg)
 	if minioErr != nil {
-		log.Println("MinIO connection failed (non-fatal):", minioErr)
+		slog.Warn("MinIO connection failed (non-fatal)", "error", minioErr)
 	} else {
 		if err := minioClient.EnsureBucket(context.Background()); err != nil {
-			log.Println("MinIO bucket creation failed:", err)
+			slog.Warn("MinIO bucket creation failed", "error", err)
 		} else {
-			log.Println("MinIO connected, bucket ready")
+			slog.Info("MinIO connected, bucket ready")
 		}
 		storageClient = minioClient
 	}
@@ -72,7 +82,7 @@ func main() {
 	var appCache cache.Cache
 	if redisClient != nil {
 		appCache = cache.NewRedisCache(redisClient)
-		log.Println("Cache layer enabled (Redis)")
+		slog.Info("Cache layer enabled (Redis)")
 	}
 
 	// --- Packages ---
@@ -80,9 +90,10 @@ func main() {
 
 	phoneCrypto, err := phonecrypto.New(cfg.PhoneEncryptKey)
 	if err != nil {
-		log.Fatal("Phone encryption key invalid:", err)
+		slog.Error("Phone encryption key invalid", "error", err)
+		os.Exit(1)
 	}
-	log.Println("Phone encryption initialized")
+	slog.Info("Phone encryption initialized")
 
 	var smsSender sms.Sender
 	smsSender = sms.NewMockSender()
@@ -101,6 +112,7 @@ func main() {
 	catalogRepo := repository.NewCatalogRepo(pgPool)
 	planRepo := repository.NewPlanRepo(pgPool)
 	permissionRepo := repository.NewPermissionRepo(pgPool)
+	auditRepo := repository.NewAuditRepo(pgPool)
 
 	// --- Services ---
 	authService := service.NewAuthService(userRepo, otpRepo, subRepo, jwtManager, smsSender)
@@ -115,8 +127,11 @@ func main() {
 	pushSender := firebase.NewFCMSender(cfg.FirebaseCredPath)
 	notifService := service.NewNotificationService(notifRepo, pushSender)
 	subService.SetNotifier(notifService)
+	subService.SetOnExpiry(func(ctx context.Context) {
+		listingService.InvalidateMarketplaceCache(ctx)
+	})
 	adminService := service.NewAdminService(userRepo, listingRepo, subRepo)
-	chatService := service.NewChatService(convRepo)
+	chatService := service.NewChatService(convRepo, userRepo)
 	if appCache != nil {
 		chatService.SetCache(appCache)
 	}
@@ -133,7 +148,7 @@ func main() {
 	wsHub := ws.NewHub()
 
 	// --- Handlers ---
-	authHandler := handler.NewAuthHandler(authService)
+	authHandler := handler.NewAuthHandler(authService, cfg.CookieDomain, cfg.CookieSecure)
 	userHandler := handler.NewUserHandler(userService)
 	listingHandler := handler.NewListingHandler(listingService)
 	catalogHandler := handler.NewCatalogHandler(catalogService)
@@ -142,7 +157,7 @@ func main() {
 	ratingHandler := handler.NewRatingHandler(ratingService)
 	reportHandler := handler.NewReportHandler(reportService, notifService, listingService, adminService)
 	notifHandler := handler.NewNotificationHandler(notifService)
-	adminHandler := handler.NewAdminHandler(adminService)
+	adminHandler := handler.NewAdminHandler(adminService, auditRepo)
 	convHandler := handler.NewConversationHandler(chatService, notifService)
 	sponsorHandler := handler.NewSponsorHandler(sponsorService)
 	permissionHandler := handler.NewPermissionHandler(permissionService)
@@ -175,15 +190,43 @@ func main() {
 	}
 
 	r := gin.Default()
+	r.Use(middleware.RequestID())
+	r.Use(gzip.Gzip(gzip.DefaultCompression))
 	r.Use(middleware.SecurityHeaders())
 	r.Use(middleware.CORS(cfg.CORSOrigins))
 	r.Use(middleware.RateLimit(globalLimiter))
 	r.Use(middleware.Timeout(cfg.RequestTimeout))
 
 	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"status":  "ok",
+		status := "ok"
+		httpStatus := http.StatusOK
+		checks := gin.H{}
+
+		// DB ping
+		if err := pgPool.Ping(c.Request.Context()); err != nil {
+			status = "degraded"
+			httpStatus = http.StatusServiceUnavailable
+			checks["postgres"] = "down"
+		} else {
+			checks["postgres"] = "up"
+		}
+
+		// Redis ping
+		if redisClient != nil {
+			if err := redisClient.Ping(c.Request.Context()).Err(); err != nil {
+				checks["redis"] = "down"
+				if status == "ok" {
+					status = "degraded"
+				}
+			} else {
+				checks["redis"] = "up"
+			}
+		}
+
+		c.JSON(httpStatus, gin.H{
+			"status":  status,
 			"service": "rice-marketplace-api",
+			"checks":  checks,
 		})
 	})
 
@@ -200,6 +243,7 @@ func main() {
 			auth.POST("/complete-register", authHandler.CompleteRegister)
 			auth.POST("/login", authHandler.LoginPassword)
 			auth.POST("/reset-password", authHandler.ResetPassword)
+			auth.POST("/logout", authHandler.Logout)
 		}
 
 		// Guest permissions (public)
@@ -213,6 +257,7 @@ func main() {
 		// Protected routes
 		protected := v1.Group("")
 		protected.Use(middleware.JWTAuth(jwtManager))
+		protected.Use(middleware.CSRFProtection())
 		protected.Use(middleware.TrackOnline(appCache))
 		{
 			// Upload (MinIO)
@@ -227,6 +272,7 @@ func main() {
 			protected.POST("/users/me/avatar", userHandler.UploadAvatar)
 			protected.POST("/users/me/password", userHandler.ChangePassword)
 			protected.POST("/users/me/phone", userHandler.ChangePhone)
+			protected.DELETE("/users/me", userHandler.DeleteAccount)
 
 			// Permissions (for current user)
 			protected.GET("/permissions/me", permissionHandler.GetMyPermissions)
@@ -382,25 +428,29 @@ func main() {
 	defer stop()
 
 	go func() {
-		log.Printf("Rice Marketplace API starting on :%s (env: %s)", cfg.Port, cfg.AppEnv)
+		slog.Info("Rice Marketplace API starting", "port", cfg.Port, "env", cfg.AppEnv)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatal("Server error:", err)
+			slog.Error("Server error", "error", err)
+			os.Exit(1)
 		}
 	}()
 
 	<-ctx.Done()
-	log.Println("Shutting down gracefully...")
+	slog.Info("Shutting down gracefully...")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Println("Server shutdown error:", err)
+		slog.Error("Server shutdown error", "error", err)
 	}
 
 	if redisClient != nil {
 		_ = redisClient.Close()
 	}
 
-	log.Println("Server stopped")
+	globalLimiter.Stop()
+	authLimiter.Stop()
+
+	slog.Info("Server stopped")
 }

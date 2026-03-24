@@ -47,6 +47,10 @@ func (m *mockListingRepo) Update(ctx context.Context, id string, req *model.Upda
 func (m *mockListingRepo) SoftDelete(ctx context.Context, id string) error {
 	return m.Called(ctx, id).Error(0)
 }
+func (m *mockListingRepo) BatchSoftDelete(ctx context.Context, ids []string) (int, error) {
+	args := m.Called(ctx, ids)
+	return args.Int(0), args.Error(1)
+}
 
 func (m *mockListingRepo) ListByUser(ctx context.Context, userID string, page, limit int) ([]*model.Listing, int, error) {
 	args := m.Called(ctx, userID, page, limit)
@@ -210,7 +214,7 @@ func TestListingCreate_DailyLimitReached(t *testing.T) {
 	svc := NewListingService(repo, nil, nil, nil)
 
 	req := &model.CreateListingRequest{Title: "Test", Category: "gao_deo_thom", RiceType: "st_25", QuantityKG: 1, PricePerKG: 1}
-	repo.On("CountTodayByUser", mock.Anything, "user-1").Return(5, nil)
+	repo.On("CountTodayByUser", mock.Anything, "user-1").Return(50, nil)
 
 	_, err := svc.Create(context.Background(), "user-1", req)
 	assert.ErrorIs(t, err, ErrDailyLimitReached)

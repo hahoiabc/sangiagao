@@ -13,13 +13,13 @@ type ProductSponsor struct {
 }
 
 type CreateSponsorRequest struct {
-	ProductKey  string  `json:"product_key" binding:"required"`
-	LogoURL     string  `json:"logo_url" binding:"required"`
-	SponsorName *string `json:"sponsor_name"`
+	ProductKey  string  `json:"product_key" binding:"required,max=50"`
+	LogoURL     string  `json:"logo_url" binding:"required,url,max=500"`
+	SponsorName *string `json:"sponsor_name" binding:"omitempty,max=200"`
 }
 
 type UpdateSponsorRequest struct {
-	LogoURL     *string `json:"logo_url"`
-	SponsorName *string `json:"sponsor_name"`
+	LogoURL     *string `json:"logo_url" binding:"omitempty,url,max=500"`
+	SponsorName *string `json:"sponsor_name" binding:"omitempty,max=200"`
 	IsActive    *bool   `json:"is_active"`
 }

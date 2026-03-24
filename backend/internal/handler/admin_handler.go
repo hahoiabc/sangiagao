@@ -1,18 +1,35 @@
 package handler
 
 import (
+	"context"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sangiagao/rice-marketplace/internal/model"
 )
 
-type AdminHandler struct {
-	adminService AdminServiceInterface
+// AuditLogger logs admin actions for accountability.
+type AuditLogger interface {
+	Log(ctx context.Context, adminID, action, targetType, targetID string, details map[string]interface{}) error
 }
 
-func NewAdminHandler(adminService AdminServiceInterface) *AdminHandler {
-	return &AdminHandler{adminService: adminService}
+type AdminHandler struct {
+	adminService AdminServiceInterface
+	audit        AuditLogger
+}
+
+func NewAdminHandler(adminService AdminServiceInterface, audit AuditLogger) *AdminHandler {
+	return &AdminHandler{adminService: adminService, audit: audit}
+}
+
+func (h *AdminHandler) logAudit(ctx context.Context, adminID, action, targetType, targetID string, details map[string]interface{}) {
+	if h.audit == nil {
+		return
+	}
+	if err := h.audit.Log(ctx, adminID, action, targetType, targetID, details); err != nil {
+		log.Printf("audit log error: %v", err)
+	}
 }
 
 func (h *AdminHandler) GetDashboardStats(c *gin.Context) {
@@ -120,11 +137,13 @@ func (h *AdminHandler) BlockUser(c *gin.Context) {
 		return
 	}
 
+	h.logAudit(c.Request.Context(), callerID, "block_user", "user", userID, map[string]interface{}{"reason": req.Reason})
 	c.JSON(http.StatusOK, gin.H{"message": "user blocked", "user": user})
 }
 
 func (h *AdminHandler) UnblockUser(c *gin.Context) {
 	userID := c.Param("id")
+	callerID := c.GetString("user_id")
 	callerRole := c.GetString("user_role")
 
 	user, err := h.adminService.UnblockUser(c.Request.Context(), userID, callerRole)
@@ -133,6 +152,7 @@ func (h *AdminHandler) UnblockUser(c *gin.Context) {
 		return
 	}
 
+	h.logAudit(c.Request.Context(), callerID, "unblock_user", "user", userID, nil)
 	c.JSON(http.StatusOK, gin.H{"message": "user unblocked", "user": user})
 }
 
@@ -142,6 +162,7 @@ type changeRoleRequest struct {
 
 func (h *AdminHandler) ChangeUserRole(c *gin.Context) {
 	userID := c.Param("id")
+	callerID := c.GetString("user_id")
 
 	var req changeRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -156,17 +177,20 @@ func (h *AdminHandler) ChangeUserRole(c *gin.Context) {
 		return
 	}
 
+	h.logAudit(c.Request.Context(), callerID, "change_role", "user", userID, map[string]interface{}{"new_role": req.Role})
 	c.JSON(http.StatusOK, user)
 }
 
 func (h *AdminHandler) DeleteListing(c *gin.Context) {
 	listingID := c.Param("id")
+	callerID := c.GetString("user_id")
 
 	if err := h.adminService.DeleteListing(c.Request.Context(), listingID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete listing"})
 		return
 	}
 
+	h.logAudit(c.Request.Context(), callerID, "delete_listing", "listing", listingID, nil)
 	c.JSON(http.StatusOK, gin.H{"message": "listing deleted"})
 }
 
@@ -193,6 +217,7 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 		return
 	}
 
+	h.logAudit(c.Request.Context(), callerID, "delete_user", "user", userID, nil)
 	c.JSON(http.StatusOK, gin.H{"message": "Đã xóa tài khoản"})
 }
 

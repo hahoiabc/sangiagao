@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log"
 	"net/http"
 	"strings"
 
@@ -12,11 +13,18 @@ import (
 func CORS(allowedOrigins string) gin.HandlerFunc {
 	origins := parseOrigins(allowedOrigins)
 	allowAll := len(origins) == 0 || origins[0] == "*"
+	if allowAll {
+		log.Println("[WARN] CORS: allowing all origins — this should only be used in development")
+	}
 
 	return func(c *gin.Context) {
 		origin := c.GetHeader("Origin")
 
-		if allowAll {
+		if allowAll && origin != "" {
+			// When credentials are enabled, cannot use "*" — echo the origin
+			c.Header("Access-Control-Allow-Origin", origin)
+			c.Header("Vary", "Origin")
+		} else if allowAll {
 			c.Header("Access-Control-Allow-Origin", "*")
 		} else if origin != "" && isAllowedOrigin(origin, origins) {
 			c.Header("Access-Control-Allow-Origin", origin)
@@ -30,7 +38,8 @@ func CORS(allowedOrigins string) gin.HandlerFunc {
 		}
 
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization")
+		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Authorization, X-CSRF-Token")
+		c.Header("Access-Control-Allow-Credentials", "true")
 		c.Header("Access-Control-Max-Age", "72000")
 
 		if c.Request.Method == http.MethodOptions {

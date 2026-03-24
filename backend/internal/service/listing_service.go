@@ -12,9 +12,10 @@ import (
 )
 
 var (
-	ErrNotListingOwner = errors.New("you don't own this listing")
-	ErrMaxImages       = errors.New("maximum 3 images per listing")
-	ErrListingDeleted  = errors.New("listing has been deleted")
+	ErrNotListingOwner      = errors.New("you don't own this listing")
+	ErrMaxImages            = errors.New("maximum 3 images per listing")
+	ErrListingDeleted       = errors.New("listing has been deleted")
+	ErrSubscriptionRequired = errors.New("bạn cần có gói đăng ký còn hiệu lực để đăng tin")
 )
 
 const (
@@ -48,6 +49,22 @@ func (s *ListingService) SetCache(c cache.Cache) {
 // --- Seller operations ---
 
 func (s *ListingService) Create(ctx context.Context, userID string, req *model.CreateListingRequest) (*model.Listing, error) {
+	// Check if user is blocked or has active subscription
+	var seller *model.User
+	if s.userRepo != nil {
+		var err error
+		seller, err = s.userRepo.GetByID(ctx, userID)
+		if err != nil {
+			return nil, fmt.Errorf("check user: %w", err)
+		}
+		if seller.IsBlocked {
+			return nil, ErrUserBlocked
+		}
+		if seller.SubscriptionExpiresAt == nil || seller.SubscriptionExpiresAt.Before(time.Now()) {
+			return nil, ErrSubscriptionRequired
+		}
+	}
+
 	// Check daily listing limit
 	todayCount, err := s.listingRepo.CountTodayByUser(ctx, userID)
 	if err != nil {
@@ -80,20 +97,18 @@ func (s *ListingService) Create(ctx context.Context, userID string, req *model.C
 			req.Title = req.RiceType
 		}
 	}
-	// Auto-fill province/ward from user profile if not provided
-	if s.userRepo != nil && (req.Province == nil || req.Ward == nil) {
-		if user, err := s.userRepo.GetByID(ctx, userID); err == nil {
-			if req.Province == nil {
-				req.Province = user.Province
-			}
-			if req.Ward == nil {
-				req.Ward = user.Ward
-			}
+	// Auto-fill province/ward from user profile (reuse already-fetched seller)
+	if seller != nil && (req.Province == nil || req.Ward == nil) {
+		if req.Province == nil {
+			req.Province = seller.Province
+		}
+		if req.Ward == nil {
+			req.Ward = seller.Ward
 		}
 	}
 	listing, err := s.listingRepo.Create(ctx, userID, req)
 	if err == nil {
-		s.invalidateMarketplaceCache(ctx)
+		s.InvalidateMarketplaceCache(ctx)
 	}
 	return listing, err
 }
@@ -112,7 +127,7 @@ func (s *ListingService) Update(ctx context.Context, userID, id string, req *mod
 	}
 	updated, err := s.listingRepo.Update(ctx, id, req)
 	if err == nil {
-		s.invalidateMarketplaceCache(ctx)
+		s.InvalidateMarketplaceCache(ctx)
 	}
 	return updated, err
 }
@@ -128,11 +143,11 @@ func (s *ListingService) Delete(ctx context.Context, userID, id string) error {
 	if err := s.listingRepo.SoftDelete(ctx, id); err != nil {
 		return err
 	}
-	s.invalidateMarketplaceCache(ctx)
+	s.InvalidateMarketplaceCache(ctx)
 	return nil
 }
 
-func (s *ListingService) invalidateMarketplaceCache(ctx context.Context) {
+func (s *ListingService) InvalidateMarketplaceCache(ctx context.Context) {
 	if s.cache != nil {
 		_ = s.cache.DeleteByPrefix(ctx, marketplaceCachePrefix)
 		_ = s.cache.Delete(ctx, "priceboard:v1")

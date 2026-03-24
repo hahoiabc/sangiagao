@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -9,8 +11,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:web_socket_channel/io.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../config/env.dart';
 import '../../models/conversation.dart';
 import '../../models/listing.dart';
 import '../../models/user.dart';
@@ -70,7 +74,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final Map<String, ListingDetail?> _listingCache = {};
 
   // Phoenix chat service URL
-  static const String _phoenixWsUrl = 'wss://sangiagao.vn/socket/websocket';
+  static const String _phoenixWsUrl = Env.wsBaseUrl;
 
   @override
   void initState() {
@@ -102,8 +106,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     try {
       final result = await ref.read(apiServiceProvider).getConversations(limit: 50);
       final conv = result.data.where((c) => c.id == widget.conversationId).firstOrNull;
-      if (conv?.otherUser != null) {
-        setState(() => _otherUser = conv!.otherUser);
+      final other = conv?.otherUser;
+      if (other != null) {
+        setState(() => _otherUser = other);
       }
     } catch (e) {
       debugPrint('Load conversation error: $e');
@@ -132,8 +137,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         return;
       }
 
-      final wsUrl = Uri.parse('$_phoenixWsUrl?token=$token');
-      _channel = WebSocketChannel.connect(wsUrl);
+      final wsUrl = Uri.parse(_phoenixWsUrl);
+      _channel = IOWebSocketChannel.connect(
+        wsUrl,
+        headers: {'Authorization': 'Bearer $token'},
+        customClient: !kDebugMode ? (HttpClient()
+          ..badCertificateCallback = (cert, host, port) =>
+              ['sangiagao.vn', 'www.sangiagao.vn'].contains(host)) : null,
+      );
 
       _wsSub = _channel!.stream.listen(
         (data) {
@@ -183,7 +194,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   void _startPolling() {
     _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) => _pollNewMessages());
+    _pollTimer = Timer.periodic(const Duration(seconds: 10), (_) => _pollNewMessages());
   }
 
   void _stopPolling() {
@@ -210,9 +221,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _phoenixSend(String topic, String event, Map<String, dynamic> payload) {
-    if (_channel == null) return;
+    final ch = _channel;
+    if (ch == null) return;
     _ref++;
-    _channel!.sink.add(jsonEncode({
+    ch.sink.add(jsonEncode({
       'topic': topic,
       'event': event,
       'payload': payload,
@@ -305,20 +317,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Future<void> _sendMessage(String content, String type) async {
     try {
-      // Always send via HTTP API to ensure message is saved
+      // Send via HTTP API — backend handles persistence and WS broadcast
       final msg = await ref.read(apiServiceProvider).sendMessage(
         widget.conversationId, content, type: type,
       );
       setState(() => _messages.add(msg));
       _scrollToBottom();
-
-      // Also broadcast via WS if connected (for real-time delivery)
-      if (_joined && _channel != null) {
-        _phoenixSend('chat:${widget.conversationId}', 'new_message', {
-          'content': content,
-          'type': type,
-        });
-      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -597,6 +601,36 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
+  Future<void> _reportUser() async {
+    if (_otherUser == null) return;
+    final reasons = ['Spam', 'Quấy rối', 'Lừa đảo', 'Nội dung không phù hợp', 'Khác'];
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Báo cáo người dùng'),
+        children: reasons.map((r) => SimpleDialogOption(
+          onPressed: () => Navigator.pop(ctx, r),
+          child: Text(r),
+        )).toList(),
+      ),
+    );
+    if (reason == null || !mounted) return;
+    try {
+      await ref.read(apiServiceProvider).createReport('user', _otherUser!.id, reason);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã gửi báo cáo. Cảm ơn bạn!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gửi báo cáo thất bại: $e')),
+        );
+      }
+    }
+  }
+
   void _exitSelectMode() {
     setState(() {
       _selectMode = false;
@@ -707,38 +741,53 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       appBar: _selectMode
           ? _buildSelectAppBar()
           : AppBar(
-              title: GestureDetector(
-                onTap: _otherUser != null
-                    ? () => context.push('/seller/${_otherUser!.id}')
-                    : null,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(_otherUser?.name ?? 'Trò chuyện', style: const TextStyle(fontSize: 16)),
-                    if (_otherUser != null)
-                      Row(
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: _otherUser!.isOnline ? AppColors.onlineGreen : AppColors.offlineGrey,
-                              shape: BoxShape.circle,
+              title: Builder(builder: (_) {
+                final other = _otherUser;
+                return GestureDetector(
+                  onTap: other != null
+                      ? () => context.push('/seller/${other.id}')
+                      : null,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(other?.name ?? 'Trò chuyện', style: const TextStyle(fontSize: 16)),
+                      if (other != null)
+                        Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: other.isOnline ? AppColors.onlineGreen : AppColors.offlineGrey,
+                                shape: BoxShape.circle,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            _otherUser!.isOnline ? 'Online' : 'Offline',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: _otherUser!.isOnline ? AppColors.onlineGreen : AppColors.offlineGrey,
+                            const SizedBox(width: 4),
+                            Text(
+                              other.isOnline ? 'Online' : 'Offline',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: other.isOnline ? AppColors.onlineGreen : AppColors.offlineGrey,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
+                    ],
+                  ),
+                );
+              }),
+              actions: [
+                PopupMenuButton<String>(
+                  onSelected: (value) {
+                    if (value == 'report_user' && _otherUser != null) {
+                      _reportUser();
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(value: 'report_user', child: Text('Báo cáo người dùng')),
                   ],
                 ),
-              ),
+              ],
             ),
       body: Column(
         children: [

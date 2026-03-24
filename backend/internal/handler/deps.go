@@ -28,6 +28,7 @@ type UserServiceInterface interface {
 	UpdateAvatar(ctx context.Context, userID, avatarURL string) (*model.User, error)
 	ChangePassword(ctx context.Context, userID, currentPassword, newPassword string) error
 	ChangePhone(ctx context.Context, userID, newPhone string) (*model.User, error)
+	DeleteAccount(ctx context.Context, userID string) error
 }
 
 type ListingServiceInterface interface {
@@ -143,4 +144,5 @@ type ChatServiceInterface interface {
 	RecallMessage(ctx context.Context, userID, conversationID, messageID string) (*model.Message, error)
 	DeleteMessages(ctx context.Context, userID, conversationID string, messageIDs []string) error
 	RecallMessages(ctx context.Context, userID, conversationID string, messageIDs []string) error
+	IsParticipant(ctx context.Context, conversationID, userID string) (bool, error)
 }

@@ -11,17 +11,27 @@ import (
 	jwtpkg "github.com/sangiagao/rice-marketplace/pkg/jwt"
 )
 
+// extractToken gets the access token from Authorization header or cookie fallback.
+func extractToken(c *gin.Context) string {
+	header := c.GetHeader("Authorization")
+	if header != "" {
+		token := strings.TrimPrefix(header, "Bearer ")
+		if token != header {
+			return token
+		}
+	}
+	// Fallback: read from httpOnly cookie
+	if cookie, err := c.Cookie("access_token"); err == nil && cookie != "" {
+		return cookie
+	}
+	return ""
+}
+
 func JWTAuth(jwtManager *jwtpkg.Manager) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		header := c.GetHeader("Authorization")
-		if header == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing authorization header"})
-			return
-		}
-
-		token := strings.TrimPrefix(header, "Bearer ")
-		if token == header {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization format"})
+		token := extractToken(c)
+		if token == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing authorization"})
 			return
 		}
 
@@ -47,7 +57,9 @@ func TrackOnline(c cache.Cache) gin.HandlerFunc {
 		userID, exists := ctx.Get("user_id")
 		if exists {
 			go func() {
-				_ = c.Set(context.Background(), "online:"+userID.(string), []byte("1"), 5*time.Minute)
+				if uid, ok := userID.(string); ok {
+				_ = c.Set(context.Background(), "online:"+uid, []byte("1"), 5*time.Minute)
+			}
 			}()
 		}
 		ctx.Next()
@@ -58,15 +70,8 @@ func TrackOnline(c cache.Cache) gin.HandlerFunc {
 // If valid, sets user_id and user_role. If absent or invalid, sets user_role to "guest".
 func OptionalJWTAuth(jwtManager *jwtpkg.Manager) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		header := c.GetHeader("Authorization")
-		if header == "" {
-			c.Set("user_role", "guest")
-			c.Next()
-			return
-		}
-
-		token := strings.TrimPrefix(header, "Bearer ")
-		if token == header {
+		token := extractToken(c)
+		if token == "" {
 			c.Set("user_role", "guest")
 			c.Next()
 			return
@@ -98,7 +103,12 @@ func RequireRole(roles ...string) gin.HandlerFunc {
 			return
 		}
 
-		if !roleSet[role.(string)] {
+		roleStr, ok := role.(string)
+		if !ok {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+		if !roleSet[roleStr] {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "insufficient permissions"})
 			return
 		}

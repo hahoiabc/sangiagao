@@ -32,7 +32,9 @@ type UserRepository interface {
 	UpdatePasswordByID(ctx context.Context, userID, passwordHash string) error
 	UpdatePhone(ctx context.Context, userID, newPhone string) (*model.User, error)
 	PhoneExists(ctx context.Context, phone string) (bool, error)
+	GetByIDs(ctx context.Context, ids []string) ([]*model.User, error)
 	BlockUser(ctx context.Context, id, reason string) (*model.User, error)
+	BatchBlock(ctx context.Context, ids []string, reason string) (int, error)
 	UnblockUser(ctx context.Context, id string) (*model.User, error)
 	DeleteUser(ctx context.Context, id string) error
 	ListUsers(ctx context.Context, search string, page, limit int) ([]*model.User, int, error)
@@ -78,6 +80,7 @@ type ListingRepository interface {
 	GetByID(ctx context.Context, id string) (*model.Listing, error)
 	Update(ctx context.Context, id string, req *model.UpdateListingRequest) (*model.Listing, error)
 	SoftDelete(ctx context.Context, id string) error
+	BatchSoftDelete(ctx context.Context, ids []string) (int, error)
 	ListByUser(ctx context.Context, userID string, page, limit int) ([]*model.Listing, int, error)
 	AddImage(ctx context.Context, id, imageURL string) (*model.Listing, error)
 	GetImageCount(ctx context.Context, id string) (int, error)

@@ -62,12 +62,23 @@ func (m *mockAdminUserRepo) UpdateAvatar(ctx context.Context, id, avatarURL stri
 	args := m.Called(ctx, id, avatarURL)
 	return args.Get(0).(*model.User), args.Error(1)
 }
+func (m *mockAdminUserRepo) GetByIDs(ctx context.Context, ids []string) ([]*model.User, error) {
+	args := m.Called(ctx, ids)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*model.User), args.Error(1)
+}
 func (m *mockAdminUserRepo) BlockUser(ctx context.Context, id, reason string) (*model.User, error) {
 	args := m.Called(ctx, id, reason)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*model.User), args.Error(1)
+}
+func (m *mockAdminUserRepo) BatchBlock(ctx context.Context, ids []string, reason string) (int, error) {
+	args := m.Called(ctx, ids, reason)
+	return args.Int(0), args.Error(1)
 }
 func (m *mockAdminUserRepo) UnblockUser(ctx context.Context, id string) (*model.User, error) {
 	args := m.Called(ctx, id)
@@ -97,6 +108,29 @@ func (m *mockAdminUserRepo) GetDashboardCharts(ctx context.Context) (*repository
 	}
 	return args.Get(0).(*repository.DashboardCharts), args.Error(1)
 }
+func (m *mockAdminUserRepo) DeleteUser(ctx context.Context, id string) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+func (m *mockAdminUserRepo) GetPasswordHashByID(ctx context.Context, userID string) (string, error) {
+	args := m.Called(ctx, userID)
+	return args.String(0), args.Error(1)
+}
+func (m *mockAdminUserRepo) UpdatePasswordByID(ctx context.Context, userID, passwordHash string) error {
+	args := m.Called(ctx, userID, passwordHash)
+	return args.Error(0)
+}
+func (m *mockAdminUserRepo) UpdatePhone(ctx context.Context, userID, newPhone string) (*model.User, error) {
+	args := m.Called(ctx, userID, newPhone)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.User), args.Error(1)
+}
+func (m *mockAdminUserRepo) PhoneExists(ctx context.Context, phone string) (bool, error) {
+	args := m.Called(ctx, phone)
+	return args.Bool(0), args.Error(1)
+}
 
 // mockAdminListingRepo for admin listing operations
 type mockAdminListingRepo struct{ mock.Mock }
@@ -120,6 +154,10 @@ func (m *mockAdminListingRepo) Update(ctx context.Context, id string, req *model
 func (m *mockAdminListingRepo) SoftDelete(ctx context.Context, id string) error {
 	args := m.Called(ctx, id)
 	return args.Error(0)
+}
+func (m *mockAdminListingRepo) BatchSoftDelete(ctx context.Context, ids []string) (int, error) {
+	args := m.Called(ctx, ids)
+	return args.Int(0), args.Error(1)
 }
 func (m *mockAdminListingRepo) ListByUser(ctx context.Context, userID string, page, limit int) ([]*model.Listing, int, error) {
 	args := m.Called(ctx, userID, page, limit)

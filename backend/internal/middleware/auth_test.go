@@ -58,7 +58,7 @@ func TestJWTAuth_MissingHeader(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, 401, w.Code)
-	assert.Contains(t, w.Body.String(), "missing authorization header")
+	assert.Contains(t, w.Body.String(), "missing authorization")
 }
 
 func TestJWTAuth_InvalidFormat(t *testing.T) {
@@ -71,7 +71,7 @@ func TestJWTAuth_InvalidFormat(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, 401, w.Code)
-	assert.Contains(t, w.Body.String(), "invalid authorization format")
+	assert.Contains(t, w.Body.String(), "missing authorization")
 }
 
 func TestJWTAuth_ExpiredToken(t *testing.T) {

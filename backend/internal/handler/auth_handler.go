@@ -5,16 +5,44 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sangiagao/rice-marketplace/internal/middleware"
 	"github.com/sangiagao/rice-marketplace/internal/service"
 	jwtpkg "github.com/sangiagao/rice-marketplace/pkg/jwt"
 )
 
 type AuthHandler struct {
-	authService AuthServiceInterface
+	authService  AuthServiceInterface
+	cookieDomain string
+	cookieSecure bool
 }
 
-func NewAuthHandler(authService AuthServiceInterface) *AuthHandler {
-	return &AuthHandler{authService: authService}
+func NewAuthHandler(authService AuthServiceInterface, cookieDomain string, cookieSecure bool) *AuthHandler {
+	return &AuthHandler{
+		authService:  authService,
+		cookieDomain: cookieDomain,
+		cookieSecure: cookieSecure,
+	}
+}
+
+// setAuthCookies sets httpOnly cookies for web clients + CSRF token.
+func (h *AuthHandler) setAuthCookies(c *gin.Context, accessToken, refreshToken string) {
+	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetCookie("access_token", accessToken, 900, "/", h.cookieDomain, h.cookieSecure, true)                     // 15 min
+	c.SetCookie("refresh_token", refreshToken, 30*24*3600, "/api/v1/auth", h.cookieDomain, h.cookieSecure, true) // 30 days, restricted path
+
+	// Set CSRF token (non-httpOnly so JS can read it)
+	csrfToken, err := middleware.GenerateCSRFToken()
+	if err == nil {
+		middleware.SetCSRFCookie(c, csrfToken, h.cookieDomain, h.cookieSecure)
+	}
+}
+
+// clearAuthCookies removes auth cookies on logout.
+func (h *AuthHandler) clearAuthCookies(c *gin.Context) {
+	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetCookie("access_token", "", -1, "/", h.cookieDomain, h.cookieSecure, true)
+	c.SetCookie("refresh_token", "", -1, "/api/v1/auth", h.cookieDomain, h.cookieSecure, true)
+	c.SetCookie(middleware.CSRFCookieName, "", -1, "/", h.cookieDomain, h.cookieSecure, false)
 }
 
 type sendOTPRequest struct {
@@ -76,6 +104,9 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 		return
 	}
 
+	if result.Tokens != nil {
+		h.setAuthCookies(c, result.Tokens.AccessToken, result.Tokens.RefreshToken)
+	}
 	c.JSON(http.StatusOK, result)
 }
 
@@ -162,6 +193,9 @@ func (h *AuthHandler) CompleteRegister(c *gin.Context) {
 		return
 	}
 
+	if result.Tokens != nil {
+		h.setAuthCookies(c, result.Tokens.AccessToken, result.Tokens.RefreshToken)
+	}
 	c.JSON(http.StatusCreated, result)
 }
 
@@ -194,6 +228,9 @@ func (h *AuthHandler) LoginPassword(c *gin.Context) {
 		return
 	}
 
+	if result.Tokens != nil {
+		h.setAuthCookies(c, result.Tokens.AccessToken, result.Tokens.RefreshToken)
+	}
 	c.JSON(http.StatusOK, result)
 }
 
@@ -231,22 +268,33 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 }
 
 type refreshRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	var req refreshRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	_ = c.ShouldBindJSON(&req)
+
+	// Fallback: read refresh_token from cookie if not in body
+	refreshToken := req.RefreshToken
+	if refreshToken == "" {
+		if cookie, err := c.Cookie("refresh_token"); err == nil {
+			refreshToken = cookie
+		}
+	}
+	if refreshToken == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "refresh_token is required"})
 		return
 	}
 
-	tokens, err := h.authService.RefreshToken(c.Request.Context(), req.RefreshToken)
+	tokens, err := h.authService.RefreshToken(c.Request.Context(), refreshToken)
 	if err != nil {
 		switch {
 		case errors.Is(err, jwtpkg.ErrInvalidToken):
+			h.clearAuthCookies(c)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired refresh token"})
 		case errors.Is(err, service.ErrUserBlocked):
+			h.clearAuthCookies(c)
 			c.JSON(http.StatusForbidden, gin.H{"error": "account is blocked"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "refresh failed"})
@@ -254,5 +302,11 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
+	h.setAuthCookies(c, tokens.AccessToken, tokens.RefreshToken)
 	c.JSON(http.StatusOK, tokens)
+}
+
+func (h *AuthHandler) Logout(c *gin.Context) {
+	h.clearAuthCookies(c)
+	c.JSON(http.StatusOK, gin.H{"message": "logged out"})
 }

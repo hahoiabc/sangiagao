@@ -1,30 +1,32 @@
 import { clearAuth } from "@/lib/auth";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
+function getCSRFToken(): string {
+  if (typeof document === "undefined") return "";
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? (() => {
+  if (typeof window !== "undefined") console.warn("[API] NEXT_PUBLIC_API_URL not set, using localhost");
+  return "http://localhost:8080/api/v1";
+})();
 
 interface RequestOptions extends RequestInit {
   token?: string;
 }
 
 let isRefreshing = false;
-let refreshPromise: Promise<string> | null = null;
+let refreshPromise: Promise<void> | null = null;
 
-async function tryRefreshToken(): Promise<string> {
-  const savedRefresh = localStorage.getItem("web_refresh_token");
-  if (!savedRefresh) throw new Error("No refresh token");
-
+async function tryRefreshToken(): Promise<void> {
   const res = await fetch(`${API_BASE}/auth/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh_token: savedRefresh }),
+    credentials: "include",
+    body: JSON.stringify({}),
   });
 
   if (!res.ok) throw new Error("Refresh failed");
-
-  const data = await res.json();
-  localStorage.setItem("web_token", data.access_token);
-  localStorage.setItem("web_refresh_token", data.refresh_token);
-  return data.access_token;
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -33,21 +35,29 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     "Content-Type": "application/json",
     ...(init.headers as Record<string, string>),
   };
+  // Token header is optional — httpOnly cookies are the primary auth mechanism
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+  // CSRF token for state-changing requests (cookie-based auth)
+  const method = (init.method || "GET").toUpperCase();
+  if (["POST", "PUT", "DELETE", "PATCH"].includes(method)) {
+    const csrf = getCSRFToken();
+    if (csrf) headers["X-CSRF-Token"] = csrf;
+  }
 
-  if (res.status === 401 && token) {
+  const res = await fetch(`${API_BASE}${path}`, { ...init, headers, credentials: "include" });
+
+  if (res.status === 401) {
     try {
       if (!isRefreshing) {
         isRefreshing = true;
         refreshPromise = tryRefreshToken();
       }
-      const newToken = await refreshPromise!;
+      await refreshPromise!;
       isRefreshing = false;
       refreshPromise = null;
-      headers["Authorization"] = `Bearer ${newToken}`;
-      const retryRes = await fetch(`${API_BASE}${path}`, { ...init, headers });
+      // Retry with new cookies (no need to set header — cookie is automatic)
+      const retryRes = await fetch(`${API_BASE}${path}`, { ...init, headers, credentials: "include" });
       if (!retryRes.ok) {
         const body = await retryRes.json().catch(() => ({}));
         throw new ApiError(retryRes.status, body.error || "unknown", body.message || retryRes.statusText);
@@ -384,14 +394,15 @@ export async function uploadImage(token: string, file: File, folder: "avatars" |
   formData.append("image", file);
   formData.append("folder", folder);
 
-  const doUpload = (t: string) =>
+  const doUpload = () =>
     fetch(`${API_BASE}/upload/image`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${t}` },
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: "include",
       body: formData,
     });
 
-  let res = await doUpload(token);
+  let res = await doUpload();
 
   if (res.status === 401) {
     try {
@@ -399,10 +410,10 @@ export async function uploadImage(token: string, file: File, folder: "avatars" |
         isRefreshing = true;
         refreshPromise = tryRefreshToken();
       }
-      const newToken = await refreshPromise!;
+      await refreshPromise!;
       isRefreshing = false;
       refreshPromise = null;
-      res = await doUpload(newToken);
+      res = await doUpload();
     } catch {
       isRefreshing = false;
       refreshPromise = null;
@@ -423,14 +434,15 @@ export async function uploadAudio(token: string, blob: Blob) {
   const formData = new FormData();
   formData.append("audio", blob, "recording.webm");
 
-  const doUpload = (t: string) =>
+  const doUpload = () =>
     fetch(`${API_BASE}/upload/audio`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${t}` },
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: "include",
       body: formData,
     });
 
-  let res = await doUpload(token);
+  let res = await doUpload();
 
   if (res.status === 401) {
     try {
@@ -438,10 +450,10 @@ export async function uploadAudio(token: string, blob: Blob) {
         isRefreshing = true;
         refreshPromise = tryRefreshToken();
       }
-      const newToken = await refreshPromise!;
+      await refreshPromise!;
       isRefreshing = false;
       refreshPromise = null;
-      res = await doUpload(newToken);
+      res = await doUpload();
     } catch {
       isRefreshing = false;
       refreshPromise = null;
@@ -622,7 +634,7 @@ export async function getMyFeedbacks(token: string, page: number, limit: number)
 // --- Permissions ---
 export type PermissionMap = Record<string, boolean>;
 
-export async function getMyPermissions(token: string): Promise<{ role: string; permissions: PermissionMap }> {
+export async function getMyPermissions(token?: string): Promise<{ role: string; permissions: PermissionMap }> {
   return request<{ role: string; permissions: PermissionMap }>("/permissions/me", { token });
 }
 

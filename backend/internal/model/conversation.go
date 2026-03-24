@@ -31,6 +31,6 @@ type CreateConversationRequest struct {
 }
 
 type SendMessageRequest struct {
-	Content string `json:"content" binding:"required"`
-	Type    string `json:"type"`
+	Content string `json:"content" binding:"required,max=5000"`
+	Type    string `json:"type" binding:"omitempty,max=50"`
 }

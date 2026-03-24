@@ -198,15 +198,15 @@ func (m *mockAdminService) ListUsers(ctx context.Context, search string, page, l
 	}
 	return args.Get(0).([]*model.User), args.Int(1), args.Error(2)
 }
-func (m *mockAdminService) BlockUser(ctx context.Context, userID, reason string) (*model.User, error) {
-	args := m.Called(ctx, userID, reason)
+func (m *mockAdminService) BlockUser(ctx context.Context, userID, reason, callerRole string) (*model.User, error) {
+	args := m.Called(ctx, userID, reason, callerRole)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*model.User), args.Error(1)
 }
-func (m *mockAdminService) UnblockUser(ctx context.Context, userID string) (*model.User, error) {
-	args := m.Called(ctx, userID)
+func (m *mockAdminService) UnblockUser(ctx context.Context, userID, callerRole string) (*model.User, error) {
+	args := m.Called(ctx, userID, callerRole)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -236,12 +236,15 @@ func (m *mockAdminService) ListUserSubscriptions(ctx context.Context, userID str
 func (m *mockAdminService) DeleteListing(ctx context.Context, listingID string) error {
 	return m.Called(ctx, listingID).Error(0)
 }
-func (m *mockAdminService) ChangeUserRole(ctx context.Context, userID, role string) (*model.User, error) {
-	args := m.Called(ctx, userID, role)
+func (m *mockAdminService) ChangeUserRole(ctx context.Context, userID, role, callerRole string) (*model.User, error) {
+	args := m.Called(ctx, userID, role, callerRole)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*model.User), args.Error(1)
+}
+func (m *mockAdminService) DeleteUser(ctx context.Context, userID, callerRole string) error {
+	return m.Called(ctx, userID, callerRole).Error(0)
 }
 func (m *mockAdminService) GetDashboardCharts(ctx context.Context) (*repository.DashboardCharts, error) {
 	args := m.Called(ctx)
@@ -250,8 +253,8 @@ func (m *mockAdminService) GetDashboardCharts(ctx context.Context) (*repository.
 	}
 	return args.Get(0).(*repository.DashboardCharts), args.Error(1)
 }
-func (m *mockAdminService) BatchBlockUsers(ctx context.Context, userIDs []string, reason string) (*service.BatchBlockResult, error) {
-	args := m.Called(ctx, userIDs, reason)
+func (m *mockAdminService) BatchBlockUsers(ctx context.Context, userIDs []string, reason, callerRole string) (*service.BatchBlockResult, error) {
+	args := m.Called(ctx, userIDs, reason, callerRole)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -330,9 +333,9 @@ func TestSubAdminActivate_Success(t *testing.T) {
 	adminSvc.On("GetUserByID", mock.Anything, "u-1").Return(seller, nil)
 
 	sub := &model.Subscription{ID: "sub-1", Plan: "paid"}
-	svc.On("AdminActivate", mock.Anything, "u-1", 365).Return(sub, nil)
+	svc.On("AdminActivate", mock.Anything, "u-1", 12).Return(sub, nil)
 
-	w := serve(r, authedReq("POST", "/admin/subscriptions/u-1/activate", `{"days":365}`))
+	w := serve(r, authedReq("POST", "/admin/subscriptions/u-1/activate", `{"months":12}`))
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "subscription activated")
 }
@@ -539,7 +542,7 @@ func TestNotifMarkRead_NotFound(t *testing.T) {
 
 func TestAdminDashboard_Success(t *testing.T) {
 	svc := new(mockAdminService)
-	h := NewAdminHandler(svc)
+	h := NewAdminHandler(svc, nil)
 	r := gin.New()
 	r.GET("/admin/dashboard/stats", h.GetDashboardStats)
 
@@ -553,7 +556,7 @@ func TestAdminDashboard_Success(t *testing.T) {
 
 func TestAdminListUsers_Success(t *testing.T) {
 	svc := new(mockAdminService)
-	h := NewAdminHandler(svc)
+	h := NewAdminHandler(svc, nil)
 	r := gin.New()
 	r.GET("/admin/users", h.ListUsers)
 
@@ -567,11 +570,11 @@ func TestAdminListUsers_Success(t *testing.T) {
 
 func TestAdminBlockUser_Success(t *testing.T) {
 	svc := new(mockAdminService)
-	h := NewAdminHandler(svc)
+	h := NewAdminHandler(svc, nil)
 	r := gin.New()
 	r.PUT("/admin/users/:id/block", h.BlockUser)
 
-	svc.On("BlockUser", mock.Anything, "u-1", "spam").Return(&model.User{ID: "u-1", IsBlocked: true}, nil)
+	svc.On("BlockUser", mock.Anything, "u-1", "spam", mock.Anything).Return(&model.User{ID: "u-1", IsBlocked: true}, nil)
 
 	w := serve(r, authedReq("PUT", "/admin/users/u-1/block", `{"reason":"spam"}`))
 	assert.Equal(t, 200, w.Code)
@@ -579,7 +582,7 @@ func TestAdminBlockUser_Success(t *testing.T) {
 }
 
 func TestAdminBlockUser_MissingReason(t *testing.T) {
-	h := NewAdminHandler(new(mockAdminService))
+	h := NewAdminHandler(new(mockAdminService), nil)
 	r := gin.New()
 	r.PUT("/admin/users/:id/block", h.BlockUser)
 
@@ -589,11 +592,11 @@ func TestAdminBlockUser_MissingReason(t *testing.T) {
 
 func TestAdminUnblockUser_Success(t *testing.T) {
 	svc := new(mockAdminService)
-	h := NewAdminHandler(svc)
+	h := NewAdminHandler(svc, nil)
 	r := gin.New()
 	r.PUT("/admin/users/:id/unblock", h.UnblockUser)
 
-	svc.On("UnblockUser", mock.Anything, "u-1").Return(&model.User{ID: "u-1", IsBlocked: false}, nil)
+	svc.On("UnblockUser", mock.Anything, "u-1", mock.Anything).Return(&model.User{ID: "u-1", IsBlocked: false}, nil)
 
 	w := serve(r, authedReq("PUT", "/admin/users/u-1/unblock", ""))
 	assert.Equal(t, 200, w.Code)
@@ -602,7 +605,7 @@ func TestAdminUnblockUser_Success(t *testing.T) {
 
 func TestAdminDeleteListing_Success(t *testing.T) {
 	svc := new(mockAdminService)
-	h := NewAdminHandler(svc)
+	h := NewAdminHandler(svc, nil)
 	r := gin.New()
 	r.DELETE("/admin/listings/:id", h.DeleteListing)
 

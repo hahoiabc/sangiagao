@@ -22,7 +22,10 @@ func NewConversationHandler(chatService ChatServiceInterface, notifService Notif
 }
 
 func (h *ConversationHandler) Create(c *gin.Context) {
-	userID := c.GetString("user_id")
+	userID := requireUserID(c)
+	if c.IsAborted() {
+		return
+	}
 	var req model.CreateConversationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "message": err.Error()})
@@ -213,6 +216,11 @@ func (h *ConversationHandler) BatchDeleteMessages(c *gin.Context) {
 		return
 	}
 
+	if len(req.MessageIDs) > 100 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "too_many_items", "message": "tối đa 100 tin nhắn mỗi lần"})
+		return
+	}
+
 	err := h.chatService.DeleteMessages(c.Request.Context(), userID, conversationID, req.MessageIDs)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal", "message": "xóa tin nhắn thất bại"})
@@ -231,6 +239,11 @@ func (h *ConversationHandler) BatchRecallMessages(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "message": err.Error()})
+		return
+	}
+
+	if len(req.MessageIDs) > 100 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "too_many_items", "message": "tối đa 100 tin nhắn mỗi lần"})
 		return
 	}
 

@@ -20,11 +20,11 @@ type Report struct {
 type CreateReportRequest struct {
 	TargetType  string  `json:"target_type" binding:"required,oneof=listing user rating"`
 	TargetID    string  `json:"target_id" binding:"required"`
-	Reason      string  `json:"reason" binding:"required"`
-	Description *string `json:"description"`
+	Reason      string  `json:"reason" binding:"required,max=200"`
+	Description *string `json:"description" binding:"omitempty,max=1000"`
 }
 
 type ResolveReportRequest struct {
-	AdminAction string  `json:"admin_action" binding:"required"`
-	AdminNote   *string `json:"admin_note"`
+	AdminAction string  `json:"admin_action" binding:"required,max=100"`
+	AdminNote   *string `json:"admin_note" binding:"omitempty,max=1000"`
 }
