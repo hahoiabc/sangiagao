@@ -24,6 +24,9 @@ const themeOptions = <ThemeOption>[
   ThemeOption(key: 'blue', label: 'Xanh dương', primary: Color(0xFF3399FF), primaryDark: Color(0xFF2673BF), primaryLight: Color(0xFF66B3FF)),
   ThemeOption(key: 'mint', label: 'Teal', primary: Color(0xFF33CC99), primaryDark: Color(0xFF269973), primaryLight: Color(0xFF66D9B3)),
   ThemeOption(key: 'gray', label: 'Xám đậm', primary: Color(0xFF444444), primaryDark: Color(0xFF333333), primaryLight: Color(0xFF666666)),
+  ThemeOption(key: 'cream', label: 'Vàng kem', primary: Color(0xFFF2DBB6), primaryDark: Color(0xFFD4B88A), primaryLight: Color(0xFFF7E8CF)),
+  ThemeOption(key: 'pink', label: 'Hồng', primary: Color(0xFFF277DB), primaryDark: Color(0xFFC95FB0), primaryLight: Color(0xFFF7A0E7)),
+  ThemeOption(key: 'red', label: 'Đỏ', primary: Color(0xFFFF2400), primaryDark: Color(0xFFCC1D00), primaryLight: Color(0xFFFF6347)),
 ];
 
 const _storageKey = 'sgg_theme_color';
