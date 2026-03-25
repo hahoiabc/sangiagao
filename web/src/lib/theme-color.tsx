@@ -22,6 +22,9 @@ export const THEME_OPTIONS: ThemeOption[] = [
   { key: "blue", label: "Xanh dương", hex: "#3399FF", hexDark: "#2673BF", hexLight: "#66B3FF", hue: 250, chroma: 0.16, oklch: "oklch(0.63 0.16 250)" },
   { key: "mint", label: "Teal", hex: "#33CC99", hexDark: "#269973", hexLight: "#66D9B3", hue: 170, chroma: 0.14, oklch: "oklch(0.72 0.14 170)" },
   { key: "gray", label: "Xám đậm", hex: "#444444", hexDark: "#333333", hexLight: "#666666", hue: 0, chroma: 0, oklch: "oklch(0.35 0 0)" },
+  { key: "cream", label: "Vàng kem", hex: "#f2dbb6", hexDark: "#d4b88a", hexLight: "#f7e8cf", hue: 75, chroma: 0.08, oklch: "oklch(0.75 0.08 75)" },
+  { key: "pink", label: "Hồng", hex: "#f277db", hexDark: "#c95fb0", hexLight: "#f7a0e7", hue: 340, chroma: 0.20, oklch: "oklch(0.65 0.20 340)" },
+  { key: "red", label: "Đỏ", hex: "#ff2400", hexDark: "#cc1d00", hexLight: "#ff6347", hue: 30, chroma: 0.25, oklch: "oklch(0.55 0.25 30)" },
 ];
 
 const STORAGE_KEY = "sgg_theme_color";
