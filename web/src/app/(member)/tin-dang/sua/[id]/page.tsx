@@ -14,7 +14,7 @@ import { toast } from "sonner";
 
 export default function EditListingPage() {
   const { id } = useParams<{ id: string }>();
-  const { token } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const [listing, setListing] = useState<ListingDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,7 +43,7 @@ export default function EditListingPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!token || !id) return;
+    if (!id) return;
 
     const price = Number(pricePerKg);
     const qty = Number(quantityKg);
@@ -61,7 +61,7 @@ export default function EditListingPage() {
       if (harvestSeason.trim()) data.harvest_season = harvestSeason.trim();
       if (description.trim()) data.description = description.trim();
 
-      await updateListing(token, id, data);
+      await updateListing("", id, data);
       toast.success("Đã cập nhật tin đăng");
       router.push("/tin-dang");
     } catch (err) {

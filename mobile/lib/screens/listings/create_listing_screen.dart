@@ -145,9 +145,9 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
     }
     final remaining = 3 - form.imageUrls.length;
     final images = await _picker.pickMultiImage(
-      maxWidth: 1024,
-      maxHeight: 1024,
-      imageQuality: 80,
+      maxWidth: 1920,
+      maxHeight: 1920,
+      imageQuality: 95,
       limit: remaining,
     );
     if (images.isEmpty) return;

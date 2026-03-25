@@ -21,23 +21,23 @@ const statusLabels: Record<string, { label: string; color: "default" | "secondar
 };
 
 export default function MyListingsPage() {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const [result, setResult] = useState<PaginatedResponse<Listing> | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (token) {
-      getMyListings(token, 1, 50)
+    if (user) {
+      getMyListings("", 1, 50)
         .then(setResult)
         .catch(() => {})
         .finally(() => setLoading(false));
     }
-  }, [token]);
+  }, [user]);
 
   async function handleDelete(id: string) {
-    if (!token || !confirm("Bạn có chắc muốn xóa tin đăng này?")) return;
+    if (!confirm("Bạn có chắc muốn xóa tin đăng này?")) return;
     try {
-      await deleteListing(token, id);
+      await deleteListing("", id);
       setResult((prev) =>
         prev ? { ...prev, data: prev.data.filter((l) => l.id !== id), total: prev.total - 1 } : prev
       );

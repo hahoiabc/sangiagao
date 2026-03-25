@@ -115,7 +115,7 @@ function ListingLinkBubble({ content, isMine }: { content: string; isMine: boole
 
 export default function ChatRoomPage() {
   const { id: convId } = useParams<{ id: string }>();
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState("");
@@ -187,7 +187,7 @@ export default function ChatRoomPage() {
             return [...prev, msg];
           });
           if (msg.sender_id !== user?.id) {
-            markConversationRead(token ?? "", convId).catch(() => {});
+            markConversationRead("", convId).catch(() => {});
           }
           setTypingUser(null);
         }
@@ -223,7 +223,7 @@ export default function ChatRoomPage() {
   function startPolling() {
     pollingRef.current = setInterval(async () => {
       try {
-        const res = await getMessages(token ?? "", convId!, 1, 100);
+        const res = await getMessages("", convId!, 1, 100);
         setMessages((res.data ?? []).reverse());
       } catch {
         // ignore
@@ -249,9 +249,9 @@ export default function ChatRoomPage() {
 
     async function fetchMessages() {
       try {
-        const res = await getMessages(token ?? "", convId!, 1, 100);
+        const res = await getMessages("", convId!, 1, 100);
         setMessages((res.data ?? []).reverse());
-        markConversationRead(token ?? "", convId!).catch(() => {});
+        markConversationRead("", convId!).catch(() => {});
       } catch {
         // ignore
       } finally {
@@ -312,10 +312,10 @@ export default function ChatRoomPage() {
       mediaRecorder.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
         const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        if (blob.size > 0 && token && convId) {
+        if (blob.size > 0 && convId) {
           try {
-            const { url } = await uploadAudio(token, blob);
-            const msg = await apiSendMessage(token, convId, url, "audio");
+            const { url } = await uploadAudio("", blob);
+            const msg = await apiSendMessage("", convId, url, "audio");
             setMessages((prev) => [...prev, msg]);
             toast.success("Đã gửi tin nhắn thoại");
           } catch (err) {
@@ -394,12 +394,12 @@ export default function ChatRoomPage() {
   }
 
   async function handleSendImages() {
-    if (!token || !convId || selectedImages.length === 0) return;
+    if (!convId || selectedImages.length === 0) return;
     setUploadingImages(true);
     try {
       for (const img of selectedImages) {
-        const { url } = await uploadImage(token, img.file, "listings");
-        const msg = await apiSendMessage(token, convId, url, "image");
+        const { url } = await uploadImage("", img.file, "listings");
+        const msg = await apiSendMessage("", convId, url, "image");
         setMessages((prev) => [...prev, msg]);
       }
       selectedImages.forEach((img) => URL.revokeObjectURL(img.preview));
@@ -413,7 +413,7 @@ export default function ChatRoomPage() {
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
-    if (!token || !convId) return;
+    if (!convId) return;
 
     if (selectedImages.length > 0) {
       await handleSendImages();
@@ -422,7 +422,7 @@ export default function ChatRoomPage() {
     if (input.trim()) {
       setSending(true);
       try {
-        const msg = await apiSendMessage(token, convId, input.trim());
+        const msg = await apiSendMessage("", convId, input.trim());
         setMessages((prev) => [...prev, msg]);
         setInput("");
       } catch {
@@ -441,9 +441,9 @@ export default function ChatRoomPage() {
   }
 
   async function handleDeleteMsg(msg: Message) {
-    if (!token || !convId) return;
+    if (!convId) return;
     try {
-      await deleteMessage(token, convId, msg.id);
+      await deleteMessage("", convId, msg.id);
       setMessages((prev) => prev.filter((m) => m.id !== msg.id));
       toast.success("Đã xóa tin nhắn");
     } catch (err) {
@@ -453,14 +453,14 @@ export default function ChatRoomPage() {
   }
 
   async function handleRecallMsg(msg: Message) {
-    if (!token || !convId) return;
+    if (!convId) return;
     if (!canRecall(msg)) {
       toast.error("Chỉ có thể thu hồi tin nhắn trong vòng 24 giờ");
       setContextMenu(null);
       return;
     }
     try {
-      await recallMessage(token, convId, msg.id);
+      await recallMessage("", convId, msg.id);
       setMessages((prev) =>
         prev.map((m) => (m.id === msg.id ? { ...m, type: "recalled", content: "Tin nhắn đã được thu hồi" } : m))
       );
@@ -481,9 +481,9 @@ export default function ChatRoomPage() {
   }
 
   async function handleBatchDelete() {
-    if (!token || !convId || selectedMsgIds.size === 0) return;
+    if (!convId || selectedMsgIds.size === 0) return;
     try {
-      await batchDeleteMessages(token, convId, Array.from(selectedMsgIds));
+      await batchDeleteMessages("", convId, Array.from(selectedMsgIds));
       setMessages((prev) => prev.filter((m) => !selectedMsgIds.has(m.id)));
       toast.success(`Đã xóa ${selectedMsgIds.size} tin nhắn`);
     } catch (err) {
@@ -494,7 +494,7 @@ export default function ChatRoomPage() {
   }
 
   async function handleBatchRecall() {
-    if (!token || !convId || selectedMsgIds.size === 0) return;
+    if (!convId || selectedMsgIds.size === 0) return;
     const myMsgIds = Array.from(selectedMsgIds).filter((id) => {
       const msg = messages.find((m) => m.id === id);
       return msg && msg.sender_id === user?.id && canRecall(msg);
@@ -504,7 +504,7 @@ export default function ChatRoomPage() {
       return;
     }
     try {
-      await batchRecallMessages(token, convId, myMsgIds);
+      await batchRecallMessages("", convId, myMsgIds);
       setMessages((prev) =>
         prev.map((m) =>
           myMsgIds.includes(m.id) ? { ...m, type: "recalled", content: "Tin nhắn đã được thu hồi" } : m

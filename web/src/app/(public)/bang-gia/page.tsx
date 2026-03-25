@@ -13,7 +13,7 @@ import { useThemeColor } from "@/lib/theme-color";
 import { formatPrice, timeAgo } from "@/lib/utils";
 
 export default function PriceBoardPage() {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const { currentTheme } = useThemeColor();
   const [data, setData] = useState<PriceBoardResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,7 +45,7 @@ export default function PriceBoardPage() {
             Bảng giá gạo cập nhật liên tục từ các thành viên trên toàn quốc
           </p>
           <div className="flex items-center justify-center gap-3">
-            {!token && (
+            {!user && (
               <Link href="/dang-ky">
                 <Button size="lg" className="gap-2 bg-yellow-400 text-gray-900 hover:bg-yellow-300 border-0">
                   <Users className="h-4 w-4" />

@@ -26,23 +26,22 @@ function getNotificationIcon(type: string) {
 }
 
 export default function NotificationsPage() {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const [result, setResult] = useState<PaginatedResponse<AppNotification> | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (token) {
-      getNotifications(token, 1, 50)
+    if (user) {
+      getNotifications("", 1, 50)
         .then(setResult)
         .catch(() => {})
         .finally(() => setLoading(false));
     }
-  }, [token]);
+  }, [user]);
 
   async function handleRead(id: string) {
-    if (!token) return;
     try {
-      await markNotificationRead(token, id);
+      await markNotificationRead("", id);
       setResult((prev) =>
         prev
           ? {

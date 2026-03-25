@@ -12,31 +12,30 @@ import { formatDate, timeAgo } from "@/lib/utils";
 import { toast } from "sonner";
 
 export default function FeedbackPage() {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (token) {
-      getMyFeedbacks(token, 1, 50)
+    if (user) {
+      getMyFeedbacks("", 1, 50)
         .then((res) => setFeedbacks(res.data ?? []))
         .catch(() => {})
         .finally(() => setLoading(false));
     }
-  }, [token]);
+  }, [user]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!token) return;
     if (content.trim().length < 10) {
       toast.error("Nội dung phản hồi phải có ít nhất 10 ký tự");
       return;
     }
     setSubmitting(true);
     try {
-      const fb = await createFeedback(token, content.trim());
+      const fb = await createFeedback("", content.trim());
       setFeedbacks((prev) => [fb, ...prev]);
       setContent("");
       toast.success("Gửi phản hồi thành công");

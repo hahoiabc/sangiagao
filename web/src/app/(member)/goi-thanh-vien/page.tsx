@@ -21,18 +21,18 @@ function formatCurrency(amount: number) {
 }
 
 export default function SubscriptionPage() {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [history, setHistory] = useState<SubscriptionHistory[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (token) {
+    if (user) {
       Promise.all([
-        getSubscriptionStatus(token).catch(() => null),
-        getSubscriptionPlans(token).then((r) => r.plans).catch(() => []),
-        getSubscriptionHistory(token, 1, 20).then((r) => r.data).catch(() => []),
+        getSubscriptionStatus("").catch(() => null),
+        getSubscriptionPlans("").then((r) => r.plans).catch(() => []),
+        getSubscriptionHistory("", 1, 20).then((r) => r.data).catch(() => []),
       ]).then(([s, p, h]) => {
         setStatus(s);
         setPlans(p);
@@ -40,7 +40,7 @@ export default function SubscriptionPage() {
         setLoading(false);
       });
     }
-  }, [token]);
+  }, [user]);
 
   if (loading) {
     return (

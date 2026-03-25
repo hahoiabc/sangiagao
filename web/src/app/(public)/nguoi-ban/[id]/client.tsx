@@ -27,7 +27,7 @@ import { toast } from "sonner";
 
 export default function SellerProfilePage() {
   const { id } = useParams<{ id: string }>();
-  const { user, token, hasPermission } = useAuth();
+  const { user, hasPermission } = useAuth();
   const router = useRouter();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [ratings, setRatings] = useState<Rating[]>([]);
@@ -52,9 +52,9 @@ export default function SellerProfilePage() {
   useEffect(() => {
     if (!id) return;
     Promise.all([
-      getPublicProfile(id, token || undefined),
-      getSellerRatings(id, 1, 20, token || undefined),
-      getRatingSummary(id, token || undefined),
+      getPublicProfile(id),
+      getSellerRatings(id, 1, 20),
+      getRatingSummary(id),
     ])
       .then(([p, r, s]) => {
         setProfile(p);
@@ -67,18 +67,18 @@ export default function SellerProfilePage() {
       })
       .catch(() => toast.error("Không tìm thấy người bán"))
       .finally(() => setLoading(false));
-  }, [id, user, token]);
+  }, [id, user]);
 
   async function handleContact() {
     if (!hasPermission("chat.send")) {
-      toast.error(token ? "Không có quyền thực hiện - Cần gia hạn gói dịch vụ" : "Đăng nhập để tiếp tục");
-      if (!token) router.push("/dang-nhap");
+      toast.error(user ? "Không có quyền thực hiện - Cần gia hạn gói dịch vụ" : "Đăng nhập để tiếp tục");
+      if (!user) router.push("/dang-nhap");
       return;
     }
     if (!id) return;
     setContacting(true);
     try {
-      const conv = await createConversation(token!, id);
+      const conv = await createConversation("", id);
       router.push(`/tin-nhan/${conv.id}`);
     } catch (err) {
       if ((err as { status?: number })?.status === 403) {
@@ -94,8 +94,8 @@ export default function SellerProfilePage() {
   async function handleSubmitRating(e: React.FormEvent) {
     e.preventDefault();
     if (!hasPermission("ratings.create")) {
-      toast.error(token ? "Không có quyền thực hiện - Cần gia hạn gói dịch vụ" : "Đăng nhập để tiếp tục");
-      if (!token) router.push("/dang-nhap");
+      toast.error(user ? "Không có quyền thực hiện - Cần gia hạn gói dịch vụ" : "Đăng nhập để tiếp tục");
+      if (!user) router.push("/dang-nhap");
       return;
     }
     if (!id) return;
@@ -105,7 +105,7 @@ export default function SellerProfilePage() {
     }
     setSubmittingRating(true);
     try {
-      const newRating = await createRating(token!, id, ratingStars, ratingComment.trim());
+      const newRating = await createRating("", id, ratingStars, ratingComment.trim());
       setRatings((prev) => [newRating, ...prev]);
       setHasRated(true);
       setRatingComment("");
@@ -123,8 +123,8 @@ export default function SellerProfilePage() {
   async function handleReport(e: React.FormEvent) {
     e.preventDefault();
     if (!hasPermission("reports.create")) {
-      toast.error(token ? "Không có quyền thực hiện - Cần gia hạn gói dịch vụ" : "Đăng nhập để tiếp tục");
-      if (!token) router.push("/dang-nhap");
+      toast.error(user ? "Không có quyền thực hiện - Cần gia hạn gói dịch vụ" : "Đăng nhập để tiếp tục");
+      if (!user) router.push("/dang-nhap");
       return;
     }
     if (!id) return;
@@ -134,7 +134,7 @@ export default function SellerProfilePage() {
     }
     setSubmittingReport(true);
     try {
-      await createReport(token!, "user", id, reportReason, reportDesc || undefined);
+      await createReport("", "user", id, reportReason, reportDesc || undefined);
       toast.success("Đã gửi báo cáo");
       setShowReport(false);
       setReportReason("");

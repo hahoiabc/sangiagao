@@ -16,7 +16,7 @@ const ALWAYS_ALLOWED = ["/tai-khoan", "/goi-thanh-vien", "/thong-bao", "/phan-ho
 const PRIVILEGED_ROLES = ["editor", "admin", "owner"];
 
 export default function MemberLayout({ children }: { children: React.ReactNode }) {
-  const { user, token, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
@@ -31,16 +31,16 @@ export default function MemberLayout({ children }: { children: React.ReactNode }
 
   // Check subscription status
   useEffect(() => {
-    if (!token || !user) return;
+    if (!user) return;
     if (PRIVILEGED_ROLES.includes(user.role)) {
       setSubLoaded(true);
       return;
     }
-    getSubscriptionStatus(token)
+    getSubscriptionStatus("")
       .then(setSubStatus)
       .catch(() => {})
       .finally(() => setSubLoaded(true));
-  }, [token, user]);
+  }, [user]);
 
   if (isLoading || !user) {
     return (

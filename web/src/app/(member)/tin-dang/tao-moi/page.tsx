@@ -36,7 +36,7 @@ function emptyForm(): ListingForm {
 }
 
 export default function CreateListingPage() {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<RiceCategory[]>([]);
@@ -107,7 +107,7 @@ export default function CreateListingPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!token) return;
+    if (!user) return;
 
     // Validate all forms
     for (let i = 0; i < forms.length; i++) {
@@ -123,7 +123,7 @@ export default function CreateListingPage() {
       if (forms.length === 1) {
         // Single listing
         const f = forms[0];
-        const listing = await createListing(token, {
+        const listing = await createListing("", {
           category: f.category,
           rice_type: f.rice_type,
           quantity_kg: Number(f.quantity_kg),
@@ -134,8 +134,8 @@ export default function CreateListingPage() {
         // Upload images
         for (const img of f.images) {
           try {
-            const { url } = await uploadImage(token, img.file, "listings");
-            await addListingImage(token, listing.id, url);
+            const { url } = await uploadImage("", img.file, "listings");
+            await addListingImage("", listing.id, url);
           } catch {
             // continue
           }
@@ -150,15 +150,15 @@ export default function CreateListingPage() {
           harvest_season: f.harvest_season,
           description: f.description,
         }));
-        const result = await batchCreateListings(token, items);
+        const result = await batchCreateListings("", items);
         // Upload images for each listing
         for (let i = 0; i < forms.length; i++) {
           const listing = result.listings[i];
           if (!listing) continue;
           for (const img of forms[i].images) {
             try {
-              const { url } = await uploadImage(token, img.file, "listings");
-              await addListingImage(token, listing.id, url);
+              const { url } = await uploadImage("", img.file, "listings");
+              await addListingImage("", listing.id, url);
             } catch {
               // continue
             }

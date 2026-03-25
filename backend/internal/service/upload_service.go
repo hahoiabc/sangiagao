@@ -28,8 +28,8 @@ var (
 const MaxImageSize = 5 * 1024 * 1024  // 5MB
 const MaxAudioSize = 10 * 1024 * 1024 // 10MB
 
-const thumbnailMaxDim = 300
-const thumbnailJPEGQuality = 80
+const thumbnailMaxDim = 600
+const thumbnailJPEGQuality = 90
 
 var allowedImageTypes = map[string]bool{
 	"image/jpeg": true,

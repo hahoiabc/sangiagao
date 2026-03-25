@@ -23,7 +23,7 @@ const memberLinks = [
 ];
 
 export function Navbar() {
-  const { user, token, logout, hasPermission } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -31,14 +31,14 @@ export function Navbar() {
 
   // Poll unread count like mobile (every 10 seconds)
   useEffect(() => {
-    if (!token) {
+    if (!user) {
       setUnreadCount(0);
       return;
     }
 
     async function fetchUnread() {
       try {
-        const res = await getConversations(token!, 1, 50);
+        const res = await getConversations("", 1, 50);
         const total = (res.data ?? []).reduce((sum, c) => sum + c.unread_count, 0);
         setUnreadCount(total);
       } catch {
@@ -52,7 +52,7 @@ export function Navbar() {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [token]);
+  }, [user]);
 
   function renderBadge(href: string) {
     if (href === "/tin-nhan" && unreadCount > 0) {

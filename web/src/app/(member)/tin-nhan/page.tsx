@@ -12,17 +12,17 @@ import { timeAgo } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 
 export default function ConversationsPage() {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const [result, setResult] = useState<PaginatedResponse<Conversation> | null>(null);
   const [loading, setLoading] = useState(true);
   const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   useEffect(() => {
-    if (!token) return;
+    if (!user) return;
 
     async function fetch() {
       try {
-        const res = await getConversations(token!, 1, 50);
+        const res = await getConversations("", 1, 50);
         setResult(res);
       } catch {
         // ignore
@@ -39,7 +39,7 @@ export default function ConversationsPage() {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [token]);
+  }, [user]);
 
   return (
     <div>
