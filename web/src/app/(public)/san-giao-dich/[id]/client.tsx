@@ -16,7 +16,7 @@ import { toast } from "sonner";
 
 export default function ListingDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { user, token, hasPermission } = useAuth();
+  const { user, hasPermission } = useAuth();
   const router = useRouter();
   const [listing, setListing] = useState<ListingDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,11 +34,11 @@ export default function ListingDetailPage() {
 
   useEffect(() => {
     if (id) {
-      getListingDetail(id, token || undefined)
+      getListingDetail(id)
         .then(setListing)
         .catch((err) => {
           if (err?.status === 403) {
-            setErrorMsg(token
+            setErrorMsg(user
               ? "Không có quyền thực hiện - Cần gia hạn gói dịch vụ"
               : "Đăng nhập để xem chi tiết");
           } else {
@@ -47,27 +47,27 @@ export default function ListingDetailPage() {
         })
         .finally(() => setLoading(false));
     }
-  }, [id, token]);
+  }, [id, user]);
 
   async function handleContact() {
     if (!hasPermission("chat.send")) {
-      toast.error(token ? "Không có quyền thực hiện - Cần gia hạn gói dịch vụ" : "Đăng nhập để tiếp tục");
-      if (!token) router.push("/dang-nhap");
+      toast.error(user ? "Không có quyền thực hiện - Cần gia hạn gói dịch vụ" : "Đăng nhập để tiếp tục");
+      if (!user) router.push("/dang-nhap");
       return;
     }
     if (!listing?.seller || !id) return;
     setContacting(true);
     try {
-      const conv = await createConversation(token!, listing.seller.id, listing.id);
+      const conv = await createConversation("", listing.seller.id, listing.id);
       // Auto-send listing_link if not already sent today (like mobile)
       try {
-        const msgs = await getMessages(token!, conv.id, 1, 30);
+        const msgs = await getMessages("", conv.id, 1, 30);
         const today = new Date().toDateString();
         const alreadySent = msgs.data.some(
           (m) => m.type === "listing_link" && m.content === `listing://${id}` && new Date(m.created_at).toDateString() === today
         );
         if (!alreadySent) {
-          await sendMessage(token!, conv.id, `listing://${id}`, "listing_link");
+          await sendMessage("", conv.id, `listing://${id}`, "listing_link");
         }
       } catch {
         // ignore - still navigate to chat
@@ -87,8 +87,8 @@ export default function ListingDetailPage() {
   async function handleReport(e: React.FormEvent) {
     e.preventDefault();
     if (!hasPermission("reports.create")) {
-      toast.error(token ? "Không có quyền thực hiện - Cần gia hạn gói dịch vụ" : "Đăng nhập để tiếp tục");
-      if (!token) router.push("/dang-nhap");
+      toast.error(user ? "Không có quyền thực hiện - Cần gia hạn gói dịch vụ" : "Đăng nhập để tiếp tục");
+      if (!user) router.push("/dang-nhap");
       return;
     }
     if (!id) return;
@@ -98,7 +98,7 @@ export default function ListingDetailPage() {
     }
     setSubmittingReport(true);
     try {
-      await createReport(token!, "listing", id, reportReason, reportDesc || undefined);
+      await createReport("", "listing", id, reportReason, reportDesc || undefined);
       toast.success("Đã gửi báo cáo");
       setShowReport(false);
       setReportReason("");
@@ -127,7 +127,7 @@ export default function ListingDetailPage() {
         {errorMsg ? (
           <>
             <p className="text-lg font-medium text-foreground mb-2">{errorMsg}</p>
-            {!token ? (
+            {!user ? (
               <Link href="/dang-nhap">
                 <Button className="gap-2 mt-4">Đăng nhập</Button>
               </Link>
