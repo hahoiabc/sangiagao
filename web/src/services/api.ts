@@ -402,13 +402,18 @@ export async function uploadImage(token: string, file: File, folder: "avatars" |
   formData.append("image", file);
   formData.append("folder", folder);
 
-  const doUpload = () =>
-    fetch(`${API_BASE}/upload/image`, {
+  const doUpload = () => {
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const csrf = getCSRFToken();
+    if (csrf) headers["X-CSRF-Token"] = csrf;
+    return fetch(`${API_BASE}/upload/image`, {
       method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers,
       credentials: "include",
       body: formData,
     });
+  };
 
   let res = await doUpload();
 
@@ -442,13 +447,18 @@ export async function uploadAudio(token: string, blob: Blob) {
   const formData = new FormData();
   formData.append("audio", blob, "recording.webm");
 
-  const doUpload = () =>
-    fetch(`${API_BASE}/upload/audio`, {
+  const doUpload = () => {
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const csrf = getCSRFToken();
+    if (csrf) headers["X-CSRF-Token"] = csrf;
+    return fetch(`${API_BASE}/upload/audio`, {
       method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers,
       credentials: "include",
       body: formData,
     });
+  };
 
   let res = await doUpload();
 
