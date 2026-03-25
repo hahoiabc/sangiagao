@@ -2,7 +2,7 @@ export default function PrivacyPolicyPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
       <h1 className="text-3xl font-bold mb-8">Chính sách bảo mật</h1>
-      <p className="text-sm text-muted-foreground mb-6">Cập nhật lần cuối: 23/03/2026</p>
+      <p className="text-sm text-muted-foreground mb-6">Cập nhật lần cuối: 26/03/2026</p>
 
       <div className="prose prose-sm max-w-none space-y-6 text-foreground">
         <section>
@@ -56,7 +56,26 @@ export default function PrivacyPolicyPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold mb-3">5. Lưu trữ và bảo mật</h2>
+          <h2 className="text-xl font-semibold mb-3">5. Thông tin hiển thị công khai</h2>
+          <p className="mb-2">
+            Để phục vụ mục đích kết nối giao dịch giữa các thành viên, các thông tin sau của bạn
+            sẽ được hiển thị công khai trên trang tin đăng và hồ sơ tài khoản:
+          </p>
+          <ul className="list-disc pl-6 space-y-1">
+            <li><strong>Tên tài khoản</strong> (họ tên đăng ký)</li>
+            <li><strong>Số điện thoại</strong></li>
+            <li><strong>Xã/Phường</strong> và <strong>Tỉnh/Thành phố</strong></li>
+            <li><strong>Tên tổ chức</strong> (nếu có)</li>
+          </ul>
+          <p className="mt-2">
+            Việc hiển thị này giúp các đối tác tiềm năng (người mua, người bán gạo) có thể liên hệ
+            trực tiếp, tạo điều kiện giao dịch thuận lợi. Bằng việc đăng ký tài khoản, bạn đồng ý
+            với việc hiển thị công khai các thông tin trên.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-semibold mb-3">6. Lưu trữ và bảo mật</h2>
           <ul className="list-disc pl-6 space-y-1">
             <li>Dữ liệu được lưu trữ trên máy chủ tại Việt Nam</li>
             <li>Mật khẩu được mã hóa (hash) trước khi lưu</li>
@@ -67,7 +86,7 @@ export default function PrivacyPolicyPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold mb-3">6. Quyền của bạn</h2>
+          <h2 className="text-xl font-semibold mb-3">7. Quyền của bạn</h2>
           <ul className="list-disc pl-6 space-y-1">
             <li><strong>Truy cập:</strong> Xem thông tin cá nhân trong trang Tài khoản</li>
             <li><strong>Chỉnh sửa:</strong> Cập nhật hồ sơ, đổi mật khẩu, đổi số điện thoại</li>
@@ -77,7 +96,7 @@ export default function PrivacyPolicyPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold mb-3">7. Quyền truy cập thiết bị</h2>
+          <h2 className="text-xl font-semibold mb-3">8. Quyền truy cập thiết bị</h2>
           <p>Ứng dụng di động có thể yêu cầu các quyền sau:</p>
           <ul className="list-disc pl-6 space-y-1">
             <li><strong>Camera:</strong> Chụp ảnh sản phẩm khi đăng tin</li>
@@ -89,7 +108,7 @@ export default function PrivacyPolicyPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold mb-3">8. Cookie và công nghệ theo dõi</h2>
+          <h2 className="text-xl font-semibold mb-3">9. Cookie và công nghệ theo dõi</h2>
           <p>
             Website sử dụng localStorage để lưu phiên đăng nhập. Chúng tôi không sử dụng cookie
             theo dõi từ bên thứ ba hoặc quảng cáo.
@@ -97,7 +116,7 @@ export default function PrivacyPolicyPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold mb-3">9. Trẻ em</h2>
+          <h2 className="text-xl font-semibold mb-3">10. Trẻ em</h2>
           <p>
             Dịch vụ không dành cho người dưới 18 tuổi. Chúng tôi không cố ý thu thập thông tin
             từ trẻ em. Nếu phát hiện, vui lòng liên hệ để chúng tôi xóa ngay.
@@ -105,7 +124,7 @@ export default function PrivacyPolicyPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold mb-3">10. Thay đổi chính sách</h2>
+          <h2 className="text-xl font-semibold mb-3">11. Thay đổi chính sách</h2>
           <p>
             Chúng tôi có thể cập nhật chính sách này theo thời gian. Mọi thay đổi sẽ được thông báo
             qua ứng dụng hoặc website. Việc tiếp tục sử dụng Dịch vụ sau khi thay đổi đồng nghĩa
@@ -114,7 +133,7 @@ export default function PrivacyPolicyPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-semibold mb-3">11. Liên hệ</h2>
+          <h2 className="text-xl font-semibold mb-3">12. Liên hệ</h2>
           <p>
             Nếu có câu hỏi về chính sách bảo mật, vui lòng liên hệ:
           </p>

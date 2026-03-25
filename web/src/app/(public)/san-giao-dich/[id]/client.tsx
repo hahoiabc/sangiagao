@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, MapPin, Package, MessageCircle, Star, Flag, X, ChevronLeft, ChevronRight, ZoomIn } from "lucide-react";
+import { ArrowLeft, MapPin, Package, MessageCircle, Star, Flag, X, ChevronLeft, ChevronRight, ZoomIn, Phone } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -284,11 +284,18 @@ export default function ListingDetailPage() {
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <MapPin className="h-3 w-3" />
                           {listing.seller.province}
+                          {listing.seller.ward && `, ${listing.seller.ward}`}
                         </p>
                       )}
                     </div>
                   </div>
                 </Link>
+                {listing.seller.phone && (
+                  <p className="text-sm flex items-center gap-2 mb-2">
+                    <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                    <a href={`tel:${listing.seller.phone}`} className="text-primary hover:underline">{listing.seller.phone}</a>
+                  </p>
+                )}
                 <p className="text-xs text-muted-foreground mb-4">
                   Thành viên từ {formatDate(listing.seller.created_at)}
                 </p>

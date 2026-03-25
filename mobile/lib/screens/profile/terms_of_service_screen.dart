@@ -13,7 +13,7 @@ class TermsOfServiceScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Cập nhật lần cuối: 24/03/2026',
+            Text('Cập nhật lần cuối: 26/03/2026',
                 style: TextStyle(fontSize: 13, color: AppColors.textHint)),
             const SizedBox(height: 20),
             ..._sections.map((s) => _buildSection(s.$1, s.$2)),
@@ -56,7 +56,18 @@ class TermsOfServiceScreen extends StatelessWidget {
           '• Bạn phải từ 18 tuổi trở lên để sử dụng Dịch vụ',
     ),
     (
-      '3. Quy tắc đăng tin',
+      '3. Hiển thị thông tin liên hệ',
+      'Khi đăng ký và sử dụng Dịch vụ, bạn hiểu và đồng ý rằng các thông tin sau sẽ được '
+          'hiển thị công khai trên trang tin đăng và hồ sơ tài khoản của bạn:\n\n'
+          '• Tên tài khoản (họ tên đăng ký)\n'
+          '• Số điện thoại\n'
+          '• Xã/Phường và Tỉnh/Thành phố\n'
+          '• Tên tổ chức (nếu có)\n\n'
+          'Mục đích hiển thị công khai là để các đối tác tiềm năng (người mua, người bán) có thể '
+          'dễ dàng liên hệ và kết nối trực tiếp, phục vụ giao dịch mua bán gạo hiệu quả hơn.',
+    ),
+    (
+      '4. Quy tắc đăng tin',
       '• Tin đăng phải chính xác về loại gạo, giá cả, số lượng và chất lượng\n'
           '• Nghiêm cấm đăng tin sai lệch, gian lận hoặc lừa đảo\n'
           '• Hình ảnh sản phẩm phải thực tế, không sử dụng ảnh giả mạo\n'
@@ -64,14 +75,14 @@ class TermsOfServiceScreen extends StatelessWidget {
           '• Người bán cần có gói dịch vụ (subscription) để đăng tin',
     ),
     (
-      '4. Giao dịch',
+      '5. Giao dịch',
       '• SanGiaGao.vn là nền tảng kết nối người mua và người bán gạo\n'
           '• Chúng tôi KHÔNG tham gia trực tiếp vào giao dịch mua bán\n'
           '• Người mua và người bán tự chịu trách nhiệm về chất lượng, giá cả và giao nhận\n'
           '• Chúng tôi không đảm bảo hoàn tiền cho bất kỳ giao dịch nào',
     ),
     (
-      '5. Hành vi bị cấm',
+      '6. Hành vi bị cấm',
       '• Spam, quấy rối, đe dọa người dùng khác\n'
           '• Sử dụng Dịch vụ cho mục đích trái pháp luật\n'
           '• Cố ý phá hoại, can thiệp vào hệ thống\n'
@@ -79,27 +90,27 @@ class TermsOfServiceScreen extends StatelessWidget {
           '• Thu thập thông tin người dùng trái phép',
     ),
     (
-      '6. Quyền và trách nhiệm của chúng tôi',
+      '7. Quyền và trách nhiệm của chúng tôi',
       '• Chúng tôi có quyền xóa tin đăng vi phạm mà không cần thông báo trước\n'
           '• Chúng tôi có quyền khóa tài khoản vi phạm điều khoản\n'
           '• Chúng tôi nỗ lực duy trì Dịch vụ ổn định nhưng không đảm bảo hoạt động liên tục 100%\n'
           '• Chúng tôi có quyền thay đổi, tạm ngừng hoặc ngừng cung cấp Dịch vụ',
     ),
     (
-      '7. Gói dịch vụ & Thanh toán',
+      '8. Gói dịch vụ & Thanh toán',
       '• Gói dịch vụ cho phép người bán đăng tin trên sàn\n'
           '• Phí dịch vụ được công bố rõ ràng trước khi thanh toán\n'
           '• Phí đã thanh toán không hoàn lại trừ trường hợp lỗi hệ thống\n'
           '• Khi gói dịch vụ hết hạn, tin đăng sẽ bị ẩn cho đến khi gia hạn',
     ),
     (
-      '8. Xóa tài khoản',
+      '9. Xóa tài khoản',
       '• Bạn có quyền xóa tài khoản bất kỳ lúc nào trong mục Tài khoản\n'
           '• Khi xóa tài khoản, tất cả dữ liệu cá nhân, tin đăng, tin nhắn sẽ bị xóa vĩnh viễn\n'
           '• Hành động xóa không thể hoàn tác',
     ),
     (
-      '9. Giới hạn trách nhiệm',
+      '10. Giới hạn trách nhiệm',
       'SanGiaGao.vn không chịu trách nhiệm về:\n'
           '• Thiệt hại phát sinh từ giao dịch giữa người mua và người bán\n'
           '• Chất lượng sản phẩm không đúng mô tả\n'
@@ -107,12 +118,12 @@ class TermsOfServiceScreen extends StatelessWidget {
           '• Hành vi vi phạm của người dùng khác',
     ),
     (
-      '10. Thay đổi điều khoản',
+      '11. Thay đổi điều khoản',
       'Chúng tôi có quyền cập nhật điều khoản này. Mọi thay đổi sẽ được thông báo '
           'qua ứng dụng. Việc tiếp tục sử dụng Dịch vụ đồng nghĩa với việc chấp nhận điều khoản mới.',
     ),
     (
-      '11. Liên hệ',
+      '12. Liên hệ',
       'Nếu có câu hỏi về điều khoản sử dụng, vui lòng liên hệ:\n'
           '• Website: sangiagao.vn\n'
           '• Điện thoại: 0968660799',

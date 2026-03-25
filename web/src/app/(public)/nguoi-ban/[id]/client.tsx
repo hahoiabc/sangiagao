@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, MapPin, MessageCircle, Star, Flag, Calendar } from "lucide-react";
+import { ArrowLeft, MapPin, MessageCircle, Star, Flag, Calendar, Phone } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -196,6 +196,13 @@ export default function SellerProfilePage() {
                 <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                   <MapPin className="h-3.5 w-3.5" />
                   {profile.province}
+                  {profile.ward && `, ${profile.ward}`}
+                </p>
+              )}
+              {profile.phone && (
+                <p className="text-sm flex items-center gap-1 mt-1">
+                  <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                  <a href={`tel:${profile.phone}`} className="text-primary hover:underline">{profile.phone}</a>
                 </p>
               )}
               <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">

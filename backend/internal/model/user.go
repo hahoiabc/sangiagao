@@ -46,7 +46,7 @@ func MaskPhone(phone string) string {
 func (u *User) ToPublicProfile() *PublicProfile {
 	return &PublicProfile{
 		ID:          u.ID,
-		Phone:       MaskPhone(u.Phone),
+		Phone:       u.Phone,
 		Role:        u.Role,
 		Name:        u.Name,
 		AvatarURL:   u.AvatarURL,

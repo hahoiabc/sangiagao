@@ -110,10 +110,12 @@ export interface User {
 
 export interface PublicProfile {
   id: string;
+  phone: string;
   role: string;
   name: string;
   avatar_url: string;
   province: string;
+  ward: string;
   description: string;
   org_name: string;
   is_online?: boolean;

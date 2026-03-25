@@ -13,7 +13,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Cập nhật lần cuối: 23/03/2026',
+            Text('Cập nhật lần cuối: 26/03/2026',
                 style: TextStyle(fontSize: 13, color: AppColors.textHint)),
             const SizedBox(height: 20),
             ..._sections.map((s) => _buildSection(s.$1, s.$2)),
@@ -79,7 +79,19 @@ class PrivacyPolicyScreen extends StatelessWidget {
           '• Với nhà cung cấp dịch vụ kỹ thuật (hosting, SMS) để vận hành hệ thống',
     ),
     (
-      '5. Lưu trữ và bảo mật',
+      '5. Thông tin hiển thị công khai',
+      'Để phục vụ mục đích kết nối giao dịch giữa các thành viên, các thông tin sau của bạn '
+          'sẽ được hiển thị công khai trên trang tin đăng và hồ sơ tài khoản:\n\n'
+          '• Tên tài khoản (họ tên đăng ký)\n'
+          '• Số điện thoại\n'
+          '• Xã/Phường và Tỉnh/Thành phố\n'
+          '• Tên tổ chức (nếu có)\n\n'
+          'Việc hiển thị này giúp các đối tác tiềm năng (người mua, người bán gạo) có thể liên hệ '
+          'trực tiếp, tạo điều kiện giao dịch thuận lợi. Bằng việc đăng ký tài khoản, bạn đồng ý '
+          'với việc hiển thị công khai các thông tin trên.',
+    ),
+    (
+      '6. Lưu trữ và bảo mật',
       '• Dữ liệu được lưu trữ trên máy chủ tại Việt Nam\n'
           '• Mật khẩu được mã hóa (hash) trước khi lưu\n'
           '• Token xác thực được lưu an toàn trên thiết bị (Secure Storage)\n'
@@ -87,14 +99,14 @@ class PrivacyPolicyScreen extends StatelessWidget {
           '• Chúng tôi giữ thông tin trong thời gian tài khoản còn hoạt động',
     ),
     (
-      '6. Quyền của bạn',
+      '7. Quyền của bạn',
       '• Truy cập: Xem thông tin cá nhân trong trang Tài khoản\n'
           '• Chỉnh sửa: Cập nhật hồ sơ, đổi mật khẩu, đổi số điện thoại\n'
           '• Xóa: Xóa tài khoản và dữ liệu liên quan trong mục Tài khoản → Xóa tài khoản\n'
           '• Rút đồng ý: Ngừng sử dụng Dịch vụ bất kỳ lúc nào',
     ),
     (
-      '7. Quyền truy cập thiết bị',
+      '8. Quyền truy cập thiết bị',
       'Ứng dụng di động có thể yêu cầu các quyền sau:\n'
           '• Camera: Chụp ảnh sản phẩm khi đăng tin\n'
           '• Thư viện ảnh: Chọn ảnh sản phẩm từ thiết bị\n'
@@ -103,18 +115,18 @@ class PrivacyPolicyScreen extends StatelessWidget {
           'Bạn có thể từ chối hoặc thu hồi quyền bất kỳ lúc nào trong cài đặt thiết bị.',
     ),
     (
-      '8. Trẻ em',
+      '9. Trẻ em',
       'Dịch vụ không dành cho người dưới 18 tuổi. Chúng tôi không cố ý thu thập '
           'thông tin từ trẻ em. Nếu phát hiện, vui lòng liên hệ để chúng tôi xóa ngay.',
     ),
     (
-      '9. Thay đổi chính sách',
+      '10. Thay đổi chính sách',
       'Chúng tôi có thể cập nhật chính sách này theo thời gian. Mọi thay đổi sẽ được '
           'thông báo qua ứng dụng hoặc website. Việc tiếp tục sử dụng Dịch vụ sau khi thay đổi '
           'đồng nghĩa với việc bạn chấp nhận chính sách mới.',
     ),
     (
-      '10. Liên hệ',
+      '11. Liên hệ',
       'Nếu có câu hỏi về chính sách bảo mật, vui lòng liên hệ:\n'
           '• Website: sangiagao.vn\n'
           '• Điện thoại: 0968660799',
