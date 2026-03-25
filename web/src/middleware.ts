@@ -6,7 +6,7 @@ export function middleware(request: NextRequest) {
   const csp = isProd
     ? [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline'",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' https: data: blob:",
         "font-src 'self' data:",
