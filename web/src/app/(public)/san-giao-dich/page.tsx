@@ -336,7 +336,8 @@ function MarketplaceContent() {
                       <img
                         src={listing.images[0]}
                         alt={listing.title}
-                        className="max-h-full max-w-full object-contain"
+                        loading="lazy"
+                        className="w-full h-full object-cover"
                       />
                     ) : (
                       <Package className="h-10 w-10 text-muted-foreground/40" />
