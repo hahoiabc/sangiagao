@@ -341,7 +341,6 @@ func (r *ListingRepo) GetDetailWithSeller(ctx context.Context, id string) (*mode
 	if err := json.Unmarshal(imagesJSON, &d.Images); err != nil || d.Images == nil {
 		d.Images = []string{}
 	}
-	d.Seller.Phone = model.MaskPhone(d.Seller.Phone)
 	return &d, nil
 }
 
