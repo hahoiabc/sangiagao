@@ -178,12 +178,15 @@ export default function SellerProfilePage() {
       <Card className="mb-6">
         <CardContent className="p-6">
           <div className="flex items-start gap-4">
-            <Avatar className="h-16 w-16">
-              {profile.avatar_url && <AvatarImage src={profile.avatar_url} alt={profile.name || "Avatar"} />}
-              <AvatarFallback className="bg-primary/10 text-primary font-bold text-xl">
-                {(profile.name || "?").charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar className="h-16 w-16">
+                {profile.avatar_url && <AvatarImage src={profile.avatar_url} alt={profile.name || "Avatar"} />}
+                <AvatarFallback className="bg-primary/10 text-primary font-bold text-xl">
+                  {(profile.name || "?").charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <span className={`absolute bottom-0 right-0 h-4 w-4 rounded-full border-2 border-white ${profile.is_online ? "bg-green-500" : "bg-gray-400"}`} />
+            </div>
             <div className="flex-1">
               <h1 className="text-xl font-bold">{profile.name || "Ẩn danh"}</h1>
               {profile.org_name && (

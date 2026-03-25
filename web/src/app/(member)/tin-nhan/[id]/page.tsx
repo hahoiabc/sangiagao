@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, Send, ImagePlus, X, Loader2, Trash2, RotateCcw,
-  CheckSquare, Square, Mic, StopCircle, Package,
+  CheckSquare, Square, Mic, StopCircle, Package, Check, CheckCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -134,6 +134,8 @@ export default function ChatRoomPage() {
   // WebSocket
   const wsSocketRef = useRef<WebSocket | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
+  const wsReconnectAttemptRef = useRef(0);
+  const wsReconnectTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Typing indicator
   const [typingUser, setTypingUser] = useState<string | null>(null);
@@ -162,6 +164,7 @@ export default function ChatRoomPage() {
 
     ws.onopen = () => {
       setWsConnected(true);
+      wsReconnectAttemptRef.current = 0;
       // Stop polling when WS connected
       if (pollingRef.current) {
         clearInterval(pollingRef.current);
@@ -201,7 +204,13 @@ export default function ChatRoomPage() {
         }
 
         if (data.event === "read_receipt") {
-          // Could update read status UI in future
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.sender_id === user?.id && !m.read_at
+                ? { ...m, read_at: new Date().toISOString() }
+                : m
+            )
+          );
         }
       } catch {
         // ignore parse errors
@@ -212,6 +221,12 @@ export default function ChatRoomPage() {
       setWsConnected(false);
       if (!pollingRef.current && convId) {
         startPolling();
+      }
+      // Exponential backoff reconnect (like mobile: max 20s, 10 attempts)
+      if (wsReconnectAttemptRef.current < 10) {
+        const delay = Math.min(1000 * Math.pow(2, wsReconnectAttemptRef.current), 20000);
+        wsReconnectAttemptRef.current += 1;
+        wsReconnectTimerRef.current = setTimeout(() => connectWs(), delay);
       }
     };
 
@@ -268,8 +283,10 @@ export default function ChatRoomPage() {
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      if (wsReconnectTimerRef.current) clearTimeout(wsReconnectTimerRef.current);
       const ws = wsSocketRef.current;
       if (ws) {
+        ws.onclose = null; // prevent reconnect on intentional close
         ws.close();
         wsSocketRef.current = null;
       }
@@ -619,11 +636,16 @@ export default function ChatRoomPage() {
                         )}
                         <p
                           className={cn(
-                            "text-[10px] mt-1",
-                            isMine ? "text-primary-foreground/70" : "text-muted-foreground"
+                            "text-[10px] mt-1 flex items-center gap-1",
+                            isMine ? "text-primary-foreground/70 justify-end" : "text-muted-foreground"
                           )}
                         >
                           {timeAgo(msg.created_at)}
+                          {isMine && msg.type !== "recalled" && (
+                            msg.read_at
+                              ? <CheckCheck className="h-3 w-3" />
+                              : <Check className="h-3 w-3" />
+                          )}
                         </p>
                       </div>
                     </div>

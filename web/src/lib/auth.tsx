@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
-import { getMyPermissions, getGuestPermissions, type PermissionMap } from "@/services/api";
+import { getMyPermissions, getGuestPermissions, getMe, type PermissionMap } from "@/services/api";
 
 interface AuthUser {
   id: string;
@@ -48,6 +48,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [user]);
 
+  // Check if user is blocked (like mobile AuthNotifier)
+  const checkBlocked = useCallback(async () => {
+    try {
+      const me = await getMe("");
+      if (me.is_blocked) {
+        alert("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.");
+        localStorage.removeItem("web_user");
+        setUser(null);
+        setPermissions({});
+        fetch(`${API_BASE}/auth/logout`, { method: "POST", credentials: "include" }).catch(() => {});
+        window.location.href = "/dang-nhap";
+      }
+    } catch {
+      // ignore - 401 handled by refresh interceptor
+    }
+  }, []);
+
   useEffect(() => {
     // Migrate: clean up old token storage
     localStorage.removeItem("web_token");
@@ -56,13 +73,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const savedUser = localStorage.getItem("web_user");
     if (savedUser) {
       try {
-        setUser(JSON.parse(savedUser));
+        const parsed = JSON.parse(savedUser);
+        setUser(parsed);
+        // Verify account not blocked on startup
+        checkBlocked();
       } catch {
         localStorage.removeItem("web_user");
       }
     }
     setIsLoading(false);
-  }, []);
+  }, [checkBlocked]);
 
   const login = useCallback(
     (user: AuthUser, _accessToken: string, _refreshToken: string) => {

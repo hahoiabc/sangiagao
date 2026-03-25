@@ -116,6 +116,7 @@ export interface PublicProfile {
   province: string;
   description: string;
   org_name: string;
+  is_online?: boolean;
   created_at: string;
 }
 

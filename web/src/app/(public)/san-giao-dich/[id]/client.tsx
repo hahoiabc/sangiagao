@@ -266,12 +266,15 @@ export default function ListingDetailPage() {
               <CardContent>
                 <Link href={`/nguoi-ban/${listing.seller.id}`} className="block mb-4 hover:opacity-80">
                   <div className="flex items-center gap-3">
-                    <Avatar className="h-12 w-12">
-                      {listing.seller.avatar_url && <AvatarImage src={listing.seller.avatar_url} alt={listing.seller.name || "Avatar"} />}
-                      <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                        {(listing.seller.name || "?").charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className="relative">
+                      <Avatar className="h-12 w-12">
+                        {listing.seller.avatar_url && <AvatarImage src={listing.seller.avatar_url} alt={listing.seller.name || "Avatar"} />}
+                        <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                          {(listing.seller.name || "?").charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white ${listing.seller.is_online ? "bg-green-500" : "bg-gray-400"}`} />
+                    </div>
                     <div>
                       <p className="font-semibold">{listing.seller.name || "Ẩn danh"}</p>
                       {listing.seller.org_name && (
@@ -338,8 +341,9 @@ export default function ListingDetailPage() {
                     required
                   >
                     <option value="">Chọn lý do</option>
-                    <option value="fraud">Lừa đảo</option>
                     <option value="false_info">Thông tin sai lệch</option>
+                    <option value="counterfeit">Hàng giả/kém chất lượng</option>
+                    <option value="fraud">Lừa đảo</option>
                     <option value="spam">Spam</option>
                     <option value="other">Khác</option>
                   </select>
