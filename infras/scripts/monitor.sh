@@ -30,7 +30,7 @@ echo "============================================"
 echo ""
 echo "--- Docker Containers ---"
 
-REQUIRED_CONTAINERS="rice_postgres rice_redis rice_mongodb minio rice_nginx backend admin web rice_chat"
+REQUIRED_CONTAINERS="rice_postgres rice_redis rice_mongodb minio rice_nginx backend admin web chat"
 
 for name in $REQUIRED_CONTAINERS; do
     STATUS=$(docker inspect --format='{{.State.Status}}' "$name" 2>/dev/null)
