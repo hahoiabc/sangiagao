@@ -48,6 +48,12 @@ func main() {
 	defer pgPool.Close()
 	slog.Info("PostgreSQL connected")
 
+	// Run pending database migrations
+	if err := database.RunMigrations(pgPool, database.MigrationFS, database.MigrationDir); err != nil {
+		slog.Error("Database migration failed", "error", err)
+		os.Exit(1)
+	}
+
 	// Redis (optional — used for caching)
 	redisClient, err := database.NewRedisClient(cfg.RedisURL)
 	if err != nil {
