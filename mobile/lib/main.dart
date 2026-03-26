@@ -30,6 +30,11 @@ class _SanGaoAppState extends ConsumerState<SanGaoApp> {
     final router = ref.watch(routerProvider);
     final themeOption = ref.watch(themeProvider);
 
+    // Wire push notification navigation to GoRouter
+    PushNotificationService.onNavigate = (route) {
+      router.go(route);
+    };
+
     // Init push notifications once authenticated
     ref.listen<AuthState>(authProvider, (prev, next) {
       if (next.status == AuthStatus.authenticated && !_pushInitialized) {

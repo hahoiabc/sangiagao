@@ -19,6 +19,7 @@ import '../../models/conversation.dart';
 import '../../models/listing.dart';
 import '../../models/user.dart';
 import '../../providers/providers.dart';
+import '../../services/push_notification_service.dart';
 import '../../theme/app_theme.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
@@ -79,6 +80,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    // Track active conversation to suppress push notifications
+    PushNotificationService.activeConversationId = widget.conversationId;
     _init();
     _positionSub = _audioPlayer.onPositionChanged.listen((pos) {
       if (mounted) setState(() => _playPosition = pos);
@@ -521,6 +524,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   void dispose() {
+    // Clear active conversation tracking
+    if (PushNotificationService.activeConversationId == widget.conversationId) {
+      PushNotificationService.activeConversationId = null;
+    }
     _heartbeat?.cancel();
     _pollTimer?.cancel();
     _typingDebounce?.cancel();
@@ -545,7 +552,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   // --- Message actions ---
 
   bool _canRecall(Message msg) {
-    final dt = DateTime.tryParse(msg.createdAt);
+    final dt = DateTime.tryParse(msg.createdAt)?.toLocal();
     if (dt == null) return false;
     return DateTime.now().difference(dt).inHours < 24;
   }
@@ -724,7 +731,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   List<MapEntry<String, List<Message>>> _groupMessagesByDay() {
     final Map<String, List<Message>> groups = {};
     for (final msg in _messages) {
-      final dt = DateTime.tryParse(msg.createdAt);
+      final dt = DateTime.tryParse(msg.createdAt)?.toLocal();
       final key = dt != null
           ? '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}'
           : 'unknown';
@@ -875,8 +882,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget _buildDayChain(String dateLabel, List<Message> dayMessages) {
     if (dayMessages.isEmpty) return const SizedBox.shrink();
 
-    final firstDt = DateTime.tryParse(dayMessages.first.createdAt);
-    final lastDt = DateTime.tryParse(dayMessages.last.createdAt);
+    final firstDt = DateTime.tryParse(dayMessages.first.createdAt)?.toLocal();
+    final lastDt = DateTime.tryParse(dayMessages.last.createdAt)?.toLocal();
 
     final startTime = firstDt != null
         ? '${firstDt.hour.toString().padLeft(2, '0')}:${firstDt.minute.toString().padLeft(2, '0')}'
