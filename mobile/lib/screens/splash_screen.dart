@@ -105,7 +105,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Đơn giản & Hiệu quả',
+                    'Kết nối ngành gạo',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w400,
