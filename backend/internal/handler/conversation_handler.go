@@ -120,7 +120,8 @@ func (h *ConversationHandler) SendMessage(c *gin.Context) {
 	// Send push notification to the other participant
 	if h.notifService != nil {
 		go func() {
-			conv, err := h.chatService.GetConversation(context.Background(), conversationID)
+			ctx := context.Background()
+			conv, err := h.chatService.GetConversation(ctx, conversationID)
 			if err != nil {
 				return
 			}
@@ -128,12 +129,23 @@ func (h *ConversationHandler) SendMessage(c *gin.Context) {
 			if recipientID == userID {
 				recipientID = conv.SellerID
 			}
+
+			// Use sender name as push title (like Zalo)
+			senderName, err := h.chatService.GetUserName(ctx, userID)
+			if err != nil {
+				senderName = "Tin nhắn mới"
+			}
+
 			preview := req.Content
 			if len(preview) > 100 {
 				preview = preview[:100] + "..."
 			}
-			data, _ := json.Marshal(map[string]string{"conversation_id": conversationID})
-			if _, err := h.notifService.Create(context.Background(), recipientID, "new_message", "Tin nhắn mới", preview, data); err != nil {
+			data, _ := json.Marshal(map[string]string{
+				"conversation_id": conversationID,
+				"type":            "new_message",
+				"sender_id":       userID,
+			})
+			if _, err := h.notifService.Create(ctx, recipientID, "new_message", senderName, preview, data); err != nil {
 				log.Printf("Failed to send message notification: %v", err)
 			}
 		}()

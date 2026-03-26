@@ -190,6 +190,17 @@ func (s *ChatService) IsParticipant(ctx context.Context, conversationID, userID 
 	return s.convRepo.IsParticipant(ctx, conversationID, userID)
 }
 
+func (s *ChatService) GetUserName(ctx context.Context, userID string) (string, error) {
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	if user.Name != nil {
+		return *user.Name, nil
+	}
+	return "Người dùng", nil
+}
+
 func (s *ChatService) RecallMessages(ctx context.Context, userID, conversationID string, messageIDs []string) error {
 	ok, err := s.convRepo.IsParticipant(ctx, conversationID, userID)
 	if err != nil {

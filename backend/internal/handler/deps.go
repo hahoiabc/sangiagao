@@ -146,4 +146,5 @@ type ChatServiceInterface interface {
 	DeleteMessages(ctx context.Context, userID, conversationID string, messageIDs []string) error
 	RecallMessages(ctx context.Context, userID, conversationID string, messageIDs []string) error
 	IsParticipant(ctx context.Context, conversationID, userID string) (bool, error)
+	GetUserName(ctx context.Context, userID string) (string, error)
 }

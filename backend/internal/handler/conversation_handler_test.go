@@ -80,6 +80,10 @@ func (m *mockChatService) IsParticipant(ctx context.Context, conversationID, use
 	args := m.Called(ctx, conversationID, userID)
 	return args.Bool(0), args.Error(1)
 }
+func (m *mockChatService) GetUserName(ctx context.Context, userID string) (string, error) {
+	args := m.Called(ctx, userID)
+	return args.String(0), args.Error(1)
+}
 
 func setupConvRouter(h *ConversationHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
