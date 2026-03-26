@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Wheat, Eye, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -99,7 +100,7 @@ export default function PriceBoardPage() {
                               <div className="flex items-center gap-2">
                                 <span className="font-medium">{p.product_label}</span>
                                 {p.sponsor_logo && (
-                                  <img src={p.sponsor_logo} alt="Logo tài trợ" loading="lazy" className="h-5 w-auto" />
+                                  <Image src={p.sponsor_logo} alt="Logo tài trợ" width={20} height={20} className="h-5 w-auto" />
                                 )}
                               </div>
                             </td>

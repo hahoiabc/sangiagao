@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowLeft, Send, ImagePlus, X, Loader2, Trash2, RotateCcw,
   CheckSquare, Square, Mic, StopCircle, Package, Check, CheckCheck,
@@ -626,7 +627,7 @@ export default function ChatRoomPage() {
                         {msg.type === "recalled" ? (
                           <p className="italic text-xs opacity-70">{msg.content}</p>
                         ) : msg.type === "image" ? (
-                          <img src={msg.content} alt="Hình ảnh tin nhắn" loading="lazy" className="max-w-full rounded-lg cursor-pointer" onClick={() => window.open(msg.content, "_blank")} />
+                          <Image src={msg.content} alt="Hình ảnh tin nhắn" width={300} height={200} className="max-w-full rounded-lg cursor-pointer object-contain" onClick={() => window.open(msg.content, "_blank")} />
                         ) : msg.type === "audio" ? (
                           <audio controls src={msg.content} className="max-w-[250px]" />
                         ) : msg.type === "listing_link" ? (

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -170,7 +171,7 @@ export default function SponsorsPage() {
                   <TableCell className="text-sm font-medium">{sponsor.sponsor_name}</TableCell>
                   <TableCell>
                     {sponsor.logo_url ? (
-                      <img src={sponsor.logo_url} alt={sponsor.sponsor_name} className="h-8 w-8 object-contain rounded" />
+                      <Image src={sponsor.logo_url} alt={sponsor.sponsor_name} width={32} height={32} className="object-contain rounded" />
                     ) : "-"}
                   </TableCell>
                   <TableCell>

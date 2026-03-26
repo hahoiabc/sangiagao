@@ -13,39 +13,74 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? (() => {
 
 interface RequestOptions extends RequestInit {
   token?: string;
+  timeout?: number;
+}
+
+const DEFAULT_TIMEOUT = 20_000;
+const UPLOAD_TIMEOUT = 120_000;
+const REFRESH_TIMEOUT = 10_000;
+const RETRYABLE_STATUSES = [429, 502, 503, 504];
+
+function fetchWithTimeout(url: string, init: RequestInit, timeout: number): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+  return fetch(url, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
+async function fetchWithRetry(url: string, init: RequestInit, timeout: number): Promise<Response> {
+  const method = (init.method || "GET").toUpperCase();
+  const canRetry = method === "GET" || method === "HEAD";
+  const maxRetries = canRetry ? 2 : 0;
+
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await fetchWithTimeout(url, init, timeout);
+      if (attempt < maxRetries && RETRYABLE_STATUSES.includes(res.status)) {
+        await new Promise((r) => setTimeout(r, Math.min(1000 * 2 ** attempt, 4000)));
+        continue;
+      }
+      return res;
+    } catch (err) {
+      if (attempt >= maxRetries) throw err;
+      if ((err instanceof DOMException && err.name === "AbortError") || err instanceof TypeError) {
+        await new Promise((r) => setTimeout(r, Math.min(1000 * 2 ** attempt, 4000)));
+        continue;
+      }
+      throw err;
+    }
+  }
 }
 
 let isRefreshing = false;
 let refreshPromise: Promise<void> | null = null;
 
 async function tryRefreshToken(): Promise<void> {
-  const res = await fetch(`${API_BASE}/auth/refresh`, {
+  const res = await fetchWithTimeout(`${API_BASE}/auth/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify({}),
-  });
+  }, REFRESH_TIMEOUT);
 
   if (!res.ok) throw new Error("Refresh failed");
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { token, ...init } = options;
+  const { token, timeout, ...init } = options;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(init.headers as Record<string, string>),
   };
-  // Token header is optional — httpOnly cookies are the primary auth mechanism
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  // CSRF token for state-changing requests (cookie-based auth)
   const method = (init.method || "GET").toUpperCase();
   if (["POST", "PUT", "DELETE", "PATCH"].includes(method)) {
     const csrf = getCSRFToken();
     if (csrf) headers["X-CSRF-Token"] = csrf;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, { ...init, headers, credentials: "include" });
+  const fetchOpts: RequestInit = { ...init, headers, credentials: "include" };
+  const res = await fetchWithRetry(`${API_BASE}${path}`, fetchOpts, timeout ?? DEFAULT_TIMEOUT);
 
   if (res.status === 401) {
     try {
@@ -56,8 +91,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
       await refreshPromise!;
       isRefreshing = false;
       refreshPromise = null;
-      // Retry with new cookies (no need to set header — cookie is automatic)
-      const retryRes = await fetch(`${API_BASE}${path}`, { ...init, headers, credentials: "include" });
+      const retryRes = await fetchWithTimeout(`${API_BASE}${path}`, fetchOpts, timeout ?? DEFAULT_TIMEOUT);
       if (!retryRes.ok) {
         const body = await retryRes.json().catch(() => ({}));
         throw new ApiError(retryRes.status, body.error || "unknown", body.message || retryRes.statusText);
@@ -410,12 +444,12 @@ export async function uploadImage(token: string, file: File, folder: "avatars" |
     if (token) headers["Authorization"] = `Bearer ${token}`;
     const csrf = getCSRFToken();
     if (csrf) headers["X-CSRF-Token"] = csrf;
-    return fetch(`${API_BASE}/upload/image`, {
+    return fetchWithTimeout(`${API_BASE}/upload/image`, {
       method: "POST",
       headers,
       credentials: "include",
       body: formData,
-    });
+    }, UPLOAD_TIMEOUT);
   };
 
   let res = await doUpload();
@@ -455,12 +489,12 @@ export async function uploadAudio(token: string, blob: Blob) {
     if (token) headers["Authorization"] = `Bearer ${token}`;
     const csrf = getCSRFToken();
     if (csrf) headers["X-CSRF-Token"] = csrf;
-    return fetch(`${API_BASE}/upload/audio`, {
+    return fetchWithTimeout(`${API_BASE}/upload/audio`, {
       method: "POST",
       headers,
       credentials: "include",
       body: formData,
-    });
+    }, UPLOAD_TIMEOUT);
   };
 
   let res = await doUpload();

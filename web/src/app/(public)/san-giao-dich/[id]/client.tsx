@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, MapPin, Package, MessageCircle, Star, Flag, X, ChevronLeft, ChevronRight, ZoomIn, Phone } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -166,10 +167,12 @@ export default function ListingDetailPage() {
           >
             {listing.images.length > 0 ? (
               <>
-                <img
+                <Image
                   src={listing.images[selectedImage]}
                   alt={listing.title}
-                  className="max-h-full max-w-full object-contain"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 66vw"
+                  className="object-contain"
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                   <ZoomIn className="h-8 w-8 text-white opacity-0 group-hover:opacity-80 transition-opacity drop-shadow-lg" />
@@ -185,11 +188,11 @@ export default function ListingDetailPage() {
                 <button
                   key={i}
                   onClick={() => setSelectedImage(i)}
-                  className={`h-16 w-16 rounded-md overflow-hidden border-2 flex-shrink-0 ${
+                  className={`h-16 w-16 rounded-md overflow-hidden border-2 flex-shrink-0 relative ${
                     i === selectedImage ? "border-primary" : "border-transparent"
                   }`}
                 >
-                  <img src={img} alt={listing.title} loading="lazy" className="h-full w-full object-cover" />
+                  <Image src={img} alt={listing.title} fill sizes="64px" className="object-cover" />
                 </button>
               ))}
             </div>

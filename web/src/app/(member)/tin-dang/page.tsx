@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Plus, Package, Edit, Trash2, Eye, Calendar } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -72,9 +73,9 @@ export default function MyListingsPage() {
                 <CardContent className="p-4">
                   <div className="flex items-start gap-4">
                     {/* Thumbnail */}
-                    <div className="h-20 w-20 rounded-md bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <div className="h-20 w-20 rounded-md bg-muted flex items-center justify-center overflow-hidden flex-shrink-0 relative">
                       {listing.images.length > 0 ? (
-                        <img src={listing.images[0]} alt={listing.title} loading="lazy" className="h-full w-full object-cover" />
+                        <Image src={listing.images[0]} alt={listing.title} fill sizes="80px" className="object-cover" />
                       ) : (
                         <Package className="h-6 w-6 text-muted-foreground/40" />
                       )}
@@ -111,8 +112,8 @@ export default function MyListingsPage() {
                       {listing.images.length > 1 && (
                         <div className="flex gap-1.5 mt-2 overflow-x-auto">
                           {listing.images.slice(0, 3).map((img, i) => (
-                            <div key={i} className="h-14 w-14 rounded-md overflow-hidden bg-muted flex-shrink-0">
-                              <img src={img} alt={listing.title} loading="lazy" className="h-full w-full object-cover" />
+                            <div key={i} className="h-14 w-14 rounded-md overflow-hidden bg-muted flex-shrink-0 relative">
+                              <Image src={img} alt={listing.title} fill sizes="56px" className="object-cover" />
                             </div>
                           ))}
                         </div>
