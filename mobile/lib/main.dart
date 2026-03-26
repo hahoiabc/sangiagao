@@ -1,20 +1,43 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'routes/router.dart';
 import 'theme/app_theme.dart';
 import 'providers/theme_provider.dart';
+import 'providers/providers.dart';
+import 'services/push_notification_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   runApp(const ProviderScope(child: SanGaoApp()));
 }
 
-class SanGaoApp extends ConsumerWidget {
+class SanGaoApp extends ConsumerStatefulWidget {
   const SanGaoApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SanGaoApp> createState() => _SanGaoAppState();
+}
+
+class _SanGaoAppState extends ConsumerState<SanGaoApp> {
+  bool _pushInitialized = false;
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
     final themeOption = ref.watch(themeProvider);
+
+    // Init push notifications once authenticated
+    ref.listen<AuthState>(authProvider, (prev, next) {
+      if (next.status == AuthStatus.authenticated && !_pushInitialized) {
+        _pushInitialized = true;
+        final api = ref.read(apiServiceProvider);
+        PushNotificationService(api).init();
+      }
+    });
 
     return MaterialApp.router(
       title: 'SanGiaGao.Vn',

@@ -19,6 +19,7 @@ set -euo pipefail
 PROJECT_ROOT="/opt/sangiagao"
 NETWORK="rice_internal"
 ENV_BACKEND="$PROJECT_ROOT/infras/.env.backend"
+FIREBASE_CRED="$PROJECT_ROOT/infras/firebase-credentials.json"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -146,7 +147,8 @@ TARGET="${1:-help}"
 case "$TARGET" in
     backend)
         deploy_service "backend" "sangiagao-backend" "backend" "8080:8080" \
-            --env-file "$ENV_BACKEND"
+            --env-file "$ENV_BACKEND" \
+            -v "$FIREBASE_CRED:/app/firebase-credentials.json:ro"
         verify
         ;;
     web)
@@ -161,7 +163,8 @@ case "$TARGET" in
         ;;
     all)
         deploy_service "backend" "sangiagao-backend" "backend" "8080:8080" \
-            --env-file "$ENV_BACKEND"
+            --env-file "$ENV_BACKEND" \
+            -v "$FIREBASE_CRED:/app/firebase-credentials.json:ro"
         deploy_service "web" "sangiagao-web" "web" "3001:3001" \
             -e "NODE_ENV=production"
         deploy_service "admin" "sangiagao-admin" "admin" "3000:3000" \

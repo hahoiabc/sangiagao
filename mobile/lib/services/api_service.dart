@@ -361,6 +361,13 @@ class ApiService {
     await _dio.put('/notifications/$id/read');
   }
 
+  Future<void> registerDevice(String token, String platform) async {
+    await _dio.post('/notifications/register-device', data: {
+      'token': token,
+      'platform': platform,
+    });
+  }
+
   // --- Subscription ---
   Future<Map<String, dynamic>> getSubscriptionStatus() async {
     final res = await _dio.get('/subscription/status');

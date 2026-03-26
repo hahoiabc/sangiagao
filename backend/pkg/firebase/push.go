@@ -7,7 +7,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
+
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 )
 
 // PushSender sends push notifications via FCM HTTP v1 API.
@@ -15,27 +19,56 @@ type PushSender interface {
 	SendToTokens(ctx context.Context, tokens []string, title, body string, data map[string]string) error
 }
 
-// FCMSender implements PushSender using Firebase Cloud Messaging Legacy HTTP API.
+// FCMSender implements PushSender using Firebase Cloud Messaging HTTP v1 API.
 type FCMSender struct {
-	serverKey  string
-	httpClient *http.Client
+	projectID   string
+	tokenSource oauth2.TokenSource
+	httpClient  *http.Client
 }
 
-// NewFCMSender creates a new FCM sender. Pass empty serverKey for mock mode.
-func NewFCMSender(serverKey string) PushSender {
-	if serverKey == "" {
+// NewFCMSender creates a new FCM sender. Pass empty credPath for mock mode.
+// credPath should point to a Firebase service account JSON file.
+func NewFCMSender(credPath string) PushSender {
+	if credPath == "" {
 		return &MockPushSender{}
 	}
+
+	jsonKey, err := os.ReadFile(credPath)
+	if err != nil {
+		log.Printf("Firebase: failed to read credentials at %s: %v — using mock", credPath, err)
+		return &MockPushSender{}
+	}
+
+	var sa struct {
+		ProjectID string `json:"project_id"`
+	}
+	if err := json.Unmarshal(jsonKey, &sa); err != nil || sa.ProjectID == "" {
+		log.Printf("Firebase: failed to parse project_id from credentials — using mock")
+		return &MockPushSender{}
+	}
+
+	creds, err := google.CredentialsFromJSON(context.Background(), jsonKey,
+		"https://www.googleapis.com/auth/firebase.messaging",
+	)
+	if err != nil {
+		log.Printf("Firebase: failed to create credentials: %v — using mock", err)
+		return &MockPushSender{}
+	}
+
+	log.Printf("Firebase: FCM v1 sender initialized for project %s", sa.ProjectID)
 	return &FCMSender{
-		serverKey: serverKey,
-		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
-		},
+		projectID:   sa.ProjectID,
+		tokenSource: creds.TokenSource,
+		httpClient:  &http.Client{Timeout: 10 * time.Second},
 	}
 }
 
-type fcmMessage struct {
-	To           string            `json:"to,omitempty"`
+type fcmV1Request struct {
+	Message fcmV1Message `json:"message"`
+}
+
+type fcmV1Message struct {
+	Token        string            `json:"token"`
 	Notification *fcmNotification  `json:"notification"`
 	Data         map[string]string `json:"data,omitempty"`
 }
@@ -46,15 +79,24 @@ type fcmNotification struct {
 }
 
 func (s *FCMSender) SendToTokens(ctx context.Context, tokens []string, title, body string, data map[string]string) error {
+	token, err := s.tokenSource.Token()
+	if err != nil {
+		return fmt.Errorf("FCM: failed to get access token: %w", err)
+	}
+
+	url := fmt.Sprintf("https://fcm.googleapis.com/v1/projects/%s/messages:send", s.projectID)
 	var failCount int
-	for _, token := range tokens {
-		msg := fcmMessage{
-			To: token,
-			Notification: &fcmNotification{
-				Title: title,
-				Body:  body,
+
+	for _, deviceToken := range tokens {
+		msg := fcmV1Request{
+			Message: fcmV1Message{
+				Token: deviceToken,
+				Notification: &fcmNotification{
+					Title: title,
+					Body:  body,
+				},
+				Data: data,
 			},
-			Data: data,
 		}
 
 		payload, err := json.Marshal(msg)
@@ -63,27 +105,28 @@ func (s *FCMSender) SendToTokens(ctx context.Context, tokens []string, title, bo
 			continue
 		}
 
-		req, err := http.NewRequestWithContext(ctx, "POST", "https://fcm.googleapis.com/fcm/send", bytes.NewReader(payload))
+		req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(payload))
 		if err != nil {
 			failCount++
 			continue
 		}
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", "key="+s.serverKey)
+		req.Header.Set("Authorization", "Bearer "+token.AccessToken)
 
 		resp, err := s.httpClient.Do(req)
 		if err != nil {
-			log.Printf("FCM send error for token %s...: %v", token[:min(10, len(token))], err)
+			log.Printf("FCM send error for token %s...: %v", deviceToken[:min(10, len(deviceToken))], err)
 			failCount++
 			continue
 		}
 		resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			log.Printf("FCM send failed for token %s...: status %d", token[:min(10, len(token))], resp.StatusCode)
+			log.Printf("FCM send failed for token %s...: status %d", deviceToken[:min(10, len(deviceToken))], resp.StatusCode)
 			failCount++
 		}
 	}
+
 	if failCount > 0 && failCount == len(tokens) {
 		return fmt.Errorf("FCM: all %d notifications failed to send", failCount)
 	}

@@ -17,6 +17,6 @@ type Notification struct {
 }
 
 type RegisterDeviceRequest struct {
-	Token    string `json:"token" binding:"required"`
+	Token    string `json:"token" binding:"required,min=32,max=512"`
 	Platform string `json:"platform" binding:"required,oneof=ios android"`
 }

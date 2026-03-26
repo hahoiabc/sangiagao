@@ -480,9 +480,9 @@ func TestNotifRegisterDevice_Success(t *testing.T) {
 	r.Use(withUserID)
 	r.POST("/notifications/register-device", h.RegisterDevice)
 
-	svc.On("RegisterDevice", mock.Anything, "user-1", "fcm-token", "ios").Return(nil)
+	svc.On("RegisterDevice", mock.Anything, "user-1", "dV4xY7zK9mQ2wR5tL8nP3jF6hB0cA1eG", "ios").Return(nil)
 
-	w := serve(r, authedReq("POST", "/notifications/register-device", `{"token":"fcm-token","platform":"ios"}`))
+	w := serve(r, authedReq("POST", "/notifications/register-device", `{"token":"dV4xY7zK9mQ2wR5tL8nP3jF6hB0cA1eG","platform":"ios"}`))
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "device registered")
 }

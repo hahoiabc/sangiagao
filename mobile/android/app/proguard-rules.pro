@@ -27,3 +27,7 @@
 # Kotlin
 -dontwarn kotlin.**
 -keep class kotlin.** { *; }
+
+# Firebase
+-keep class com.google.firebase.** { *; }
+-dontwarn com.google.firebase.**
