@@ -52,6 +52,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await register(phone);
+      setCode("123456");
       setStep(2);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Đăng ký thất bại");

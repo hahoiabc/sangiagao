@@ -53,6 +53,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       await ref.read(authProvider.notifier).register(phone);
+      _otpController.text = '123456';
       setState(() { _step2 = true; });
     } catch (e) {
       String msg = 'Gửi mã OTP thất bại';
