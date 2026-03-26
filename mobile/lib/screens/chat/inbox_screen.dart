@@ -54,7 +54,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
   }
 
   String _formatTime(String iso) {
-    final dt = DateTime.tryParse(iso);
+    final dt = DateTime.tryParse(iso)?.toLocal();
     if (dt == null) return '';
     final now = DateTime.now();
     final diff = now.difference(dt);

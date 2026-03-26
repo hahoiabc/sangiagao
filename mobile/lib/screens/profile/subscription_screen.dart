@@ -181,7 +181,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
             if (expiresAt != null) ...[
               const SizedBox(height: 8),
               Text(
-                'Hạn: ${DateFormat('dd/MM/yyyy').format(expiresAt)}',
+                'Hạn: ${DateFormat('dd/MM/yyyy').format(expiresAt.toLocal())}',
                 style: const TextStyle(fontSize: 12, color: Colors.white60),
               ),
             ],
@@ -346,8 +346,8 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     final amount = (sub['amount'] as num?)?.toInt() ?? 0;
     final months = sub['duration_months'] ?? 0;
     final status = sub['status'] as String? ?? '';
-    final createdAt = DateTime.tryParse(sub['created_at']?.toString() ?? '');
-    final expiresAt = DateTime.tryParse(sub['expires_at']?.toString() ?? '');
+    final createdAt = DateTime.tryParse(sub['created_at']?.toString() ?? '')?.toLocal();
+    final expiresAt = DateTime.tryParse(sub['expires_at']?.toString() ?? '')?.toLocal();
     final isActive = status == 'active' && expiresAt != null && expiresAt.isAfter(DateTime.now());
 
     return Card(

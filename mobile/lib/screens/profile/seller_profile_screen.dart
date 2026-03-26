@@ -318,7 +318,7 @@ class _SellerProfileScreenState extends ConsumerState<SellerProfileScreen> {
   }
 
   String _formatDate(String iso) {
-    final dt = DateTime.tryParse(iso);
+    final dt = DateTime.tryParse(iso)?.toLocal();
     if (dt == null) return '';
     return '${dt.day}/${dt.month}/${dt.year}';
   }

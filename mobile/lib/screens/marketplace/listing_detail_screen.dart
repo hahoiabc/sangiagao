@@ -79,7 +79,7 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
 
       final result = await api.getMessages(convId, limit: 50);
       final alreadySent = (result.data as List).any((msg) {
-        final msgDate = DateTime.tryParse(msg.createdAt);
+        final msgDate = DateTime.tryParse(msg.createdAt)?.toLocal();
         if (msgDate == null) return false;
         final msgDateStr = '${msgDate.year}-${msgDate.month.toString().padLeft(2, '0')}-${msgDate.day.toString().padLeft(2, '0')}';
         return msgDateStr == todayStr && msg.content.contains(linkText);
@@ -112,7 +112,7 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
   final _priceFormat = NumberFormat('#,###', 'vi_VN');
 
   String _timeAgo(String createdAt) {
-    final date = DateTime.tryParse(createdAt);
+    final date = DateTime.tryParse(createdAt)?.toLocal();
     if (date == null) return '';
     final diff = DateTime.now().difference(date);
     if (diff.inDays > 30) return '${diff.inDays ~/ 30} tháng trước';
