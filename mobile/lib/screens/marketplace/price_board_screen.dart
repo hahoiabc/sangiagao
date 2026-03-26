@@ -7,6 +7,7 @@ import '../../models/price_board.dart';
 import '../../providers/providers.dart';
 import '../../widgets/shimmer_loading.dart';
 import '../../theme/app_theme.dart';
+import '../../providers/theme_provider.dart';
 
 class PriceBoardScreen extends ConsumerStatefulWidget {
   const PriceBoardScreen({super.key});
@@ -67,7 +68,10 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SanGiaGao.Vn'),
+        title: Text(
+          'Kết nối ngành gạo',
+          style: TextStyle(color: ref.watch(themeProvider).primary),
+        ),
       ),
       body: _loading
           ? const PriceBoardSkeleton()
