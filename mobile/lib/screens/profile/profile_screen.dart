@@ -144,6 +144,57 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
+  void _showThemePicker(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Chọn màu chủ đạo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: themeOptions.map((t) {
+                final current = ref.watch(themeProvider);
+                final isSelected = current.key == t.key;
+                return GestureDetector(
+                  onTap: () {
+                    ref.read(themeProvider.notifier).setTheme(t.key);
+                    Navigator.pop(ctx);
+                  },
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: t.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isSelected ? AppColors.textPrimary : Colors.transparent,
+                            width: 3,
+                          ),
+                        ),
+                        child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 24) : null,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(t.label, style: const TextStyle(fontSize: 11)),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _logout() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -324,39 +375,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 onTap: () => context.push('/feedback-history'),
               ),
               // Theme color picker
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Màu chủ đạo', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: themeOptions.map((t) {
-                        final current = ref.watch(themeProvider);
-                        final isSelected = current.key == t.key;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 10),
-                          child: GestureDetector(
-                            onTap: () => ref.read(themeProvider.notifier).setTheme(t.key),
-                            child: Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: t.primary,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: isSelected ? AppColors.textPrimary : Colors.transparent,
-                                  width: 3,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
+              ListTile(
+                leading: Icon(Icons.palette_outlined, color: ref.watch(themeProvider).primary),
+                title: const Text('Màu chủ đạo'),
+                subtitle: Text(ref.watch(themeProvider).label),
+                trailing: Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: ref.watch(themeProvider).primary,
+                    shape: BoxShape.circle,
+                  ),
                 ),
+                onTap: () => _showThemePicker(context, ref),
               ),
               const Divider(),
               ListTile(

@@ -156,6 +156,7 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
               ],
             ),
           ),
+          const SizedBox(height: 4),
           // Product rows
           ...cat.products.asMap().entries.map((entry) {
                 final i = entry.key;
@@ -164,12 +165,14 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
                 return InkWell(
                   onTap: () => _viewListings(cat.categoryKey, product.productKey),
                   child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: i.isEven ? null : theme.colorScheme.surfaceContainerLow,
-                      border: Border(bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.15))),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: theme.colorScheme.outline, width: 1.2),
                     ),
                     constraints: const BoxConstraints(minHeight: 48),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     child: Row(
                       children: [
                         // Sponsor logo (before product name)
@@ -210,6 +213,7 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
                   ),
                 );
               }),
+          const SizedBox(height: 4),
             ],
           ),
         );

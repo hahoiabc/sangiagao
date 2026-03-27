@@ -82,11 +82,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset(
-            'assets/images/rice-field-bg.jpg',
-            fit: BoxFit.cover,
-          ),
-          Container(color: Colors.black.withValues(alpha: 0.4)),
+          Container(color: const Color(0xFF007FFF)),
           Center(
             child: FadeTransition(
               opacity: _fadeIn,
