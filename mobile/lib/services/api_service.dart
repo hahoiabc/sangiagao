@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 import '../config/env.dart';
 import '../models/user.dart';
 import '../models/listing.dart';
@@ -10,6 +11,9 @@ import '../models/conversation.dart';
 import '../models/rating.dart';
 import '../models/price_board.dart';
 import '../models/product_catalog.dart';
+
+// Cached device ID (generated once per install, persisted in secure storage)
+String? _cachedDeviceId;
 
 /// Trusted hostnames for TLS certificate validation.
 const _trustedHosts = ['sangiagao.vn', 'www.sangiagao.vn'];
@@ -51,6 +55,9 @@ class ApiService {
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }
+        // Send device ID for spam protection
+        final deviceId = await _getDeviceId();
+        options.headers['X-Device-ID'] = deviceId;
         return handler.next(options);
       },
       onError: (error, handler) async {
@@ -70,6 +77,21 @@ class ApiService {
         return handler.next(error);
       },
     ));
+  }
+
+  /// Get or generate a persistent device ID for spam protection
+  Future<String> _getDeviceId() async {
+    if (_cachedDeviceId != null) return _cachedDeviceId!;
+    var id = await _storage.read(key: 'device_id');
+    if (id == null) {
+      // Generate a simple UUID-like ID
+      final now = DateTime.now().microsecondsSinceEpoch;
+      final hash = now.toRadixString(36) + Object().hashCode.toRadixString(36);
+      id = 'dev_$hash';
+      await _storage.write(key: 'device_id', value: id);
+    }
+    _cachedDeviceId = id;
+    return id;
   }
 
   Future<bool> _refreshToken() async {

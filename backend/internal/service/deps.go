@@ -139,6 +139,14 @@ type CatalogRepository interface {
 	GetProductLabelByKey(ctx context.Context, productKey string) (string, error)
 }
 
+type SpamRepository interface {
+	LogAttempt(ctx context.Context, ip, deviceID, phone, action string, success bool) error
+	CountByIP(ctx context.Context, ip, action string, since time.Time) (int, error)
+	CountByDevice(ctx context.Context, deviceID, action string, since time.Time) (int, error)
+	CountByDeviceAllTime(ctx context.Context, deviceID, action string) (int, error)
+	Cleanup(ctx context.Context, olderThan time.Time) (int, error)
+}
+
 type ConversationRepository interface {
 	FindOrCreate(ctx context.Context, buyerID, sellerID string, listingID *string) (*model.Conversation, error)
 	GetByID(ctx context.Context, id string) (*model.Conversation, error)

@@ -12,13 +12,15 @@ import (
 
 type AuthHandler struct {
 	authService  AuthServiceInterface
+	spamService  *service.SpamService
 	cookieDomain string
 	cookieSecure bool
 }
 
-func NewAuthHandler(authService AuthServiceInterface, cookieDomain string, cookieSecure bool) *AuthHandler {
+func NewAuthHandler(authService AuthServiceInterface, spamService *service.SpamService, cookieDomain string, cookieSecure bool) *AuthHandler {
 	return &AuthHandler{
 		authService:  authService,
+		spamService:  spamService,
 		cookieDomain: cookieDomain,
 		cookieSecure: cookieSecure,
 	}
@@ -56,7 +58,16 @@ func (h *AuthHandler) SendOTP(c *gin.Context) {
 		return
 	}
 
+	ip := c.ClientIP()
+	deviceID := c.GetHeader("X-Device-ID")
+
+	if err := h.spamService.CheckSendOTP(c.Request.Context(), ip, deviceID); err != nil {
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": err.Error()})
+		return
+	}
+
 	err := h.authService.SendOTP(c.Request.Context(), req.Phone)
+	h.spamService.LogAttempt(c.Request.Context(), ip, deviceID, req.Phone, "send_otp", err == nil)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidPhone):
@@ -118,6 +129,14 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	var req registerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Vui lòng nhập số điện thoại"})
+		return
+	}
+
+	ip := c.ClientIP()
+	deviceID := c.GetHeader("X-Device-ID")
+
+	if err := h.spamService.CheckRegister(c.Request.Context(), ip, deviceID); err != nil {
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -193,6 +212,11 @@ func (h *AuthHandler) CompleteRegister(c *gin.Context) {
 		return
 	}
 
+	// Log successful registration for spam tracking
+	ip := c.ClientIP()
+	deviceID := c.GetHeader("X-Device-ID")
+	h.spamService.LogAttempt(c.Request.Context(), ip, deviceID, req.Phone, "register", true)
+
 	if result.Tokens != nil {
 		h.setAuthCookies(c, result.Tokens.AccessToken, result.Tokens.RefreshToken)
 	}
@@ -211,8 +235,20 @@ func (h *AuthHandler) LoginPassword(c *gin.Context) {
 		return
 	}
 
+	ip := c.ClientIP()
+	deviceID := c.GetHeader("X-Device-ID")
+
+	if err := h.spamService.CheckLogin(c.Request.Context(), ip, deviceID); err != nil {
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": err.Error()})
+		return
+	}
+
 	result, err := h.authService.LoginPassword(c.Request.Context(), req.Phone, req.Password)
 	if err != nil {
+		// Log failed login attempt
+		if errors.Is(err, service.ErrWrongPassword) {
+			h.spamService.LogAttempt(c.Request.Context(), ip, deviceID, req.Phone, "login_fail", false)
+		}
 		switch {
 		case errors.Is(err, service.ErrInvalidPhone):
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Số điện thoại không hợp lệ"})
@@ -247,7 +283,16 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 		return
 	}
 
+	ip := c.ClientIP()
+	deviceID := c.GetHeader("X-Device-ID")
+
+	if err := h.spamService.CheckResetPassword(c.Request.Context(), ip, deviceID); err != nil {
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": err.Error()})
+		return
+	}
+
 	err := h.authService.ResetPassword(c.Request.Context(), req.Phone, req.Code, req.NewPassword)
+	h.spamService.LogAttempt(c.Request.Context(), ip, deviceID, req.Phone, "reset_pw", err == nil)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInvalidPhone):

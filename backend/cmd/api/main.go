@@ -119,8 +119,10 @@ func main() {
 	planRepo := repository.NewPlanRepo(pgPool)
 	permissionRepo := repository.NewPermissionRepo(pgPool)
 	auditRepo := repository.NewAuditRepo(pgPool)
+	spamRepo := repository.NewSpamRepo(pgPool)
 
 	// --- Services ---
+	spamService := service.NewSpamService(spamRepo)
 	authService := service.NewAuthService(userRepo, otpRepo, subRepo, jwtManager, smsSender)
 	userService := service.NewUserService(userRepo, subRepo)
 	listingService := service.NewListingService(listingRepo, sponsorRepo, userRepo, catalogRepo)
@@ -154,7 +156,7 @@ func main() {
 	wsHub := ws.NewHub()
 
 	// --- Handlers ---
-	authHandler := handler.NewAuthHandler(authService, cfg.CookieDomain, cfg.CookieSecure)
+	authHandler := handler.NewAuthHandler(authService, spamService, cfg.CookieDomain, cfg.CookieSecure)
 	userHandler := handler.NewUserHandler(userService)
 	listingHandler := handler.NewListingHandler(listingService)
 	catalogHandler := handler.NewCatalogHandler(catalogService)
@@ -183,6 +185,18 @@ func main() {
 		subService.RunExpiryCron(context.Background())
 		for range ticker.C {
 			subService.RunExpiryCron(context.Background())
+		}
+	}()
+
+	// --- Spam protection cleanup cron (daily, remove records > 30 days) ---
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			cutoff := time.Now().AddDate(0, 0, -30)
+			if n, err := spamRepo.Cleanup(context.Background(), cutoff); err == nil && n > 0 {
+				slog.Info("Cleaned up old auth_attempts", "deleted", n)
+			}
 		}
 	}()
 

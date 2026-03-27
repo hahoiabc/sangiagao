@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sangiagao/rice-marketplace/internal/model"
@@ -64,6 +65,26 @@ func (m *mockAuthService) CheckPhoneRegistered(ctx context.Context, phone string
 	return args.Error(0)
 }
 
+// --- Mock Spam Repo (no-op, always allows) ---
+
+type mockSpamRepo struct{}
+
+func (m *mockSpamRepo) LogAttempt(_ context.Context, _, _, _, _ string, _ bool) error { return nil }
+func (m *mockSpamRepo) CountByIP(_ context.Context, _, _ string, _ time.Time) (int, error) {
+	return 0, nil
+}
+func (m *mockSpamRepo) CountByDevice(_ context.Context, _, _ string, _ time.Time) (int, error) {
+	return 0, nil
+}
+func (m *mockSpamRepo) CountByDeviceAllTime(_ context.Context, _, _ string) (int, error) {
+	return 0, nil
+}
+func (m *mockSpamRepo) Cleanup(_ context.Context, _ time.Time) (int, error) { return 0, nil }
+
+func testSpamService() *service.SpamService {
+	return service.NewSpamService(&mockSpamRepo{})
+}
+
 // --- Helpers ---
 
 func authRouter(h *AuthHandler) *gin.Engine {
@@ -86,7 +107,7 @@ func doPost(r *gin.Engine, path, body string) *httptest.ResponseRecorder {
 
 func TestSendOTP_Success(t *testing.T) {
 	svc := new(mockAuthService)
-	h := NewAuthHandler(svc, "localhost", false)
+	h := NewAuthHandler(svc, testSpamService(), "localhost", false)
 	r := authRouter(h)
 
 	svc.On("SendOTP", mock.Anything, "0901234567").Return(nil)
@@ -99,7 +120,7 @@ func TestSendOTP_Success(t *testing.T) {
 }
 
 func TestSendOTP_MissingPhone(t *testing.T) {
-	h := NewAuthHandler(new(mockAuthService), "localhost", false)
+	h := NewAuthHandler(new(mockAuthService), testSpamService(), "localhost", false)
 	r := authRouter(h)
 
 	w := doPost(r, "/auth/send-otp", `{}`)
@@ -110,7 +131,7 @@ func TestSendOTP_MissingPhone(t *testing.T) {
 
 func TestSendOTP_InvalidPhone(t *testing.T) {
 	svc := new(mockAuthService)
-	h := NewAuthHandler(svc, "localhost", false)
+	h := NewAuthHandler(svc, testSpamService(), "localhost", false)
 	r := authRouter(h)
 
 	svc.On("SendOTP", mock.Anything, "123").Return(service.ErrInvalidPhone)
@@ -123,7 +144,7 @@ func TestSendOTP_InvalidPhone(t *testing.T) {
 
 func TestSendOTP_RateLimited(t *testing.T) {
 	svc := new(mockAuthService)
-	h := NewAuthHandler(svc, "localhost", false)
+	h := NewAuthHandler(svc, testSpamService(), "localhost", false)
 	r := authRouter(h)
 
 	svc.On("SendOTP", mock.Anything, "0901234567").Return(service.ErrRateLimited)
@@ -137,7 +158,7 @@ func TestSendOTP_RateLimited(t *testing.T) {
 
 func TestVerifyOTP_Success(t *testing.T) {
 	svc := new(mockAuthService)
-	h := NewAuthHandler(svc, "localhost", false)
+	h := NewAuthHandler(svc, testSpamService(), "localhost", false)
 	r := authRouter(h)
 
 	result := &service.VerifyOTPResult{
@@ -155,7 +176,7 @@ func TestVerifyOTP_Success(t *testing.T) {
 }
 
 func TestVerifyOTP_MissingFields(t *testing.T) {
-	h := NewAuthHandler(new(mockAuthService), "localhost", false)
+	h := NewAuthHandler(new(mockAuthService), testSpamService(), "localhost", false)
 	r := authRouter(h)
 
 	w := doPost(r, "/auth/verify-otp", `{"phone":"0901234567"}`)
@@ -167,7 +188,7 @@ func TestVerifyOTP_MissingFields(t *testing.T) {
 
 func TestVerifyOTP_InvalidOTP(t *testing.T) {
 	svc := new(mockAuthService)
-	h := NewAuthHandler(svc, "localhost", false)
+	h := NewAuthHandler(svc, testSpamService(), "localhost", false)
 	r := authRouter(h)
 
 	svc.On("VerifyOTP", mock.Anything, "0901234567", "999999").Return(nil, service.ErrInvalidOTP)
@@ -180,7 +201,7 @@ func TestVerifyOTP_InvalidOTP(t *testing.T) {
 
 func TestVerifyOTP_TooManyAttempts(t *testing.T) {
 	svc := new(mockAuthService)
-	h := NewAuthHandler(svc, "localhost", false)
+	h := NewAuthHandler(svc, testSpamService(), "localhost", false)
 	r := authRouter(h)
 
 	svc.On("VerifyOTP", mock.Anything, mock.Anything, mock.Anything).Return(nil, service.ErrTooManyAttempts)
@@ -192,7 +213,7 @@ func TestVerifyOTP_TooManyAttempts(t *testing.T) {
 
 func TestVerifyOTP_BlockedUser(t *testing.T) {
 	svc := new(mockAuthService)
-	h := NewAuthHandler(svc, "localhost", false)
+	h := NewAuthHandler(svc, testSpamService(), "localhost", false)
 	r := authRouter(h)
 
 	svc.On("VerifyOTP", mock.Anything, mock.Anything, mock.Anything).Return(nil, service.ErrUserBlocked)
@@ -207,7 +228,7 @@ func TestVerifyOTP_BlockedUser(t *testing.T) {
 
 func TestRefresh_Success(t *testing.T) {
 	svc := new(mockAuthService)
-	h := NewAuthHandler(svc, "localhost", false)
+	h := NewAuthHandler(svc, testSpamService(), "localhost", false)
 	r := authRouter(h)
 
 	tokens := &jwtpkg.TokenPair{AccessToken: "new-at", RefreshToken: "new-rt", ExpiresIn: 900}
@@ -220,7 +241,7 @@ func TestRefresh_Success(t *testing.T) {
 }
 
 func TestRefresh_MissingToken(t *testing.T) {
-	h := NewAuthHandler(new(mockAuthService), "localhost", false)
+	h := NewAuthHandler(new(mockAuthService), testSpamService(), "localhost", false)
 	r := authRouter(h)
 
 	w := doPost(r, "/auth/refresh", `{}`)
@@ -230,7 +251,7 @@ func TestRefresh_MissingToken(t *testing.T) {
 
 func TestRefresh_InvalidToken(t *testing.T) {
 	svc := new(mockAuthService)
-	h := NewAuthHandler(svc, "localhost", false)
+	h := NewAuthHandler(svc, testSpamService(), "localhost", false)
 	r := authRouter(h)
 
 	svc.On("RefreshToken", mock.Anything, "bad-token").Return(nil, jwtpkg.ErrInvalidToken)
@@ -242,7 +263,7 @@ func TestRefresh_InvalidToken(t *testing.T) {
 
 func TestRefresh_BlockedUser(t *testing.T) {
 	svc := new(mockAuthService)
-	h := NewAuthHandler(svc, "localhost", false)
+	h := NewAuthHandler(svc, testSpamService(), "localhost", false)
 	r := authRouter(h)
 
 	svc.On("RefreshToken", mock.Anything, "rt").Return(nil, service.ErrUserBlocked)
@@ -255,7 +276,7 @@ func TestRefresh_BlockedUser(t *testing.T) {
 // --- Invalid JSON ---
 
 func TestSendOTP_InvalidJSON(t *testing.T) {
-	h := NewAuthHandler(new(mockAuthService), "localhost", false)
+	h := NewAuthHandler(new(mockAuthService), testSpamService(), "localhost", false)
 	r := authRouter(h)
 
 	w := doPost(r, "/auth/send-otp", `not json`)
@@ -266,7 +287,7 @@ func TestSendOTP_InvalidJSON(t *testing.T) {
 // --- Edge: empty body ---
 
 func TestVerifyOTP_EmptyBody(t *testing.T) {
-	h := NewAuthHandler(new(mockAuthService), "localhost", false)
+	h := NewAuthHandler(new(mockAuthService), testSpamService(), "localhost", false)
 	r := authRouter(h)
 
 	req := httptest.NewRequest("POST", "/auth/verify-otp", nil)
@@ -281,7 +302,7 @@ func TestVerifyOTP_EmptyBody(t *testing.T) {
 
 func TestVerifyOTP_InvalidPhone(t *testing.T) {
 	svc := new(mockAuthService)
-	h := NewAuthHandler(svc, "localhost", false)
+	h := NewAuthHandler(svc, testSpamService(), "localhost", false)
 	r := authRouter(h)
 
 	svc.On("VerifyOTP", mock.Anything, "bad", "123456").Return(nil, service.ErrInvalidPhone)
@@ -295,7 +316,7 @@ func TestVerifyOTP_InvalidPhone(t *testing.T) {
 
 func TestRefresh_ServerError(t *testing.T) {
 	svc := new(mockAuthService)
-	h := NewAuthHandler(svc, "localhost", false)
+	h := NewAuthHandler(svc, testSpamService(), "localhost", false)
 	r := authRouter(h)
 
 	svc.On("RefreshToken", mock.Anything, "rt").Return(nil, assert.AnError)
@@ -309,7 +330,7 @@ func TestRefresh_ServerError(t *testing.T) {
 // Ensure expired token uses the same manager for consistency
 func TestVerifyOTP_InternalError(t *testing.T) {
 	svc := new(mockAuthService)
-	h := NewAuthHandler(svc, "localhost", false)
+	h := NewAuthHandler(svc, testSpamService(), "localhost", false)
 	r := authRouter(h)
 
 	svc.On("VerifyOTP", mock.Anything, mock.Anything, mock.Anything).Return(nil, assert.AnError)
