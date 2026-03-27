@@ -54,13 +54,20 @@ func (s *ChatService) ListConversations(ctx context.Context, userID string, page
 	if err != nil {
 		return nil, 0, err
 	}
-	// Check online status for other users
+	// Check online status + last seen for other users
 	if s.cache != nil {
 		for _, conv := range convs {
 			if conv.OtherUser != nil {
 				online, cErr := s.cache.Exists(ctx, "online:"+conv.OtherUser.ID)
 				if cErr == nil {
 					conv.OtherUser.IsOnline = &online
+				}
+				if !online {
+					if raw, err := s.cache.Get(ctx, "lastseen:"+conv.OtherUser.ID); err == nil && raw != nil {
+						if t, tErr := time.Parse(time.RFC3339, string(raw)); tErr == nil {
+							conv.OtherUser.LastSeenAt = &t
+						}
+					}
 				}
 			}
 		}

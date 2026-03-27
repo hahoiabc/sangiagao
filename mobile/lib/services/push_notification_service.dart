@@ -24,6 +24,15 @@ class PushNotificationService {
   /// Currently active conversation ID — suppress notifications for this chat
   static String? activeConversationId;
 
+  /// Track last notification time per conversation — for sound suppression
+  static final Map<String, DateTime> _lastNotifTime = {};
+
+  /// Sound suppression window: same conversation within 3 seconds → silent
+  static const _soundSuppressWindow = Duration(seconds: 3);
+
+  /// Track unread message count per conversation — for smart summary
+  static final Map<String, int> _unreadCount = {};
+
   static const _channel = AndroidNotificationChannel(
     'sangiagao_notifications',
     'Thông báo',
@@ -31,17 +40,25 @@ class PushNotificationService {
     importance: Importance.high,
   );
 
-  /// Android notification group key for chat messages
-  static const _chatGroupKey = 'sangiagao_chat_messages';
+  static const _silentChannel = AndroidNotificationChannel(
+    'sangiagao_silent',
+    'Tin nhắn (im lặng)',
+    description: 'Cập nhật tin nhắn không kèm âm thanh',
+    importance: Importance.low,
+    playSound: false,
+    enableVibration: false,
+  );
 
   PushNotificationService(this._api);
 
   Future<void> init() async {
-    // Create Android notification channel
-    await _localNotifications
+    final androidPlugin = _localNotifications
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(_channel);
+            AndroidFlutterLocalNotificationsPlugin>();
+
+    // Create both notification channels
+    await androidPlugin?.createNotificationChannel(_channel);
+    await androidPlugin?.createNotificationChannel(_silentChannel);
 
     // Init local notifications with tap callback
     await _localNotifications.initialize(
@@ -94,52 +111,100 @@ class PushNotificationService {
     final notification = message.notification;
     if (notification == null) return;
 
-    // Suppress notification if user is currently viewing this conversation
     final convId = message.data['conversation_id'] as String?;
+
+    // Suppress notification if user is currently viewing this conversation
     if (convId != null && convId == activeConversationId) {
       return;
     }
 
-    // Encode data as payload so we can navigate on tap
+    // Determine if sound should play:
+    // Only suppress sound for 2nd+ message from SAME conversation within 3s
+    bool playSound = true;
+    if (convId != null) {
+      final lastTime = _lastNotifTime[convId];
+      if (lastTime != null &&
+          DateTime.now().difference(lastTime) < _soundSuppressWindow) {
+        playSound = false;
+      }
+      _lastNotifTime[convId] = DateTime.now();
+    }
+
+    // Track unread count per conversation for smart summary
+    if (convId != null) {
+      _unreadCount[convId] = (_unreadCount[convId] ?? 0) + 1;
+    }
+
     final payload = jsonEncode(message.data);
 
+    // Pick channel based on sound decision
+    final channelToUse = playSound ? _channel : _silentChannel;
+
+    // #1 + #2 + #3: Group by convId, replace notification (same ID per conv),
+    // suppress sound on 2nd+ message
     _localNotifications.show(
-      notification.hashCode,
+      convId?.hashCode ?? notification.hashCode,
       notification.title,
-      notification.body,
+      _buildNotificationBody(convId, notification.body),
       NotificationDetails(
         android: AndroidNotificationDetails(
-          _channel.id,
-          _channel.name,
-          channelDescription: _channel.description,
-          importance: Importance.high,
-          priority: Priority.high,
+          channelToUse.id,
+          channelToUse.name,
+          channelDescription: channelToUse.description,
+          importance: playSound ? Importance.high : Importance.low,
+          priority: playSound ? Priority.high : Priority.defaultPriority,
           icon: '@mipmap/ic_launcher',
-          groupKey: convId != null ? _chatGroupKey : null,
+          groupKey: convId,
+          playSound: playSound,
+          enableVibration: playSound,
         ),
-        iOS: const DarwinNotificationDetails(),
+        // #4: iOS threadIdentifier for per-conversation grouping
+        iOS: DarwinNotificationDetails(
+          threadIdentifier: convId,
+          sound: playSound ? 'default' : null,
+        ),
       ),
       payload: payload,
     );
 
     // Show summary notification for grouped chat messages (Android)
     if (convId != null) {
+      final totalUnread = _unreadCount.values.fold(0, (a, b) => a + b);
+      final chatCount = _unreadCount.keys.length;
+      final summary = chatCount > 1
+          ? '$chatCount cuộc trò chuyện, $totalUnread tin nhắn mới'
+          : '$totalUnread tin nhắn mới';
+
       _localNotifications.show(
-        _chatGroupKey.hashCode,
+        'sangiagao_summary'.hashCode,
         'SanGiaGao',
-        'Bạn có tin nhắn mới',
+        summary,
         NotificationDetails(
           android: AndroidNotificationDetails(
-            _channel.id,
-            _channel.name,
-            channelDescription: _channel.description,
-            groupKey: _chatGroupKey,
+            _silentChannel.id,
+            _silentChannel.name,
+            channelDescription: _silentChannel.description,
+            groupKey: convId,
             setAsGroupSummary: true,
             icon: '@mipmap/ic_launcher',
           ),
         ),
       );
     }
+  }
+
+  /// Build notification body: show count if multiple unread from same conversation
+  String _buildNotificationBody(String? convId, String? latestBody) {
+    if (convId == null) return latestBody ?? '';
+    final count = _unreadCount[convId] ?? 1;
+    if (count <= 1) return latestBody ?? '';
+    return '$count tin nhắn mới';
+  }
+
+  /// Clear unread tracking when user opens a conversation
+  static void clearUnreadForConversation(String conversationId) {
+    _unreadCount.remove(conversationId);
+    _lastNotifTime.remove(conversationId);
   }
 
   /// Called when user taps a local notification (foreground case)
@@ -164,6 +229,7 @@ class PushNotificationService {
     if (onNavigate == null) return;
 
     if (type == 'new_message' && conversationId != null) {
+      clearUnreadForConversation(conversationId);
       onNavigate!('/chat/$conversationId');
     } else {
       onNavigate!('/notifications');

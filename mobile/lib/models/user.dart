@@ -62,6 +62,7 @@ class PublicProfile {
   final String? description;
   final String? orgName;
   final bool isOnline;
+  final String? lastSeenAt;
   final String createdAt;
 
   PublicProfile({
@@ -75,6 +76,7 @@ class PublicProfile {
     this.description,
     this.orgName,
     this.isOnline = false,
+    this.lastSeenAt,
     required this.createdAt,
   });
 
@@ -89,8 +91,21 @@ class PublicProfile {
         description: json['description'] as String?,
         orgName: json['org_name'] as String?,
         isOnline: json['is_online'] as bool? ?? false,
+        lastSeenAt: json['last_seen_at'] as String?,
         createdAt: json['created_at'] as String,
       );
+
+  /// Format last seen time as "Vừa truy cập X phút trước"
+  String? get lastSeenText {
+    if (isOnline || lastSeenAt == null) return null;
+    final dt = DateTime.tryParse(lastSeenAt!);
+    if (dt == null) return null;
+    final diff = DateTime.now().difference(dt.toLocal());
+    if (diff.inMinutes < 1) return 'Vừa truy cập';
+    if (diff.inMinutes < 60) return 'Truy cập ${diff.inMinutes} phút trước';
+    if (diff.inHours < 24) return 'Truy cập ${diff.inHours} giờ trước';
+    return null; // >24h: don't show
+  }
 
   /// Build location string from province/ward
   String? get location {

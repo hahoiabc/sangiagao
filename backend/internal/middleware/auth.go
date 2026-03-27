@@ -58,8 +58,11 @@ func TrackOnline(c cache.Cache) gin.HandlerFunc {
 		if exists {
 			go func() {
 				if uid, ok := userID.(string); ok {
-				_ = c.Set(context.Background(), "online:"+uid, []byte("1"), 5*time.Minute)
-			}
+					bg := context.Background()
+					now := []byte(time.Now().UTC().Format(time.RFC3339))
+					_ = c.Set(bg, "online:"+uid, now, 5*time.Minute)
+					_ = c.Set(bg, "lastseen:"+uid, now, 24*time.Hour)
+				}
 			}()
 		}
 		ctx.Next()

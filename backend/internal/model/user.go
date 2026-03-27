@@ -32,6 +32,7 @@ type PublicProfile struct {
 	Description *string    `json:"description,omitempty"`
 	OrgName     *string    `json:"org_name,omitempty"`
 	IsOnline    *bool      `json:"is_online,omitempty"`
+	LastSeenAt  *time.Time `json:"last_seen_at,omitempty"`
 	CreatedAt   time.Time  `json:"created_at"`
 }
 

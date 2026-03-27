@@ -82,6 +82,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     super.initState();
     // Track active conversation to suppress push notifications
     PushNotificationService.activeConversationId = widget.conversationId;
+    PushNotificationService.clearUnreadForConversation(widget.conversationId);
     _init();
     _positionSub = _audioPlayer.onPositionChanged.listen((pos) {
       if (mounted) setState(() => _playPosition = pos);
@@ -771,7 +772,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              other.isOnline ? 'Online' : 'Offline',
+                              other.isOnline
+                                  ? 'Online'
+                                  : (other.lastSeenText ?? 'Offline'),
                               style: TextStyle(
                                 fontSize: 12,
                                 color: other.isOnline ? AppColors.onlineGreen : AppColors.offlineGrey,

@@ -137,8 +137,21 @@ func (h *ConversationHandler) SendMessage(c *gin.Context) {
 			}
 
 			preview := req.Content
-			if len(preview) > 100 {
-				preview = preview[:100] + "..."
+			msgType := req.Type
+			if msgType == "" {
+				msgType = "text"
+			}
+			switch msgType {
+			case "image":
+				preview = "[Hình ảnh]"
+			case "audio":
+				preview = "[Tin nhắn thoại]"
+			case "listing_link":
+				preview = "[Tin đăng]"
+			default:
+				if len(preview) > 100 {
+					preview = preview[:100] + "..."
+				}
 			}
 			data, _ := json.Marshal(map[string]string{
 				"conversation_id": conversationID,
