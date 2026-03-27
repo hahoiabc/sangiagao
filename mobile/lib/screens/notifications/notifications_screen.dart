@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../models/rating.dart';
 import '../../providers/providers.dart';
 import '../../widgets/empty_state.dart';
@@ -47,6 +48,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             type: notif.type,
             title: notif.title,
             body: notif.body,
+            data: notif.data,
             isRead: true,
             createdAt: notif.createdAt,
           );
@@ -69,6 +71,21 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         return Icons.flag_outlined;
       default:
         return Icons.notifications_outlined;
+    }
+  }
+
+  void _navigate(AppNotification notif) {
+    final convId = notif.data?['conversation_id'] as String?;
+    switch (notif.type) {
+      case 'new_message':
+        if (convId != null) context.push('/chat/$convId');
+        break;
+      case 'subscription_expiring':
+        context.push('/subscription');
+        break;
+      case 'feedback_reply':
+        context.push('/feedback-history');
+        break;
     }
   }
 
@@ -126,7 +143,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                           ],
                         ),
                         tileColor: notif.isRead ? null : Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
-                        onTap: () => _markRead(notif),
+                        onTap: () {
+                          _markRead(notif);
+                          _navigate(notif);
+                        },
                       );
                     },
                   ),

@@ -10,10 +10,10 @@ import 'package:flutter/services.dart';
 class AppColors {
   AppColors._();
 
-  // --- Primary: Xanh lá đậm (lúa non) ---
-  static const primary = Color(0xFF2E7D32);
-  static const primaryLight = Color(0xFF4CAF50);
-  static const primaryDark = Color(0xFF1B5E20);
+  // --- Primary: Xanh dương ---
+  static const primary = Color(0xFF007FFF);
+  static const primaryLight = Color(0xFF4DA6FF);
+  static const primaryDark = Color(0xFF0059B3);
   static const onPrimary = Colors.white;
 
   // --- Secondary: Vàng lúa chín ---
@@ -53,7 +53,7 @@ class AppColors {
   static const deletedRed = Color(0xFFD32F2F);
 
   // --- Chat ---
-  static const chatBubbleMe = Color(0xFF2E7D32);
+  static const chatBubbleMe = Color(0xFF007FFF);
   static const chatBubbleOther = Color(0xFFF0F2EB);
   static const onlineGreen = Color(0xFF4CAF50);
   static const offlineGrey = Color(0xFFBDBDBD);

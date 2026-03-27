@@ -43,6 +43,7 @@ class AppNotification {
   final String type;
   final String title;
   final String body;
+  final Map<String, dynamic>? data;
   final bool isRead;
   final String createdAt;
 
@@ -52,6 +53,7 @@ class AppNotification {
     required this.type,
     required this.title,
     required this.body,
+    this.data,
     this.isRead = false,
     required this.createdAt,
   });
@@ -63,6 +65,7 @@ class AppNotification {
         type: json['type'] as String,
         title: json['title'] as String,
         body: json['body'] as String,
+        data: json['data'] is Map<String, dynamic> ? json['data'] as Map<String, dynamic> : null,
         isRead: json['is_read'] as bool? ?? false,
         createdAt: json['created_at'] as String,
       );
