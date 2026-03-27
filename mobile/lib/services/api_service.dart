@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
@@ -84,10 +85,13 @@ class ApiService {
     if (_cachedDeviceId != null) return _cachedDeviceId!;
     var id = await _storage.read(key: 'device_id');
     if (id == null) {
-      // Generate a simple UUID-like ID
-      final now = DateTime.now().microsecondsSinceEpoch;
-      final hash = now.toRadixString(36) + Object().hashCode.toRadixString(36);
-      id = 'dev_$hash';
+      // Generate UUID v4 using secure random
+      final rng = Random.secure();
+      final bytes = List<int>.generate(16, (_) => rng.nextInt(256));
+      bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+      bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant 1
+      final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+      id = 'dev_${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
       await _storage.write(key: 'device_id', value: id);
     }
     _cachedDeviceId = id;

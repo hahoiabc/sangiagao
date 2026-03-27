@@ -23,6 +23,10 @@ type Config struct {
 	RefreshTokenExpiry time.Duration
 	SMSProvider        string
 	SMSAPIKey          string
+	ZaloAppID          string
+	ZaloAppSecret      string
+	ZaloZNSTemplateID  string
+	ZaloRefreshToken   string
 	CloudinaryURL      string
 	FirebaseCredPath   string
 	MinIOEndpoint      string
@@ -56,6 +60,10 @@ func Load() *Config {
 		RefreshTokenExpiry: parseDuration(getEnv("REFRESH_TOKEN_EXPIRY", "720h")),
 		SMSProvider:        getEnv("SMS_PROVIDER", "mock"),
 		SMSAPIKey:          getEnv("SMS_API_KEY", ""),
+		ZaloAppID:          getEnv("ZALO_APP_ID", ""),
+		ZaloAppSecret:      getEnv("ZALO_APP_SECRET", ""),
+		ZaloZNSTemplateID:  getEnv("ZALO_ZNS_TEMPLATE_ID", ""),
+		ZaloRefreshToken:   getEnv("ZALO_REFRESH_TOKEN", ""),
 		CloudinaryURL:      getEnv("CLOUDINARY_URL", ""),
 		FirebaseCredPath:   getEnv("FIREBASE_CRED_PATH", ""),
 		MinIOEndpoint:      getEnv("MINIO_ENDPOINT", "localhost:9000"),

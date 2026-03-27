@@ -16,6 +16,9 @@ type Cache interface {
 	Exists(ctx context.Context, key string) (bool, error)
 	CountByPrefix(ctx context.Context, prefix string) (int, error)
 	KeysByPrefix(ctx context.Context, prefix string) ([]string, error)
+	// Incr atomically increments a key by 1 and returns the new value.
+	// If the key does not exist, it is created with value 1 and the given TTL.
+	Incr(ctx context.Context, key string, ttl time.Duration) (int64, error)
 }
 
 // RedisCache implements Cache using Redis.
@@ -71,6 +74,18 @@ func (c *RedisCache) KeysByPrefix(ctx context.Context, prefix string) ([]string,
 		return nil, err
 	}
 	return keys, nil
+}
+
+func (c *RedisCache) Incr(ctx context.Context, key string, ttl time.Duration) (int64, error) {
+	val, err := c.client.Incr(ctx, key).Result()
+	if err != nil {
+		return 0, err
+	}
+	// Set TTL only on first increment (val == 1)
+	if val == 1 && ttl > 0 {
+		c.client.Expire(ctx, key, ttl)
+	}
+	return val, nil
 }
 
 func (c *RedisCache) DeleteByPrefix(ctx context.Context, prefix string) error {

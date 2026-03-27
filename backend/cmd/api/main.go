@@ -102,7 +102,19 @@ func main() {
 	slog.Info("Phone encryption initialized")
 
 	var smsSender sms.Sender
-	smsSender = sms.NewMockSender()
+	switch cfg.SMSProvider {
+	case "zalo":
+		zaloSender := sms.NewZaloZNSSender(cfg.ZaloAppID, cfg.ZaloAppSecret, cfg.ZaloZNSTemplateID, cfg.ZaloRefreshToken)
+		smsSender = zaloSender
+		slog.Info("SMS provider: Zalo ZNS")
+	case "zalo+mock":
+		zaloSender := sms.NewZaloZNSSender(cfg.ZaloAppID, cfg.ZaloAppSecret, cfg.ZaloZNSTemplateID, cfg.ZaloRefreshToken)
+		smsSender = sms.NewFallbackSender(zaloSender, sms.NewMockSender())
+		slog.Info("SMS provider: Zalo ZNS + Mock fallback")
+	default:
+		smsSender = sms.NewMockSender()
+		slog.Info("SMS provider: Mock")
+	}
 
 	// --- Repositories ---
 	userRepo := repository.NewUserRepo(pgPool, phoneCrypto)
@@ -280,10 +292,11 @@ func main() {
 		protected.Use(middleware.CSRFProtection())
 		protected.Use(middleware.TrackOnline(appCache))
 		{
-			// Upload (MinIO)
+			// Upload (MinIO) — 50 uploads/hour/user
 			if uploadHandler != nil {
-				protected.POST("/upload/image", uploadHandler.UploadImage)
-				protected.POST("/upload/audio", uploadHandler.UploadAudio)
+				uploadLimit := middleware.UserRateLimit(appCache, "ratelimit:upload", 50, 1*time.Hour)
+				protected.POST("/upload/image", uploadLimit, uploadHandler.UploadImage)
+				protected.POST("/upload/audio", uploadLimit, uploadHandler.UploadAudio)
 			}
 
 			// User
@@ -314,10 +327,10 @@ func main() {
 			conversations.Use(middleware.RequirePermission(permissionService, "chat.send"))
 			{
 				conversations.GET("", convHandler.List)
-				conversations.POST("", convHandler.Create)
+				conversations.POST("", middleware.UserRateLimit(appCache, "ratelimit:conv", 20, 24*time.Hour), convHandler.Create)
 				conversations.PUT("/:id/read", convHandler.MarkRead)
 				conversations.GET("/:id/messages", convHandler.GetMessages)
-				conversations.POST("/:id/messages", convHandler.SendMessage)
+				conversations.POST("/:id/messages", middleware.UserRateLimit(appCache, "ratelimit:msg", 30, 1*time.Minute), convHandler.SendMessage)
 				conversations.DELETE("/:id/messages/:msgId", convHandler.DeleteMessage)
 				conversations.PUT("/:id/messages/:msgId/recall", convHandler.RecallMessage)
 				conversations.POST("/:id/messages/batch-delete", convHandler.BatchDeleteMessages)
