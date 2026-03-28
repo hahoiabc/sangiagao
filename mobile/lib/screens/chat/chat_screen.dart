@@ -559,10 +559,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _showMessageActions(Message msg) {
-    final isMe = msg.senderId == _currentUserId;
-    if (!isMe || msg.type == 'recalled') return;
+    if (msg.type == 'recalled') return;
 
-    final canRecall = _canRecall(msg);
+    final isMe = msg.senderId == _currentUserId;
+    final canRecall = isMe && _canRecall(msg);
 
     showModalBottomSheet(
       context: context,

@@ -146,10 +146,16 @@ func (s *ChatService) DeleteMessage(ctx context.Context, userID, conversationID,
 	if msg.ConversationID != conversationID {
 		return ErrMessageNotFound
 	}
-	if msg.SenderID != userID {
-		return ErrNotMessageOwner
+	// Verify user is participant (sender or receiver)
+	ok, err := s.convRepo.IsParticipant(ctx, conversationID, userID)
+	if err != nil {
+		return err
 	}
-	return s.convRepo.DeleteMessage(ctx, messageID)
+	if !ok {
+		return ErrNotParticipant
+	}
+	isSender := msg.SenderID == userID
+	return s.convRepo.DeleteMessage(ctx, messageID, isSender)
 }
 
 func (s *ChatService) RecallMessage(ctx context.Context, userID, conversationID, messageID string) (*model.Message, error) {
@@ -180,17 +186,33 @@ func (s *ChatService) DeleteMessages(ctx context.Context, userID, conversationID
 	if !ok {
 		return ErrNotParticipant
 	}
-	// Verify ownership of each message
+	// Split messages into sender/receiver groups
+	var senderIDs, receiverIDs []string
 	for _, msgID := range messageIDs {
 		msg, err := s.convRepo.GetMessageByID(ctx, msgID)
 		if err != nil {
 			return ErrMessageNotFound
 		}
-		if msg.ConversationID != conversationID || msg.SenderID != userID {
-			return ErrNotMessageOwner
+		if msg.ConversationID != conversationID {
+			return ErrMessageNotFound
+		}
+		if msg.SenderID == userID {
+			senderIDs = append(senderIDs, msgID)
+		} else {
+			receiverIDs = append(receiverIDs, msgID)
 		}
 	}
-	return s.convRepo.DeleteMessages(ctx, messageIDs)
+	if len(senderIDs) > 0 {
+		if err := s.convRepo.DeleteMessages(ctx, senderIDs, true); err != nil {
+			return err
+		}
+	}
+	if len(receiverIDs) > 0 {
+		if err := s.convRepo.DeleteMessages(ctx, receiverIDs, false); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *ChatService) IsParticipant(ctx context.Context, conversationID, userID string) (bool, error) {

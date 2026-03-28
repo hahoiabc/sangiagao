@@ -62,11 +62,11 @@ func (m *mockConvRepo) GetMessageByID(ctx context.Context, messageID string) (*m
 	}
 	return args.Get(0).(*model.Message), args.Error(1)
 }
-func (m *mockConvRepo) DeleteMessage(ctx context.Context, messageID string) error {
-	return m.Called(ctx, messageID).Error(0)
+func (m *mockConvRepo) DeleteMessage(ctx context.Context, messageID string, asSender bool) error {
+	return m.Called(ctx, messageID, asSender).Error(0)
 }
-func (m *mockConvRepo) DeleteMessages(ctx context.Context, messageIDs []string) error {
-	return m.Called(ctx, messageIDs).Error(0)
+func (m *mockConvRepo) DeleteMessages(ctx context.Context, messageIDs []string, asSender bool) error {
+	return m.Called(ctx, messageIDs, asSender).Error(0)
 }
 func (m *mockConvRepo) RecallMessage(ctx context.Context, messageID string) error {
 	return m.Called(ctx, messageID).Error(0)

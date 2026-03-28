@@ -211,6 +211,7 @@ CREATE TABLE IF NOT EXISTS messages (
     type VARCHAR(20) NOT NULL DEFAULT 'text' CHECK (type IN ('text', 'image', 'audio', 'recalled', 'listing_link')),
     read_at TIMESTAMPTZ,
     deleted_by_sender BOOLEAN NOT NULL DEFAULT false,
+    deleted_by_receiver BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

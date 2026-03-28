@@ -156,7 +156,8 @@ func (r *ConversationRepo) GetMessages(ctx context.Context, conversationID, read
 	err := r.pool.QueryRow(ctx,
 		`SELECT COUNT(*) FROM messages
 		 WHERE conversation_id = $1
-		   AND NOT (sender_id = $2 AND deleted_by_sender = true)`,
+		   AND NOT (sender_id = $2 AND deleted_by_sender = true)
+		   AND NOT (sender_id <> $2 AND deleted_by_receiver = true)`,
 		conversationID, readerID,
 	).Scan(&total)
 	if err != nil {
@@ -168,6 +169,7 @@ func (r *ConversationRepo) GetMessages(ctx context.Context, conversationID, read
 		 FROM messages
 		 WHERE conversation_id = $1
 		   AND NOT (sender_id = $2 AND deleted_by_sender = true)
+		   AND NOT (sender_id <> $2 AND deleted_by_receiver = true)
 		 ORDER BY created_at DESC LIMIT $3 OFFSET $4`,
 		conversationID, readerID, limit, offset,
 	)
@@ -199,16 +201,28 @@ func (r *ConversationRepo) MarkRead(ctx context.Context, conversationID, readerI
 	return err
 }
 
-func (r *ConversationRepo) DeleteMessage(ctx context.Context, messageID string) error {
+func (r *ConversationRepo) DeleteMessage(ctx context.Context, messageID string, asSender bool) error {
+	if asSender {
+		_, err := r.pool.Exec(ctx,
+			`UPDATE messages SET deleted_by_sender = true WHERE id = $1`, messageID,
+		)
+		return err
+	}
 	_, err := r.pool.Exec(ctx,
-		`UPDATE messages SET deleted_by_sender = true WHERE id = $1`, messageID,
+		`UPDATE messages SET deleted_by_receiver = true WHERE id = $1`, messageID,
 	)
 	return err
 }
 
-func (r *ConversationRepo) DeleteMessages(ctx context.Context, messageIDs []string) error {
+func (r *ConversationRepo) DeleteMessages(ctx context.Context, messageIDs []string, asSender bool) error {
+	if asSender {
+		_, err := r.pool.Exec(ctx,
+			`UPDATE messages SET deleted_by_sender = true WHERE id = ANY($1::uuid[])`, messageIDs,
+		)
+		return err
+	}
 	_, err := r.pool.Exec(ctx,
-		`UPDATE messages SET deleted_by_sender = true WHERE id = ANY($1::uuid[])`, messageIDs,
+		`UPDATE messages SET deleted_by_receiver = true WHERE id = ANY($1::uuid[])`, messageIDs,
 	)
 	return err
 }

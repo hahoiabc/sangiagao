@@ -195,7 +195,7 @@ func (h *ConversationHandler) DeleteMessage(c *gin.Context) {
 		switch err {
 		case service.ErrMessageNotFound:
 			c.JSON(http.StatusNotFound, gin.H{"error": "not_found", "message": err.Error()})
-		case service.ErrNotMessageOwner:
+		case service.ErrNotParticipant:
 			c.JSON(http.StatusForbidden, gin.H{"error": "forbidden", "message": err.Error()})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal", "message": "xóa tin nhắn thất bại"})
@@ -248,7 +248,14 @@ func (h *ConversationHandler) BatchDeleteMessages(c *gin.Context) {
 
 	err := h.chatService.DeleteMessages(c.Request.Context(), userID, conversationID, req.MessageIDs)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal", "message": "xóa tin nhắn thất bại"})
+		switch err {
+		case service.ErrMessageNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": "not_found", "message": err.Error()})
+		case service.ErrNotParticipant:
+			c.JSON(http.StatusForbidden, gin.H{"error": "forbidden", "message": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal", "message": "xóa tin nhắn thất bại"})
+		}
 		return
 	}
 

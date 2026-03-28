@@ -159,8 +159,8 @@ type ConversationRepository interface {
 	MarkRead(ctx context.Context, conversationID, readerID string) error
 	IsParticipant(ctx context.Context, conversationID, userID string) (bool, error)
 	GetMessageByID(ctx context.Context, messageID string) (*model.Message, error)
-	DeleteMessage(ctx context.Context, messageID string) error
-	DeleteMessages(ctx context.Context, messageIDs []string) error
+	DeleteMessage(ctx context.Context, messageID string, asSender bool) error
+	DeleteMessages(ctx context.Context, messageIDs []string, asSender bool) error
 	RecallMessage(ctx context.Context, messageID string) error
 	RecallMessages(ctx context.Context, messageIDs []string) error
 }
