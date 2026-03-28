@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -71,4 +72,29 @@ func (h *NotificationHandler) MarkRead(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "notification marked as read"})
+}
+
+type broadcastRequest struct {
+	Title string          `json:"title" binding:"required,max=200"`
+	Body  string          `json:"body" binding:"required"`
+	Data  json.RawMessage `json:"data,omitempty"`
+}
+
+func (h *NotificationHandler) Broadcast(c *gin.Context) {
+	var req broadcastRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Tiêu đề và nội dung là bắt buộc"})
+		return
+	}
+
+	count, err := h.notifService.BroadcastNotification(c.Request.Context(), "broadcast", req.Title, req.Body, req.Data)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gửi thông báo thất bại"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Đã gửi thông báo",
+		"sent_to": count,
+	})
 }

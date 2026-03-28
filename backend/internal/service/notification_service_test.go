@@ -44,6 +44,23 @@ func (m *mockNotifRepo) UnreadCount(ctx context.Context, userID string) (int, er
 	args := m.Called(ctx, userID)
 	return args.Int(0), args.Error(1)
 }
+func (m *mockNotifRepo) CreateBatch(ctx context.Context, userIDs []string, nType, title, body string, data json.RawMessage) error {
+	return m.Called(ctx, userIDs, nType, title, body, data).Error(0)
+}
+func (m *mockNotifRepo) GetAllUserIDs(ctx context.Context) ([]string, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]string), args.Error(1)
+}
+func (m *mockNotifRepo) GetAllDeviceTokens(ctx context.Context) ([]string, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]string), args.Error(1)
+}
 
 func TestNotifRegisterDevice_Success(t *testing.T) {
 	repo := new(mockNotifRepo)

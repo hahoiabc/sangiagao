@@ -399,6 +399,7 @@ INSERT INTO role_permissions (role, permission_key, allowed) VALUES
     ('owner', 'sub.activate', true), ('owner', 'sub.revenue', true), ('owner', 'sub.plans', true),
     ('owner', 'catalog.manage', true), ('owner', 'sponsors.manage', true),
     ('owner', 'feedback.create', true), ('owner', 'feedback.reply', true),
+    ('owner', 'notifications.broadcast', true),
     -- Admin
     ('admin', 'dashboard.view', true), ('admin', 'dashboard.charts', true), ('admin', 'system.monitor', true),
     ('admin', 'users.list', true), ('admin', 'users.detail', true), ('admin', 'users.block', true),
@@ -413,6 +414,7 @@ INSERT INTO role_permissions (role, permission_key, allowed) VALUES
     ('admin', 'sub.activate', true), ('admin', 'sub.revenue', true), ('admin', 'sub.plans', false),
     ('admin', 'catalog.manage', true), ('admin', 'sponsors.manage', true),
     ('admin', 'feedback.create', true), ('admin', 'feedback.reply', true),
+    ('admin', 'notifications.broadcast', true),
     -- Editor
     ('editor', 'dashboard.view', true), ('editor', 'dashboard.charts', true), ('editor', 'system.monitor', true),
     ('editor', 'users.list', false), ('editor', 'users.detail', false), ('editor', 'users.block', false),
@@ -427,6 +429,7 @@ INSERT INTO role_permissions (role, permission_key, allowed) VALUES
     ('editor', 'sub.activate', true), ('editor', 'sub.revenue', true), ('editor', 'sub.plans', false),
     ('editor', 'catalog.manage', true), ('editor', 'sponsors.manage', true),
     ('editor', 'feedback.create', true), ('editor', 'feedback.reply', true),
+    ('editor', 'notifications.broadcast', false),
     -- Member
     ('member', 'dashboard.view', false), ('member', 'dashboard.charts', false), ('member', 'system.monitor', false),
     ('member', 'users.list', false), ('member', 'users.detail', false), ('member', 'users.block', false),

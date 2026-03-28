@@ -656,3 +656,22 @@ export async function savePermissions(token: string, permissions: PermissionMatr
     body: JSON.stringify({ permissions }),
   });
 }
+
+// Notifications broadcast
+export interface BroadcastRequest {
+  title: string;
+  body: string;
+}
+
+export interface BroadcastResponse {
+  message: string;
+  sent_to: number;
+}
+
+export async function broadcastNotification(token: string, data: BroadcastRequest): Promise<BroadcastResponse> {
+  return request<BroadcastResponse>("/admin/notifications/broadcast", {
+    token,
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}

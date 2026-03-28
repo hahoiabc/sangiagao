@@ -109,10 +109,13 @@ type ReportRepository interface {
 
 type NotificationRepository interface {
 	Create(ctx context.Context, userID, nType, title, body string, data json.RawMessage) (*model.Notification, error)
+	CreateBatch(ctx context.Context, userIDs []string, nType, title, body string, data json.RawMessage) error
 	ListByUser(ctx context.Context, userID string, page, limit int) ([]*model.Notification, int, error)
 	MarkRead(ctx context.Context, id, userID string) error
 	RegisterDevice(ctx context.Context, userID, token, platform string) error
 	GetDeviceTokens(ctx context.Context, userID string) ([]string, error)
+	GetAllUserIDs(ctx context.Context) ([]string, error)
+	GetAllDeviceTokens(ctx context.Context) ([]string, error)
 	UnreadCount(ctx context.Context, userID string) (int, error)
 }
 

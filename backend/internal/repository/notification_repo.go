@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sangiagao/rice-marketplace/internal/model"
 )
@@ -118,4 +119,67 @@ func (r *NotificationRepo) UnreadCount(ctx context.Context, userID string) (int,
 		`SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND is_read = false`, userID,
 	).Scan(&count)
 	return count, err
+}
+
+func (r *NotificationRepo) GetAllUserIDs(ctx context.Context) ([]string, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id FROM users WHERE status = 'active' AND role != 'admin' AND role != 'owner'`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+func (r *NotificationRepo) GetAllDeviceTokens(ctx context.Context) ([]string, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT DISTINCT dt.token FROM device_tokens dt
+		 JOIN users u ON u.id = dt.user_id
+		 WHERE u.status = 'active'`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tokens []string
+	for rows.Next() {
+		var token string
+		if err := rows.Scan(&token); err != nil {
+			return nil, err
+		}
+		tokens = append(tokens, token)
+	}
+	return tokens, rows.Err()
+}
+
+func (r *NotificationRepo) CreateBatch(ctx context.Context, userIDs []string, nType, title, body string, data json.RawMessage) error {
+	if len(userIDs) == 0 {
+		return nil
+	}
+	batch := &pgx.Batch{}
+	for _, uid := range userIDs {
+		batch.Queue(
+			`INSERT INTO notifications (user_id, type, title, body, data) VALUES ($1, $2, $3, $4, $5)`,
+			uid, nType, title, body, data,
+		)
+	}
+	br := r.pool.SendBatch(ctx, batch)
+	defer br.Close()
+	for range userIDs {
+		if _, err := br.Exec(); err != nil {
+			return err
+		}
+	}
+	return nil
 }

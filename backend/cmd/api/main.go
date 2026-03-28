@@ -405,6 +405,9 @@ func main() {
 				// System monitoring — admin + editor
 				admin.GET("/system/stats", middleware.RequirePermission(permissionService, "system.monitor"), systemHandler.GetStats)
 
+				// Notifications broadcast — admin + editor
+				admin.POST("/notifications/broadcast", middleware.RequirePermission(permissionService, "notifications.broadcast"), notifHandler.Broadcast)
+
 				// Permissions management — owner + admin only
 				admin.GET("/permissions", permissionHandler.GetPermissions)
 				admin.PUT("/permissions", permissionHandler.SavePermissions)

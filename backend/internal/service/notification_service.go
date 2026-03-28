@@ -65,3 +65,43 @@ func (s *NotificationService) Create(ctx context.Context, userID, nType, title, 
 func (s *NotificationService) UnreadCount(ctx context.Context, userID string) (int, error) {
 	return s.notifRepo.UnreadCount(ctx, userID)
 }
+
+// BroadcastNotification creates a notification for all active users and sends push to all devices.
+func (s *NotificationService) BroadcastNotification(ctx context.Context, nType, title, body string, data json.RawMessage) (int, error) {
+	userIDs, err := s.notifRepo.GetAllUserIDs(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if len(userIDs) == 0 {
+		return 0, nil
+	}
+
+	// Batch insert notifications for all users
+	if err := s.notifRepo.CreateBatch(ctx, userIDs, nType, title, body, data); err != nil {
+		return 0, err
+	}
+
+	// Send push notifications asynchronously in batches of 500
+	if s.pushSender != nil {
+		go func() {
+			tokens, err := s.notifRepo.GetAllDeviceTokens(context.Background())
+			if err != nil || len(tokens) == 0 {
+				return
+			}
+			pushData := map[string]string{"type": nType}
+			const batchSize = 500
+			for i := 0; i < len(tokens); i += batchSize {
+				end := i + batchSize
+				if end > len(tokens) {
+					end = len(tokens)
+				}
+				if err := s.pushSender.SendToTokens(context.Background(), tokens[i:end], title, body, pushData); err != nil {
+					log.Printf("Broadcast push error (batch %d-%d): %v", i, end, err)
+				}
+			}
+			log.Printf("Broadcast push sent to %d devices for %d users", len(tokens), len(userIDs))
+		}()
+	}
+
+	return len(userIDs), nil
+}
