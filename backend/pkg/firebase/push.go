@@ -71,12 +71,36 @@ type fcmV1Message struct {
 	Token        string            `json:"token"`
 	Notification *fcmNotification  `json:"notification"`
 	Data         map[string]string `json:"data,omitempty"`
+	Android      *fcmAndroid       `json:"android,omitempty"`
+	APNS         *fcmAPNS          `json:"apns,omitempty"`
 }
 
 type fcmNotification struct {
 	Title string `json:"title"`
 	Body  string `json:"body"`
 	Image string `json:"image,omitempty"`
+}
+
+type fcmAndroid struct {
+	Notification *fcmAndroidNotification `json:"notification,omitempty"`
+}
+
+type fcmAndroidNotification struct {
+	ChannelID    string `json:"channel_id,omitempty"`
+	Sound        string `json:"sound,omitempty"`
+	DefaultSound bool   `json:"default_sound,omitempty"`
+}
+
+type fcmAPNS struct {
+	Payload *fcmAPNSPayload `json:"payload,omitempty"`
+}
+
+type fcmAPNSPayload struct {
+	APS *fcmAPS `json:"aps,omitempty"`
+}
+
+type fcmAPS struct {
+	Sound string `json:"sound,omitempty"`
 }
 
 func (s *FCMSender) SendToTokens(ctx context.Context, tokens []string, title, body, imageURL string, data map[string]string) error {
@@ -98,6 +122,20 @@ func (s *FCMSender) SendToTokens(ctx context.Context, tokens []string, title, bo
 					Image: imageURL,
 				},
 				Data: data,
+				Android: &fcmAndroid{
+					Notification: &fcmAndroidNotification{
+						ChannelID:    "sangiagao_notifications",
+						Sound:        "default",
+						DefaultSound: true,
+					},
+				},
+				APNS: &fcmAPNS{
+					Payload: &fcmAPNSPayload{
+						APS: &fcmAPS{
+							Sound: "default",
+						},
+					},
+				},
 			},
 		}
 
