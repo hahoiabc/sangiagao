@@ -450,7 +450,7 @@ INSERT INTO role_permissions (role, permission_key, allowed) VALUES
     ('expired', 'marketplace.browse', true), ('expired', 'marketplace.search', true),
     ('expired', 'marketplace.detail', true), ('expired', 'marketplace.priceboard', true),
     ('expired', 'marketplace.seller_profile', true),
-    ('expired', 'chat.send', true), ('expired', 'chat.send_image', true), ('expired', 'ratings.create', true),
+    ('expired', 'chat.send', false), ('expired', 'chat.send_image', false), ('expired', 'ratings.create', true),
     ('expired', 'reports.create', true), ('expired', 'reports.manage', false),
     ('expired', 'sub.activate', false), ('expired', 'sub.revenue', false), ('expired', 'sub.plans', false),
     ('expired', 'catalog.manage', false), ('expired', 'sponsors.manage', false),
