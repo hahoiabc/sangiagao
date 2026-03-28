@@ -74,6 +74,32 @@ func (h *NotificationHandler) MarkRead(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "notification marked as read"})
 }
 
+type sendToUserRequest struct {
+	UserID   string          `json:"user_id" binding:"required"`
+	Title    string          `json:"title" binding:"required,max=200"`
+	Body     string          `json:"body" binding:"required"`
+	ImageURL string          `json:"image_url,omitempty"`
+	Data     json.RawMessage `json:"data,omitempty"`
+}
+
+func (h *NotificationHandler) SendToUser(c *gin.Context) {
+	var req sendToUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id, tiêu đề và nội dung là bắt buộc"})
+		return
+	}
+
+	_, err := h.notifService.Create(c.Request.Context(), req.UserID, "admin_direct", req.Title, req.Body, req.Data)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gửi thông báo thất bại"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Đã gửi thông báo tới thành viên",
+	})
+}
+
 type broadcastRequest struct {
 	Title    string          `json:"title" binding:"required,max=200"`
 	Body     string          `json:"body" binding:"required"`

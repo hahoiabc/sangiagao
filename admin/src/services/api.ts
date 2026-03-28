@@ -681,3 +681,19 @@ export async function broadcastNotification(token: string, data: BroadcastReques
     body: JSON.stringify(data),
   });
 }
+
+// Send notification to individual user
+export interface SendNotificationRequest {
+  user_id: string;
+  title: string;
+  body: string;
+  image_url?: string;
+}
+
+export async function sendNotification(token: string, data: SendNotificationRequest): Promise<{ message: string }> {
+  return request<{ message: string }>("/admin/notifications/send", {
+    token,
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
