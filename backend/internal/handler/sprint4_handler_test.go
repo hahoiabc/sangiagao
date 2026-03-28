@@ -184,6 +184,9 @@ func (m *mockNotifService) BroadcastNotification(ctx context.Context, nType, tit
 	args := m.Called(ctx, nType, title, body, imageURL, data)
 	return args.Int(0), args.Error(1)
 }
+func (m *mockNotifService) SendPushOnly(ctx context.Context, userID, title, body string, data map[string]string) error {
+	return m.Called(ctx, userID, title, body, data).Error(0)
+}
 
 // --- AdminService Mock ---
 type mockAdminService struct{ mock.Mock }

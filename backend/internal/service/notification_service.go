@@ -62,6 +62,17 @@ func (s *NotificationService) Create(ctx context.Context, userID, nType, title, 
 	return notif, nil
 }
 
+func (s *NotificationService) SendPushOnly(ctx context.Context, userID, title, body string, data map[string]string) error {
+	if s.pushSender == nil {
+		return nil
+	}
+	tokens, err := s.notifRepo.GetDeviceTokens(ctx, userID)
+	if err != nil || len(tokens) == 0 {
+		return nil
+	}
+	return s.pushSender.SendToTokens(ctx, tokens, title, body, "", data)
+}
+
 func (s *NotificationService) UnreadCount(ctx context.Context, userID string) (int, error) {
 	return s.notifRepo.UnreadCount(ctx, userID)
 }

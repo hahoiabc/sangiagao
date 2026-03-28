@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"net/http"
 
@@ -117,7 +116,7 @@ func (h *ConversationHandler) SendMessage(c *gin.Context) {
 		return
 	}
 
-	// Send push notification to the other participant
+	// Send push notification (FCM only, no DB record) to the other participant
 	if h.notifService != nil {
 		go func() {
 			ctx := context.Background()
@@ -153,13 +152,13 @@ func (h *ConversationHandler) SendMessage(c *gin.Context) {
 					preview = preview[:100] + "..."
 				}
 			}
-			data, _ := json.Marshal(map[string]string{
+			pushData := map[string]string{
 				"conversation_id": conversationID,
 				"type":            "new_message",
 				"sender_id":       userID,
-			})
-			if _, err := h.notifService.Create(ctx, recipientID, "new_message", senderName, preview, data); err != nil {
-				log.Printf("Failed to send message notification: %v", err)
+			}
+			if err := h.notifService.SendPushOnly(ctx, recipientID, senderName, preview, pushData); err != nil {
+				log.Printf("Failed to send chat push: %v", err)
 			}
 		}()
 	}

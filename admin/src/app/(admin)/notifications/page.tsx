@@ -17,7 +17,7 @@ export default function NotificationsPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   async function handleSend() {
-    if (!token || !title.trim() || !body.trim()) return;
+    if (!title.trim() || !body.trim()) return;
     setSending(true);
     try {
       const payload: { title: string; body: string; image_url?: string } = {
@@ -27,7 +27,7 @@ export default function NotificationsPage() {
       if (imageUrl.trim()) {
         payload.image_url = imageUrl.trim();
       }
-      const result = await broadcastNotification(token, payload);
+      const result = await broadcastNotification(token ?? "", payload);
       toast.success(`Gửi thành công tới ${result.sent_to} thành viên`);
       setTitle("");
       setBody("");
