@@ -661,6 +661,7 @@ export async function savePermissions(token: string, permissions: PermissionMatr
 export interface BroadcastRequest {
   title: string;
   body: string;
+  image_url?: string;
 }
 
 export interface BroadcastResponse {

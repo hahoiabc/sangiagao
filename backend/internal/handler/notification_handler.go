@@ -75,9 +75,10 @@ func (h *NotificationHandler) MarkRead(c *gin.Context) {
 }
 
 type broadcastRequest struct {
-	Title string          `json:"title" binding:"required,max=200"`
-	Body  string          `json:"body" binding:"required"`
-	Data  json.RawMessage `json:"data,omitempty"`
+	Title    string          `json:"title" binding:"required,max=200"`
+	Body     string          `json:"body" binding:"required"`
+	ImageURL string          `json:"image_url,omitempty"`
+	Data     json.RawMessage `json:"data,omitempty"`
 }
 
 func (h *NotificationHandler) Broadcast(c *gin.Context) {
@@ -87,7 +88,7 @@ func (h *NotificationHandler) Broadcast(c *gin.Context) {
 		return
 	}
 
-	count, err := h.notifService.BroadcastNotification(c.Request.Context(), "broadcast", req.Title, req.Body, req.Data)
+	count, err := h.notifService.BroadcastNotification(c.Request.Context(), "broadcast", req.Title, req.Body, req.ImageURL, req.Data)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gửi thông báo thất bại"})
 		return

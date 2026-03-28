@@ -85,7 +85,7 @@ type NotificationServiceInterface interface {
 	MarkRead(ctx context.Context, id, userID string) error
 	Create(ctx context.Context, userID, nType, title, body string, data json.RawMessage) (*model.Notification, error)
 	UnreadCount(ctx context.Context, userID string) (int, error)
-	BroadcastNotification(ctx context.Context, nType, title, body string, data json.RawMessage) (int, error)
+	BroadcastNotification(ctx context.Context, nType, title, body, imageURL string, data json.RawMessage) (int, error)
 }
 
 type AdminServiceInterface interface {

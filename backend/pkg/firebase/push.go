@@ -16,7 +16,7 @@ import (
 
 // PushSender sends push notifications via FCM HTTP v1 API.
 type PushSender interface {
-	SendToTokens(ctx context.Context, tokens []string, title, body string, data map[string]string) error
+	SendToTokens(ctx context.Context, tokens []string, title, body, imageURL string, data map[string]string) error
 }
 
 // FCMSender implements PushSender using Firebase Cloud Messaging HTTP v1 API.
@@ -76,9 +76,10 @@ type fcmV1Message struct {
 type fcmNotification struct {
 	Title string `json:"title"`
 	Body  string `json:"body"`
+	Image string `json:"image,omitempty"`
 }
 
-func (s *FCMSender) SendToTokens(ctx context.Context, tokens []string, title, body string, data map[string]string) error {
+func (s *FCMSender) SendToTokens(ctx context.Context, tokens []string, title, body, imageURL string, data map[string]string) error {
 	token, err := s.tokenSource.Token()
 	if err != nil {
 		return fmt.Errorf("FCM: failed to get access token: %w", err)
@@ -94,6 +95,7 @@ func (s *FCMSender) SendToTokens(ctx context.Context, tokens []string, title, bo
 				Notification: &fcmNotification{
 					Title: title,
 					Body:  body,
+					Image: imageURL,
 				},
 				Data: data,
 			},
@@ -139,7 +141,7 @@ func (s *FCMSender) SendToTokens(ctx context.Context, tokens []string, title, bo
 // MockPushSender logs push notifications instead of sending them.
 type MockPushSender struct{}
 
-func (m *MockPushSender) SendToTokens(ctx context.Context, tokens []string, title, body string, data map[string]string) error {
+func (m *MockPushSender) SendToTokens(ctx context.Context, tokens []string, title, body, imageURL string, data map[string]string) error {
 	if len(tokens) > 0 {
 		fmt.Printf("[PUSH MOCK] To %d device(s): %s — %s\n", len(tokens), title, body)
 	}

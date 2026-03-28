@@ -180,8 +180,8 @@ func (m *mockNotifService) UnreadCount(ctx context.Context, userID string) (int,
 	args := m.Called(ctx, userID)
 	return args.Int(0), args.Error(1)
 }
-func (m *mockNotifService) BroadcastNotification(ctx context.Context, nType, title, body string, data json.RawMessage) (int, error) {
-	args := m.Called(ctx, nType, title, body, data)
+func (m *mockNotifService) BroadcastNotification(ctx context.Context, nType, title, body, imageURL string, data json.RawMessage) (int, error) {
+	args := m.Called(ctx, nType, title, body, imageURL, data)
 	return args.Int(0), args.Error(1)
 }
 

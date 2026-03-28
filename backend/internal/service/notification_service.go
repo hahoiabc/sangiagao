@@ -53,7 +53,7 @@ func (s *NotificationService) Create(ctx context.Context, userID, nType, title, 
 				"type":            nType,
 				"notification_id": notif.ID,
 			}
-			if err := s.pushSender.SendToTokens(context.Background(), tokens, title, body, pushData); err != nil {
+			if err := s.pushSender.SendToTokens(context.Background(), tokens, title, body, "", pushData); err != nil {
 				log.Printf("Push notification error for user %s: %v", userID, err)
 			}
 		}()
@@ -67,7 +67,7 @@ func (s *NotificationService) UnreadCount(ctx context.Context, userID string) (i
 }
 
 // BroadcastNotification creates a notification for all active users and sends push to all devices.
-func (s *NotificationService) BroadcastNotification(ctx context.Context, nType, title, body string, data json.RawMessage) (int, error) {
+func (s *NotificationService) BroadcastNotification(ctx context.Context, nType, title, body, imageURL string, data json.RawMessage) (int, error) {
 	userIDs, err := s.notifRepo.GetAllUserIDs(ctx)
 	if err != nil {
 		return 0, err
@@ -95,7 +95,7 @@ func (s *NotificationService) BroadcastNotification(ctx context.Context, nType, 
 				if end > len(tokens) {
 					end = len(tokens)
 				}
-				if err := s.pushSender.SendToTokens(context.Background(), tokens[i:end], title, body, pushData); err != nil {
+				if err := s.pushSender.SendToTokens(context.Background(), tokens[i:end], title, body, imageURL, pushData); err != nil {
 					log.Printf("Broadcast push error (batch %d-%d): %v", i, end, err)
 				}
 			}

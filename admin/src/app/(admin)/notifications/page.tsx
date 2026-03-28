@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send } from "lucide-react";
+import { Send, ImageIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { broadcastNotification } from "@/services/api";
@@ -12,6 +12,7 @@ export default function NotificationsPage() {
   const { token } = useAuth();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
   const [sending, setSending] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -19,13 +20,18 @@ export default function NotificationsPage() {
     if (!token || !title.trim() || !body.trim()) return;
     setSending(true);
     try {
-      const result = await broadcastNotification(token, {
+      const payload: { title: string; body: string; image_url?: string } = {
         title: title.trim(),
         body: body.trim(),
-      });
+      };
+      if (imageUrl.trim()) {
+        payload.image_url = imageUrl.trim();
+      }
+      const result = await broadcastNotification(token, payload);
       toast.success(`Gửi thành công tới ${result.sent_to} thành viên`);
       setTitle("");
       setBody("");
+      setImageUrl("");
       setConfirmOpen(false);
     } catch {
       toast.error("Gửi thông báo thất bại");
@@ -68,6 +74,45 @@ export default function NotificationsPage() {
           />
         </div>
 
+        <div>
+          <label className="text-sm font-medium mb-1.5 block">
+            <ImageIcon className="h-4 w-4 inline mr-1.5" />
+            Hình ảnh (tùy chọn)
+          </label>
+          <div className="flex gap-2">
+            <Input
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              placeholder="Dán URL hình ảnh (https://...)..."
+              type="url"
+            />
+            {imageUrl && (
+              <Button variant="ghost" size="icon" onClick={() => setImageUrl("")} className="shrink-0">
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            URL hình ảnh công khai (HTTPS). Hiển thị dưới dạng ảnh lớn trên thông báo đẩy.
+          </p>
+          {imageUrl.trim() && (
+            <div className="mt-2 rounded-lg border overflow-hidden max-w-[300px]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={imageUrl.trim()}
+                alt="Preview"
+                className="w-full h-auto max-h-[200px] object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+                onLoad={(e) => {
+                  (e.target as HTMLImageElement).style.display = "block";
+                }}
+              />
+            </div>
+          )}
+        </div>
+
         {!confirmOpen ? (
           <Button onClick={() => setConfirmOpen(true)} disabled={!canSend}>
             <Send className="h-4 w-4 mr-2" />
@@ -81,6 +126,7 @@ export default function NotificationsPage() {
             <div className="text-sm text-orange-700 space-y-1">
               <p><strong>Tiêu đề:</strong> {title}</p>
               <p><strong>Nội dung:</strong> {body}</p>
+              {imageUrl.trim() && <p><strong>Hình ảnh:</strong> Có đính kèm</p>}
             </div>
             <div className="flex gap-2">
               <Button onClick={handleSend} disabled={sending} size="sm">
