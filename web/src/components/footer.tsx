@@ -11,11 +11,19 @@ export function Footer() {
             <span className="font-semibold text-primary">SanGiaGao.Vn</span>
           </Link>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <Link href="/dieu-khoan-su-dung" className="hover:text-foreground transition-colors">
+              Điều khoản sử dụng
+            </Link>
             <Link href="/chinh-sach-bao-mat" className="hover:text-foreground transition-colors">
               Chính sách bảo mật
             </Link>
-            <span>&copy; {new Date().getFullYear()} SanGiaGao</span>
           </div>
+        </div>
+        <div className="mt-4 pt-4 border-t border-muted text-center text-xs text-muted-foreground leading-relaxed">
+          <p className="font-medium">Công ty TNHH MTV GẠO HÀ ÂN</p>
+          <p>MST: 3602984885</p>
+          <p>Đường Trần Phú, Tổ 18, Ấp Bến Cam, Xã Phước Thiền, Huyện Nhơn Trạch, Tỉnh Đồng Nai, Việt Nam</p>
+          <p className="mt-1">&copy; {new Date().getFullYear()} SanGiaGao.Vn — Sàn Giá Gạo</p>
         </div>
       </div>
     </footer>
