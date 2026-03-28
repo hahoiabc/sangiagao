@@ -90,7 +90,12 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
       await refreshPromise!;
       isRefreshing = false;
       refreshPromise = null;
-      const retryRes = await fetchWithTimeout(`${API_BASE}${path}`, fetchOpts, timeout ?? DEFAULT_TIMEOUT);
+      // Rebuild headers with fresh CSRF token after refresh
+      const retryHeaders = { ...fetchOpts.headers as Record<string, string> };
+      const freshCsrf = getCSRFToken();
+      if (freshCsrf) retryHeaders["X-CSRF-Token"] = freshCsrf;
+      const retryOpts: RequestInit = { ...fetchOpts, headers: retryHeaders };
+      const retryRes = await fetchWithTimeout(`${API_BASE}${path}`, retryOpts, timeout ?? DEFAULT_TIMEOUT);
       if (!retryRes.ok) {
         const body = await retryRes.json().catch(() => ({}));
         throw new ApiError(retryRes.status, body.error || "unknown", body.message || retryRes.statusText);

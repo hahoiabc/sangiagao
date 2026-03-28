@@ -33,8 +33,10 @@ export default function NotificationsPage() {
       setBody("");
       setImageUrl("");
       setConfirmOpen(false);
-    } catch {
-      toast.error("Gửi thông báo thất bại");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Lỗi không xác định";
+      toast.error(`Gửi thông báo thất bại: ${msg}`);
+      console.error("Broadcast error:", err);
     } finally {
       setSending(false);
     }
