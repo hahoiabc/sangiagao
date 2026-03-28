@@ -218,8 +218,8 @@ func (m *mockAdminSubRepo) HideListingsForExpired(ctx context.Context) (int, err
 	args := m.Called(ctx)
 	return args.Int(0), args.Error(1)
 }
-func (m *mockAdminSubRepo) ActivateByUserID(ctx context.Context, userID string, daysValid int, durationMonths int, amount int64) (*model.Subscription, error) {
-	args := m.Called(ctx, userID, daysValid, durationMonths, amount)
+func (m *mockAdminSubRepo) ActivateByUserID(ctx context.Context, userID string, daysValid int, durationMonths int, amount int64, plan string) (*model.Subscription, error) {
+	args := m.Called(ctx, userID, daysValid, durationMonths, amount, plan)
 	return args.Get(0).(*model.Subscription), args.Error(1)
 }
 func (m *mockAdminSubRepo) ExtendSubscription(ctx context.Context, subID string, extraDays int, durationMonths int, amount int64) (*model.Subscription, error) {

@@ -345,6 +345,8 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     final dateFormat = DateFormat('dd/MM/yyyy');
     final amount = (sub['amount'] as num?)?.toInt() ?? 0;
     final months = sub['duration_months'] ?? 0;
+    final plan = sub['plan'] as String? ?? '';
+    final isTrial = plan == 'free_trial';
     final status = sub['status'] as String? ?? '';
     final createdAt = DateTime.tryParse(sub['created_at']?.toString() ?? '')?.toLocal();
     final expiresAt = DateTime.tryParse(sub['expires_at']?.toString() ?? '')?.toLocal();
@@ -375,7 +377,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Gói $months tháng',
+                    isTrial ? 'Dùng thử 30 ngày' : 'Gói $months tháng',
                     style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                   ),
                   const SizedBox(height: 2),
@@ -390,8 +392,8 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  _currencyFormat.format(amount),
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary),
+                  isTrial ? 'Miễn phí' : _currencyFormat.format(amount),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: isTrial ? AppColors.success : AppColors.primary),
                 ),
                 const SizedBox(height: 2),
                 Container(
@@ -423,8 +425,8 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     switch (plan) {
       case 'free_trial':
         return 'Dùng thử miễn phí';
-      case 'monthly':
-        return 'Gói tháng';
+      case 'paid':
+        return 'Gói trả phí';
       default:
         return 'Chưa có gói';
     }

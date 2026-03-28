@@ -639,6 +639,7 @@ export async function getSubscriptionPlans(token: string) {
 
 export interface SubscriptionHistory {
   id: string;
+  plan: string;
   plan_months: number;
   amount: number;
   starts_at: string;

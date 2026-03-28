@@ -108,13 +108,13 @@ func TestSubscriptionAdminActivate_NewSubscription(t *testing.T) {
 	planRepo.On("GetByMonths", ctx, 12).Return(plan, nil)
 	subRepo.On("GetActiveByUserID", ctx, "user-1").Return(nil, nil)
 	sub := &model.Subscription{ID: "sub-1", UserID: "user-1", Plan: "paid", Status: "active"}
-	subRepo.On("ActivateByUserID", ctx, "user-1", 360, 12, int64(300000)).Return(sub, nil)
+	subRepo.On("ActivateByUserID", ctx, "user-1", 360, 12, int64(300000), "paid").Return(sub, nil)
 	subRepo.On("RestoreListings", ctx, "user-1").Return(2, nil)
 
 	result, err := svc.AdminActivate(context.Background(), "user-1", 12)
 	assert.NoError(t, err)
 	assert.Equal(t, "paid", result.Plan)
-	subRepo.AssertCalled(t, "ActivateByUserID", ctx, "user-1", 360, 12, int64(300000))
+	subRepo.AssertCalled(t, "ActivateByUserID", ctx, "user-1", 360, 12, int64(300000), "paid")
 }
 
 func TestSubscriptionAdminActivate_ExtendExisting(t *testing.T) {
@@ -133,7 +133,7 @@ func TestSubscriptionAdminActivate_ExtendExisting(t *testing.T) {
 	result, err := svc.AdminActivate(context.Background(), "user-1", 1)
 	assert.NoError(t, err)
 	assert.Equal(t, "sub-existing", result.ID)
-	subRepo.AssertNotCalled(t, "ActivateByUserID", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	subRepo.AssertNotCalled(t, "ActivateByUserID", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestSubscriptionAdminActivate_InvalidPlan(t *testing.T) {

@@ -205,8 +205,8 @@ func (m *mockSubRepo) HideListingsForExpired(ctx context.Context) (int, error) {
 	args := m.Called(ctx)
 	return args.Int(0), args.Error(1)
 }
-func (m *mockSubRepo) ActivateByUserID(ctx context.Context, userID string, days int, durationMonths int, amount int64) (*model.Subscription, error) {
-	args := m.Called(ctx, userID, days, durationMonths, amount)
+func (m *mockSubRepo) ActivateByUserID(ctx context.Context, userID string, days int, durationMonths int, amount int64, plan string) (*model.Subscription, error) {
+	args := m.Called(ctx, userID, days, durationMonths, amount, plan)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

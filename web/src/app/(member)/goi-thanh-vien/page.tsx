@@ -76,7 +76,7 @@ export default function SubscriptionPage() {
               {status?.has_active ? "Đang hoạt động" : "Đã hết hạn"}
             </p>
             {status?.has_active && status.plan && (
-              <p className="text-sm text-white/80 capitalize">{status.plan}</p>
+              <p className="text-sm text-white/80">{status.plan === 'free_trial' ? 'Dùng thử miễn phí' : 'Gói trả phí'}</p>
             )}
             {status?.has_active && status.days_remaining > 0 && (
               <p className="text-2xl font-bold mt-1">Còn {status.days_remaining} ngày</p>
@@ -194,13 +194,13 @@ export default function SubscriptionPage() {
                   </div>
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">Gói {h.plan_months} tháng</span>
+                      <span className="font-medium text-sm">{h.plan === 'free_trial' ? 'Dùng thử 30 ngày' : `Gói ${h.plan_months} tháng`}</span>
                       <Badge variant={h.status === "active" ? "default" : "secondary"} className="text-xs">
                         {h.status === "active" ? "Hoạt động" : "Hết hạn"}
                       </Badge>
                     </div>
-                    <p className="text-sm font-bold text-primary">
-                      {formatCurrency(h.amount)}
+                    <p className={`text-sm font-bold ${h.plan === 'free_trial' ? 'text-green-600' : 'text-primary'}`}>
+                      {h.plan === 'free_trial' ? 'Miễn phí' : formatCurrency(h.amount)}
                     </p>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <CalendarDays className="h-3 w-3" />

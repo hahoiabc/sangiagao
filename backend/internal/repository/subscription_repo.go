@@ -107,12 +107,12 @@ func (r *SubscriptionRepo) HideListingsForExpired(ctx context.Context) (int, err
 	return int(tag.RowsAffected()), nil
 }
 
-func (r *SubscriptionRepo) ActivateByUserID(ctx context.Context, userID string, daysValid int, durationMonths int, amount int64) (*model.Subscription, error) {
+func (r *SubscriptionRepo) ActivateByUserID(ctx context.Context, userID string, daysValid int, durationMonths int, amount int64, plan string) (*model.Subscription, error) {
 	return scanSub(r.pool.QueryRow(ctx,
 		`INSERT INTO subscriptions (user_id, plan, duration_months, amount, expires_at)
-		 VALUES ($1, 'paid', $2, $3, NOW() + ($4 * interval '1 day'))
+		 VALUES ($1, $5, $2, $3, NOW() + ($4 * interval '1 day'))
 		 RETURNING `+subCols,
-		userID, durationMonths, amount, daysValid,
+		userID, durationMonths, amount, daysValid, plan,
 	))
 }
 

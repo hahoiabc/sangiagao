@@ -270,7 +270,7 @@ func (s *AuthService) CompleteRegister(ctx context.Context, phone, code, name, p
 	}
 
 	// Trial 30 ngày miễn phí cho tài khoản mới
-	_, err = s.subRepo.ActivateByUserID(ctx, user.ID, 30, 1, 0)
+	_, err = s.subRepo.ActivateByUserID(ctx, user.ID, 30, 1, 0, "free_trial")
 	if err != nil {
 		log.Printf("Failed to create trial subscription for user %s: %v", user.ID, err)
 	}

@@ -92,7 +92,7 @@ func (s *SubscriptionService) AdminActivate(ctx context.Context, userID string, 
 	if existing != nil {
 		sub, err = s.subRepo.ExtendSubscription(ctx, existing.ID, days, months, plan.Amount)
 	} else {
-		sub, err = s.subRepo.ActivateByUserID(ctx, userID, days, months, plan.Amount)
+		sub, err = s.subRepo.ActivateByUserID(ctx, userID, days, months, plan.Amount, "paid")
 	}
 	if err != nil {
 		return nil, err

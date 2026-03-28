@@ -65,7 +65,7 @@ type SubscriptionRepository interface {
 	GetByUserID(ctx context.Context, userID string) (*model.Subscription, error)
 	ExpireOverdue(ctx context.Context) (int, error)
 	HideListingsForExpired(ctx context.Context) (int, error)
-	ActivateByUserID(ctx context.Context, userID string, daysValid int, durationMonths int, amount int64) (*model.Subscription, error)
+	ActivateByUserID(ctx context.Context, userID string, daysValid int, durationMonths int, amount int64, plan string) (*model.Subscription, error)
 	ExtendSubscription(ctx context.Context, subID string, extraDays int, durationMonths int, amount int64) (*model.Subscription, error)
 	RestoreListings(ctx context.Context, userID string) (int, error)
 	ListByUserID(ctx context.Context, userID string, page, limit int) ([]*model.Subscription, int, error)
