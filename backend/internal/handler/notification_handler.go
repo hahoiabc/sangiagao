@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -116,6 +117,7 @@ func (h *NotificationHandler) Broadcast(c *gin.Context) {
 
 	count, err := h.notifService.BroadcastNotification(c.Request.Context(), "broadcast", req.Title, req.Body, req.ImageURL, req.Data)
 	if err != nil {
+		log.Printf("Broadcast error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gửi thông báo thất bại"})
 		return
 	}

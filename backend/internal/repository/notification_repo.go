@@ -123,7 +123,7 @@ func (r *NotificationRepo) UnreadCount(ctx context.Context, userID string) (int,
 
 func (r *NotificationRepo) GetAllUserIDs(ctx context.Context) ([]string, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT id FROM users WHERE status = 'active' AND role != 'admin' AND role != 'owner'`,
+		`SELECT id FROM users WHERE is_blocked = false AND role NOT IN ('admin', 'owner')`,
 	)
 	if err != nil {
 		return nil, err
@@ -145,7 +145,7 @@ func (r *NotificationRepo) GetAllDeviceTokens(ctx context.Context) ([]string, er
 	rows, err := r.pool.Query(ctx,
 		`SELECT DISTINCT dt.token FROM device_tokens dt
 		 JOIN users u ON u.id = dt.user_id
-		 WHERE u.status = 'active'`,
+		 WHERE u.is_blocked = false`,
 	)
 	if err != nil {
 		return nil, err
