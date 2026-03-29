@@ -657,27 +657,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     ));
   }
 
-  void _startCall(String callType) {
+  Future<void> _startCall(String callType) async {
     if (_otherUser == null || _currentUserId == null) return;
     final api = ref.read(apiServiceProvider);
-    api.getToken().then((token) {
-      if (token == null || !mounted) return;
-      final callService = CallService(
-        api: api,
-        token: token,
-        conversationId: widget.conversationId,
-        currentUserId: _currentUserId!,
-        otherUserId: _otherUser!.id,
-        otherUserName: _otherUser!.name ?? 'Người dùng',
-        callType: callType,
-        isInitiator: true,
-      );
-      callService.onCallEnded = (status, duration) => addCallLogMessage(status, duration);
-      callService.start();
-      Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => ActiveCallScreen(callService: callService),
-      ));
-    });
+    final token = await api.getToken();
+    if (token == null || !mounted) return;
+
+    final callService = CallService(
+      api: api,
+      token: token,
+      conversationId: widget.conversationId,
+      currentUserId: _currentUserId!,
+      otherUserId: _otherUser!.id,
+      otherUserName: _otherUser!.name ?? 'Người dùng',
+      callType: callType,
+      isInitiator: true,
+    );
+    callService.onCallEnded = (status, duration) => addCallLogMessage(status, duration);
+
+    // MUST await start() so peer connection + signaling are ready before UI
+    await callService.start();
+    if (!mounted || callService.state == CallState.ended) return;
+
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => ActiveCallScreen(callService: callService),
+    ));
   }
 
   Future<void> _reportUser() async {

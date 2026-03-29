@@ -32,6 +32,7 @@ class CallSignalingService {
   void Function(Map<String, dynamic>)? onCallReady;
   void Function()? onCallTimeout;
   void Function()? onDisconnected;
+  void Function()? onJoined;
 
   CallSignalingService({required this.token, required this.conversationId});
 
@@ -165,6 +166,7 @@ class CallSignalingService {
           _joined = true;
           debugPrint('CallSignaling: joined $topic');
           _flushPendingMessages();
+          onJoined?.call();
         } else {
           debugPrint('CallSignaling: join failed: $payload');
           onDisconnected?.call();

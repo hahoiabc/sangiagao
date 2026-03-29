@@ -74,10 +74,14 @@ class CallService {
   }
 
   Future<void> start() async {
+    debugPrint('CallService: start() isInitiator=$isInitiator');
+
     if (!await requestPermissions()) {
+      debugPrint('CallService: permissions denied');
       _setState(CallState.ended);
       return;
     }
+    debugPrint('CallService: permissions granted');
 
     // Get TURN credentials
     List<Map<String, dynamic>> iceServers = [
@@ -89,6 +93,7 @@ class CallService {
       if (servers != null) {
         iceServers = servers.map((s) => Map<String, dynamic>.from(s as Map)).toList();
       }
+      debugPrint('CallService: TURN servers: ${iceServers.length}');
     } catch (e) {
       debugPrint('CallService: Failed to get TURN credentials: $e');
     }
@@ -100,6 +105,7 @@ class CallService {
     };
 
     _peerConnection = await createPeerConnection(config);
+    debugPrint('CallService: peer connection created');
 
     // Get local audio stream
     final mediaConstraints = <String, dynamic>{
@@ -107,6 +113,7 @@ class CallService {
       'video': callType == 'video',
     };
     _localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+    debugPrint('CallService: local stream ready, tracks=${_localStream!.getTracks().length}');
 
     // Add tracks to peer connection
     for (final track in _localStream!.getTracks()) {
@@ -116,6 +123,7 @@ class CallService {
     // ICE candidate handler
     _peerConnection!.onIceCandidate = (candidate) {
       if (candidate.candidate != null) {
+        debugPrint('CallService: sending ICE candidate');
         _signaling?.sendIceCandidate({
           'candidate': candidate.candidate,
           'sdpMid': candidate.sdpMid,
@@ -129,7 +137,7 @@ class CallService {
       debugPrint('CallService: connection state: $rtcState');
       if (rtcState == RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
         _onConnected();
-        _iceRestartAttempts = 0; // Reset on successful connection
+        _iceRestartAttempts = 0;
       } else if (rtcState == RTCPeerConnectionState.RTCPeerConnectionStateFailed) {
         _attemptIceRestart();
       } else if (rtcState == RTCPeerConnectionState.RTCPeerConnectionStateDisconnected) {
@@ -138,9 +146,8 @@ class CallService {
           Future.delayed(const Duration(seconds: 5), () {
             _gracePeriodActive = false;
             final currentState = _peerConnection?.connectionState;
-            if (currentState == RTCPeerConnectionState.RTCPeerConnectionStateFailed) {
-              _attemptIceRestart();
-            } else if (currentState == RTCPeerConnectionState.RTCPeerConnectionStateDisconnected) {
+            if (currentState == RTCPeerConnectionState.RTCPeerConnectionStateFailed ||
+                currentState == RTCPeerConnectionState.RTCPeerConnectionStateDisconnected) {
               _attemptIceRestart();
             }
           });
@@ -148,13 +155,50 @@ class CallService {
       }
     };
 
-    // Connect signaling
+    // Connect signaling — wait for join confirmation
     _signaling = CallSignalingService(
       token: token,
       conversationId: conversationId,
     );
     _setupSignalingCallbacks();
+
+    final joinCompleter = Completer<bool>();
+    final origDisconnected = _signaling!.onDisconnected;
+    _signaling!.onDisconnected = () {
+      debugPrint('CallService: signaling disconnected during start');
+      if (!joinCompleter.isCompleted) joinCompleter.complete(false);
+      origDisconnected?.call();
+    };
+
+    // Override join confirmation to know when we're connected
+    _signaling!.onJoined = () {
+      debugPrint('CallService: signaling channel joined');
+      if (!joinCompleter.isCompleted) joinCompleter.complete(true);
+    };
+
     _signaling!.connect();
+
+    // Wait for channel join (max 10s)
+    bool joined = false;
+    try {
+      joined = await joinCompleter.future.timeout(const Duration(seconds: 10));
+    } on TimeoutException {
+      debugPrint('CallService: signaling join timeout');
+    }
+
+    if (!joined) {
+      debugPrint('CallService: failed to join signaling channel');
+      _cleanup('signaling_failed');
+      return;
+    }
+
+    // Restore original disconnect handler
+    _signaling?.onDisconnected = () {
+      if (state != CallState.ended) {
+        debugPrint('CallService: signaling disconnected during call');
+        _cleanup('disconnected');
+      }
+    };
 
     if (isInitiator) {
       _setState(CallState.outgoing);
@@ -162,15 +206,16 @@ class CallService {
       try {
         final result = await api.initiateCall(conversationId, otherUserId, callType);
         callLogId = result['id'] as String?;
+        debugPrint('CallService: call initiated, callLogId=$callLogId');
       } catch (e) {
         debugPrint('CallService: Failed to create call log: $e');
       }
       _signaling!.initiateCall(otherUserId, callType);
-      // DO NOT create offer yet — wait for callee to send call_ready
+      debugPrint('CallService: call_initiate sent, waiting for call_ready...');
     } else {
       _setState(CallState.incoming);
-      // Callee joined channel — tell caller we're ready for the offer
       _signaling!.sendReady();
+      debugPrint('CallService: call_ready sent, waiting for offer...');
     }
   }
 
