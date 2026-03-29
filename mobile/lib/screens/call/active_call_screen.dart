@@ -131,11 +131,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
           icon: Icons.call,
           color: Colors.green,
           label: 'Nghe',
-          onTap: () {
-            // This should have remote SDP from signaling
-            // For now, start will handle it
-            _call.start();
-          },
+          onTap: () => _call.acceptCall(),
         ),
       ],
     );

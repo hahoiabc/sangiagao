@@ -30,6 +30,7 @@ class CallService {
   bool isSpeaker = false;
   String? callLogId;
   DateTime? _connectedAt;
+  String? _remoteOfferSdp;
 
   // Callbacks
   void Function(CallState)? onStateChanged;
@@ -158,7 +159,14 @@ class CallService {
     }
   }
 
-  Future<void> acceptCall(String remoteSdp) async {
+  Future<void> acceptCall([String? remoteSdp]) async {
+    final sdp = remoteSdp ?? _remoteOfferSdp;
+    if (sdp == null) {
+      debugPrint('CallService: No remote SDP available to accept call');
+      _cleanup('no_sdp');
+      return;
+    }
+
     if (!await requestPermissions()) {
       rejectCall();
       return;
@@ -177,7 +185,7 @@ class CallService {
 
     // Set remote description (offer)
     await _peerConnection!.setRemoteDescription(
-      RTCSessionDescription(remoteSdp, 'offer'),
+      RTCSessionDescription(sdp, 'offer'),
     );
 
     // Create answer
@@ -203,9 +211,7 @@ class CallService {
 
   void toggleSpeaker() {
     isSpeaker = !isSpeaker;
-    _localStream?.getAudioTracks().forEach((track) {
-      Helper.setSpeakerphoneOn(isSpeaker);
-    });
+    Helper.setSpeakerphoneOn(isSpeaker);
   }
 
   void endCall() {
@@ -222,6 +228,14 @@ class CallService {
   }
 
   void _setupSignalingCallbacks() {
+    _signaling!.onCallOffer = (payload) async {
+      final sdp = payload['sdp'] as String?;
+      if (sdp != null) {
+        _remoteOfferSdp = sdp;
+        debugPrint('CallService: received remote offer SDP');
+      }
+    };
+
     _signaling!.onCallAnswer = (payload) async {
       final sdp = payload['sdp'] as String?;
       if (sdp != null && _peerConnection != null) {
