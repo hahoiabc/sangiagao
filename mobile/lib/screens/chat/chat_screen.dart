@@ -639,6 +639,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         callType: 'audio',
         isInitiator: false,
       );
+      callService.onCallEnded = (status, duration) => addCallLogMessage(status, duration);
       callService.start();
       Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => ActiveCallScreen(callService: callService),
@@ -661,6 +662,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         callType: callType,
         isInitiator: true,
       );
+      callService.onCallEnded = (status, duration) => addCallLogMessage(status, duration);
       callService.start();
       Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => ActiveCallScreen(callService: callService),
@@ -993,6 +995,107 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
+  /// Call log bubble — centered, shows call icon + status + duration + "Gọi lại" button
+  Widget _buildCallLogBubble(Message msg) {
+    // content format: "status|duration_seconds|caller_id"
+    // e.g. "answered|45|user-123" or "missed|0|user-456"
+    final parts = msg.content.split('|');
+    final callStatus = parts.isNotEmpty ? parts[0] : 'ended';
+    final duration = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
+    final callerId = parts.length > 2 ? parts[2] : '';
+    final isOutgoing = callerId == _currentUserId;
+
+    IconData icon;
+    Color iconColor;
+    String statusText;
+
+    switch (callStatus) {
+      case 'missed':
+        icon = Icons.phone_missed;
+        iconColor = Colors.red;
+        statusText = isOutgoing ? 'Không trả lời' : 'Cuộc gọi nhỡ';
+        break;
+      case 'rejected':
+        icon = Icons.phone_disabled;
+        iconColor = Colors.orange;
+        statusText = isOutgoing ? 'Bị từ chối' : 'Đã từ chối';
+        break;
+      case 'answered':
+        icon = isOutgoing ? Icons.phone_forwarded : Icons.phone_callback;
+        iconColor = Colors.green;
+        final m = duration ~/ 60;
+        final s = duration % 60;
+        statusText = 'Cuộc gọi thoại ${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+        break;
+      default:
+        icon = Icons.phone;
+        iconColor = AppColors.textHint;
+        statusText = 'Cuộc gọi kết thúc';
+    }
+
+    final parsed = DateTime.tryParse(msg.createdAt);
+    final time = parsed != null ? DateFormat('HH:mm').format(parsed.toLocal()) : '';
+
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.chatBubbleOther.withAlpha(128),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: iconColor, size: 20),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(statusText, style: TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+                Text(time, style: TextStyle(fontSize: 11, color: AppColors.textHint)),
+              ],
+            ),
+            const SizedBox(width: 12),
+            if (_otherUser != null)
+              GestureDetector(
+                onTap: () => _startCall('audio'),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.green,
+                  ),
+                  child: const Icon(Icons.phone, color: Colors.white, size: 16),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Add a call log message to chat after call ends
+  void addCallLogMessage(String status, int durationSeconds) {
+    if (_currentUserId == null) return;
+    final msg = Message(
+      id: 'call_${DateTime.now().millisecondsSinceEpoch}',
+      conversationId: widget.conversationId,
+      senderId: _currentUserId!,
+      content: '$status|$durationSeconds|$_currentUserId',
+      type: 'call_log',
+      createdAt: DateTime.now().toIso8601String(),
+    );
+    if (mounted) {
+      setState(() {
+        _messages.add(msg);
+      });
+      _scrollToBottom();
+    }
+  }
+
   Widget _buildAudioBubble(Message msg, bool isMe) {
     final isPlaying = _playingMsgId == msg.id;
     final progress = _playDuration.inMilliseconds > 0 && isPlaying
@@ -1142,7 +1245,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final isAudio = msg.type == 'audio';
     final isRecalled = msg.type == 'recalled';
     final isListingLink = msg.type == 'listing_link';
+    final isCallLog = msg.type == 'call_log';
     final showAvatar = !isMe && isFirstInChain;
+
+    if (isCallLog) return _buildCallLogBubble(msg);
     final isSelected = _selectedIds.contains(msg.id);
 
     final bubble = GestureDetector(

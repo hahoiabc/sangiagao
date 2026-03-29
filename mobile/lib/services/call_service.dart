@@ -33,6 +33,8 @@ class CallService {
   String? _remoteOfferSdp;
   bool _remoteDescriptionSet = false;
   bool _gracePeriodActive = false;
+  int _iceRestartAttempts = 0;
+  static const _maxIceRestarts = 2;
 
   // Buffer ICE candidates received before remote SDP is set
   final List<RTCIceCandidate> _pendingCandidates = [];
@@ -40,6 +42,8 @@ class CallService {
   // Callbacks
   void Function(CallState)? onStateChanged;
   void Function(int)? onDurationUpdate;
+  /// Called when call ends with (status, durationSeconds) for chat log
+  void Function(String status, int duration)? onCallEnded;
   Timer? _durationTimer;
 
   CallService({
@@ -124,15 +128,19 @@ class CallService {
       debugPrint('CallService: connection state: $rtcState');
       if (rtcState == RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
         _onConnected();
-      } else if (rtcState == RTCPeerConnectionState.RTCPeerConnectionStateFailed ||
-          rtcState == RTCPeerConnectionState.RTCPeerConnectionStateDisconnected) {
+        _iceRestartAttempts = 0; // Reset on successful connection
+      } else if (rtcState == RTCPeerConnectionState.RTCPeerConnectionStateFailed) {
+        _attemptIceRestart();
+      } else if (rtcState == RTCPeerConnectionState.RTCPeerConnectionStateDisconnected) {
         if (!_gracePeriodActive) {
           _gracePeriodActive = true;
-          Future.delayed(const Duration(seconds: 10), () {
+          Future.delayed(const Duration(seconds: 5), () {
             _gracePeriodActive = false;
-            if (_peerConnection?.connectionState ==
-                RTCPeerConnectionState.RTCPeerConnectionStateFailed) {
-              endCall();
+            final currentState = _peerConnection?.connectionState;
+            if (currentState == RTCPeerConnectionState.RTCPeerConnectionStateFailed) {
+              _attemptIceRestart();
+            } else if (currentState == RTCPeerConnectionState.RTCPeerConnectionStateDisconnected) {
+              _attemptIceRestart();
             }
           });
         }
@@ -206,6 +214,25 @@ class CallService {
     } catch (e) {
       debugPrint('CallService: acceptCall SDP error: $e');
       _cleanup('sdp_error');
+    }
+  }
+
+  /// Attempt ICE restart to recover from network changes
+  Future<void> _attemptIceRestart() async {
+    if (_iceRestartAttempts >= _maxIceRestarts || _peerConnection == null) {
+      debugPrint('CallService: ICE restart exhausted ($_iceRestartAttempts/$_maxIceRestarts), ending call');
+      endCall();
+      return;
+    }
+    _iceRestartAttempts++;
+    debugPrint('CallService: ICE restart attempt $_iceRestartAttempts/$_maxIceRestarts');
+    try {
+      final offer = await _peerConnection!.createOffer({'iceRestart': true});
+      await _peerConnection!.setLocalDescription(offer);
+      _signaling?.sendOffer(offer.sdp!);
+    } catch (e) {
+      debugPrint('CallService: ICE restart failed: $e');
+      endCall();
     }
   }
 
@@ -340,14 +367,32 @@ class CallService {
   void _cleanup(String reason) {
     debugPrint('CallService: cleanup — $reason');
 
+    // Determine call status for log
+    String callStatus;
+    if (state == CallState.connected) {
+      callStatus = 'answered';
+    } else if (reason == 'timeout') {
+      callStatus = 'missed';
+    } else if (reason == 'rejected' || reason == 'rejected by remote') {
+      callStatus = 'rejected';
+    } else if (reason == 'busy') {
+      callStatus = 'busy';
+    } else {
+      callStatus = 'ended';
+    }
+
     // Update call log via API based on reason
     if (callLogId != null) {
       if (state == CallState.connected) {
         api.endCallLog(callLogId!).catchError((_) {});
-      } else if (reason == 'timeout' || reason == 'disconnected') {
+      } else if (reason == 'timeout') {
+        api.missCall(callLogId!).catchError((_) {});
+      } else if (reason == 'disconnected') {
         api.endCallLog(callLogId!).catchError((_) {});
       }
     }
+
+    final duration = durationSeconds;
 
     _durationTimer?.cancel();
     _pendingCandidates.clear();
@@ -360,6 +405,9 @@ class CallService {
     _signaling = null;
 
     _setState(CallState.ended);
+
+    // Notify chat screen to add call log message
+    onCallEnded?.call(callStatus, duration);
   }
 
   void _setState(CallState newState) {

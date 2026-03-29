@@ -17,7 +17,8 @@ type CallServiceInterface interface {
 	AnswerCall(ctx context.Context, callID, userID string) error
 	EndCall(ctx context.Context, callID, userID string) error
 	RejectCall(ctx context.Context, callID, userID string) error
-	MissCall(ctx context.Context, callID string) error
+	MissCall(ctx context.Context, callID, userID string) error
+	GetCallByID(ctx context.Context, callID string) (*model.CallLog, error)
 	GetCallHistory(ctx context.Context, userID, conversationID string, page, limit int) ([]*model.CallLog, int, error)
 }
 
@@ -103,6 +104,38 @@ func (h *CallHandler) RejectCall(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Đã từ chối cuộc gọi"})
+}
+
+func (h *CallHandler) MissCall(c *gin.Context) {
+	userID := c.GetString("user_id")
+	callID := c.Param("call_id")
+
+	if err := h.callService.MissCall(c.Request.Context(), callID, userID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Send missed call push to callee
+	go func() {
+		call, err := h.callService.GetCallByID(c.Request.Context(), callID)
+		if err != nil || call == nil {
+			return
+		}
+		callerName, _ := h.chatService.GetUserName(context.Background(), call.CallerID)
+		if callerName == "" {
+			callerName = "Người gọi"
+		}
+		pushData := map[string]string{
+			"type":            "missed_call",
+			"call_id":         callID,
+			"conversation_id": call.ConversationID,
+			"caller_id":       call.CallerID,
+			"caller_name":     callerName,
+		}
+		_ = h.notifService.SendPushOnly(context.Background(), call.CalleeID, callerName, "Cuộc gọi nhỡ", pushData)
+	}()
+
+	c.JSON(http.StatusOK, gin.H{"message": "Đã đánh dấu cuộc gọi nhỡ"})
 }
 
 func (h *CallHandler) GetCallHistory(c *gin.Context) {

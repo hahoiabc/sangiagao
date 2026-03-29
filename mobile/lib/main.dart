@@ -7,6 +7,7 @@ import 'theme/app_theme.dart';
 import 'providers/theme_provider.dart';
 import 'providers/providers.dart';
 import 'services/push_notification_service.dart';
+import 'screens/call/incoming_call_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +25,7 @@ class SanGaoApp extends ConsumerStatefulWidget {
 
 class _SanGaoAppState extends ConsumerState<SanGaoApp> {
   bool _pushInitialized = false;
+  final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +35,33 @@ class _SanGaoAppState extends ConsumerState<SanGaoApp> {
     // Wire push notification navigation to GoRouter
     PushNotificationService.onNavigate = (route) {
       router.go(route);
+    };
+
+    // Wire in-app incoming call overlay for foreground
+    PushNotificationService.onIncomingCallOverlay = ({
+      required String callerName,
+      required String callType,
+      required String conversationId,
+      required String callId,
+    }) {
+      final ctx = _navKey.currentContext;
+      if (ctx == null) return;
+      Navigator.of(ctx).push(
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (_) => IncomingCallScreen(
+            callerName: callerName,
+            callType: callType,
+            onAccept: () {
+              Navigator.of(ctx).pop();
+              router.go('/chat/$conversationId?call=accept');
+            },
+            onReject: () {
+              Navigator.of(ctx).pop();
+            },
+          ),
+        ),
+      );
     };
 
     // Init push notifications + CallKit once authenticated
@@ -50,6 +79,14 @@ class _SanGaoAppState extends ConsumerState<SanGaoApp> {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.withPrimary(themeOption.primary, themeOption.primaryDark, themeOption.primaryLight),
       routerConfig: router,
+      builder: (context, child) {
+        return Navigator(
+          key: _navKey,
+          onGenerateRoute: (_) => MaterialPageRoute(
+            builder: (_) => child ?? const SizedBox.shrink(),
+          ),
+        );
+      },
     );
   }
 }

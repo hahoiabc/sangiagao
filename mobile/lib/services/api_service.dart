@@ -380,6 +380,10 @@ class ApiService {
     await _dio.put('/conversations/calls/$callId/reject');
   }
 
+  Future<void> missCall(String callId) async {
+    await _dio.put('/conversations/calls/$callId/miss');
+  }
+
   // --- Ratings ---
   Future<PaginatedResult<Rating>> getSellerRatings(String sellerId, {int page = 1, int limit = 20}) async {
     final res = await _dio.get('/users/$sellerId/ratings', queryParameters: {'page': page, 'limit': limit});

@@ -49,12 +49,23 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 /// Global navigator key — set from main.dart to enable navigation from push
 typedef PushNavigateCallback = void Function(String route);
 
+/// Callback to show in-app incoming call overlay (set from app-level)
+typedef IncomingCallOverlayCallback = void Function({
+  required String callerName,
+  required String callType,
+  required String conversationId,
+  required String callId,
+});
+
 class PushNotificationService {
   final ApiService _api;
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
   static PushNavigateCallback? onNavigate;
+
+  /// Set this to show a custom in-app incoming call overlay instead of CallKit when foreground
+  static IncomingCallOverlayCallback? onIncomingCallOverlay;
 
   /// Currently active conversation ID — suppress notifications for this chat
   static String? activeConversationId;
@@ -283,12 +294,23 @@ class PushNotificationService {
     }
   }
 
-  /// Show native incoming call UI using CallKit (iOS) / ConnectionService (Android)
+  /// Show incoming call UI — prefer in-app overlay if set, else use CallKit
   void _showIncomingCall(Map<String, dynamic> data) {
     final callerName = data['caller_name'] ?? 'Người gọi';
     final callType = data['call_type'] ?? 'audio';
     final convId = data['conversation_id'] ?? '';
     final callId = data['call_id'] ?? convId;
+
+    // Use in-app overlay if available (foreground + callback registered)
+    if (onIncomingCallOverlay != null) {
+      onIncomingCallOverlay!(
+        callerName: callerName,
+        callType: callType,
+        conversationId: convId,
+        callId: callId,
+      );
+      return;
+    }
 
     final params = CallKitParams(
       id: callId,

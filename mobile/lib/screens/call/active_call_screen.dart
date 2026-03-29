@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:proximity_sensor/proximity_sensor.dart';
 import '../../services/call_service.dart';
 
 class ActiveCallScreen extends StatefulWidget {
@@ -15,6 +18,14 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
   int _duration = 0;
   CallState _state = CallState.idle;
 
+  // Ringback tone
+  final AudioPlayer _ringbackPlayer = AudioPlayer();
+  bool _ringbackPlaying = false;
+
+  // Proximity sensor
+  StreamSubscription? _proximitySub;
+  bool _isNear = false;
+
   CallService get _call => widget.callService;
 
   @override
@@ -25,6 +36,14 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
     _call.onStateChanged = (state) {
       if (!mounted) return;
       setState(() => _state = state);
+
+      // Start/stop ringback tone based on state
+      if (state == CallState.outgoing) {
+        _startRingback();
+      } else {
+        _stopRingback();
+      }
+
       if (state == CallState.ended) {
         Future.delayed(const Duration(seconds: 1), () {
           if (mounted) Navigator.of(context).pop();
@@ -35,10 +54,58 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
     _call.onDurationUpdate = (seconds) {
       if (mounted) setState(() => _duration = seconds);
     };
+
+    // Start ringback if already outgoing
+    if (_state == CallState.outgoing) {
+      _startRingback();
+    }
+
+    // Proximity sensor — turn off screen when near ear
+    _initProximity();
+  }
+
+  void _initProximity() {
+    _proximitySub = ProximitySensor.events.listen((int event) {
+      if (!mounted) return;
+      final near = event > 0;
+      if (near != _isNear) {
+        setState(() => _isNear = near);
+        // Toggle screen brightness when near/far
+        if (near) {
+          SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
+        } else {
+          SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+        }
+      }
+    });
+  }
+
+  void _startRingback() {
+    if (_ringbackPlaying) return;
+    _ringbackPlaying = true;
+    // Play system-like ringback tone using bundled asset or URL
+    _ringbackPlayer.setReleaseMode(ReleaseMode.loop);
+    _ringbackPlayer.play(
+      AssetSource('sounds/ringback.wav'),
+      volume: 0.5,
+    ).catchError((_) {
+      // No ringback audio file available — silent fallback
+      _ringbackPlaying = false;
+    });
+  }
+
+  void _stopRingback() {
+    if (!_ringbackPlaying) return;
+    _ringbackPlaying = false;
+    _ringbackPlayer.stop();
   }
 
   @override
   void dispose() {
+    _stopRingback();
+    _ringbackPlayer.dispose();
+    _proximitySub?.cancel();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _call.dispose();
     super.dispose();
   }
@@ -119,14 +186,12 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        // Reject
         _buildCircleButton(
           icon: Icons.call_end,
           color: Colors.red,
           label: 'Từ chối',
           onTap: () => _call.rejectCall(),
         ),
-        // Accept
         _buildCircleButton(
           icon: Icons.call,
           color: Colors.green,
@@ -141,7 +206,6 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        // Mute
         _buildCircleButton(
           icon: _call.isMuted ? Icons.mic_off : Icons.mic,
           color: _call.isMuted ? Colors.orange : Colors.white24,
@@ -151,7 +215,6 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
             setState(() {});
           },
         ),
-        // End call
         _buildCircleButton(
           icon: Icons.call_end,
           color: Colors.red,
@@ -159,7 +222,6 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
           label: 'Kết thúc',
           onTap: () => _call.endCall(),
         ),
-        // Speaker
         _buildCircleButton(
           icon: _call.isSpeaker ? Icons.volume_up : Icons.volume_down,
           color: _call.isSpeaker ? Colors.blue : Colors.white24,

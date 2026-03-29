@@ -156,7 +156,7 @@ func main() {
 		chatService.SetCache(appCache)
 	}
 	callRepo := repository.NewCallRepository(pgPool)
-	callService := service.NewCallService(callRepo, convRepo)
+	callService := service.NewCallService(callRepo, convRepo, userRepo)
 	sponsorService := service.NewSponsorService(sponsorRepo)
 	feedbackService := service.NewFeedbackService(feedbackRepo)
 	catalogService := service.NewCatalogService(catalogRepo)
@@ -339,12 +339,13 @@ func main() {
 				conversations.POST("/:id/messages/batch-delete", convHandler.BatchDeleteMessages)
 				conversations.POST("/:id/messages/batch-recall", convHandler.BatchRecallMessages)
 
-				// Voice/Video calls
-				conversations.POST("/:id/calls", callHandler.InitiateCall)
+				// Voice calls
+				conversations.POST("/:id/calls", middleware.UserRateLimit(appCache, "ratelimit:call", 10, 1*time.Minute), callHandler.InitiateCall)
 				conversations.GET("/:id/calls", callHandler.GetCallHistory)
 				conversations.PUT("/calls/:call_id/answer", callHandler.AnswerCall)
 				conversations.PUT("/calls/:call_id/end", callHandler.EndCall)
 				conversations.PUT("/calls/:call_id/reject", callHandler.RejectCall)
+				conversations.PUT("/calls/:call_id/miss", callHandler.MissCall)
 			}
 
 			// TURN credentials for WebRTC
