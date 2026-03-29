@@ -82,6 +82,7 @@ type fcmNotification struct {
 }
 
 type fcmAndroid struct {
+	Priority     string                 `json:"priority,omitempty"`
 	Notification *fcmAndroidNotification `json:"notification,omitempty"`
 }
 
@@ -92,7 +93,8 @@ type fcmAndroidNotification struct {
 }
 
 type fcmAPNS struct {
-	Payload *fcmAPNSPayload `json:"payload,omitempty"`
+	Headers map[string]string `json:"headers,omitempty"`
+	Payload *fcmAPNSPayload   `json:"payload,omitempty"`
 }
 
 type fcmAPNSPayload struct {
@@ -100,7 +102,8 @@ type fcmAPNSPayload struct {
 }
 
 type fcmAPS struct {
-	Sound string `json:"sound,omitempty"`
+	Sound            string `json:"sound,omitempty"`
+	ContentAvailable int    `json:"content-available,omitempty"`
 }
 
 func (s *FCMSender) SendToTokens(ctx context.Context, tokens []string, title, body, imageURL string, data map[string]string) error {
@@ -123,6 +126,7 @@ func (s *FCMSender) SendToTokens(ctx context.Context, tokens []string, title, bo
 				},
 				Data: data,
 				Android: &fcmAndroid{
+					Priority: "high",
 					Notification: &fcmAndroidNotification{
 						ChannelID:    "sangiagao_notifications",
 						Sound:        "default",
@@ -130,9 +134,14 @@ func (s *FCMSender) SendToTokens(ctx context.Context, tokens []string, title, bo
 					},
 				},
 				APNS: &fcmAPNS{
+					Headers: map[string]string{
+						"apns-priority":  "10",
+						"apns-push-type": "alert",
+					},
 					Payload: &fcmAPNSPayload{
 						APS: &fcmAPS{
-							Sound: "default",
+							Sound:            "default",
+							ContentAvailable: 1,
 						},
 					},
 				},
