@@ -19,7 +19,9 @@ set -euo pipefail
 PROJECT_ROOT="/opt/sangiagao"
 NETWORK="rice_internal"
 ENV_BACKEND="$PROJECT_ROOT/infras/.env.backend"
+ENV_CHAT="$PROJECT_ROOT/infras/.env.chat"
 FIREBASE_CRED="$PROJECT_ROOT/infras/firebase-credentials.json"
+COTURN_CONF="$PROJECT_ROOT/infras/configs/coturn/turnserver.conf"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -68,7 +70,7 @@ verify() {
     sleep 2
 
     # Check all containers
-    local required=("backend" "web" "admin" "chat" "rice_postgres" "rice_redis" "rice_mongodb" "minio" "rice_nginx")
+    local required=("backend" "web" "admin" "chat" "rice_coturn" "rice_postgres" "rice_redis" "rice_mongodb" "minio" "rice_nginx")
     for c in "${required[@]}"; do
         if docker ps --format '{{.Names}}' | grep -q "^${c}$"; then
             ok "$c: running"
@@ -161,10 +163,44 @@ case "$TARGET" in
             -e "NODE_ENV=production"
         verify
         ;;
+    chat)
+        deploy_service "chat" "sangiagao-chat" "chat" "4000:4000" \
+            --env-file "$ENV_CHAT"
+        verify
+        ;;
+    coturn)
+        warn "Deploying coturn TURN server..."
+        docker stop rice_coturn 2>/dev/null || true
+        docker rm rice_coturn 2>/dev/null || true
+        docker run -d \
+            --name rice_coturn \
+            --hostname rice_coturn \
+            --network "$NETWORK" \
+            -p 3478:3478/udp \
+            -p 3478:3478/tcp \
+            -v "$COTURN_CONF:/etc/coturn/turnserver.conf:ro" \
+            --restart unless-stopped \
+            coturn/coturn:4 \
+            -c /etc/coturn/turnserver.conf
+        ok "coturn started"
+        verify
+        ;;
+    migrate)
+        warn "Running pending migrations..."
+        source "$PROJECT_ROOT/.env.production"
+        for f in "$PROJECT_ROOT"/infras/migrations/*.sql; do
+            fname=$(basename "$f")
+            warn "Applying $fname..."
+            docker exec -i rice_postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" < "$f" 2>&1 || true
+        done
+        ok "Migrations done"
+        ;;
     all)
         deploy_service "backend" "sangiagao-backend" "backend" "8080:8080" \
             --env-file "$ENV_BACKEND" \
             -v "$FIREBASE_CRED:/app/firebase-credentials.json:ro"
+        deploy_service "chat" "sangiagao-chat" "chat" "4000:4000" \
+            --env-file "$ENV_CHAT"
         deploy_service "web" "sangiagao-web" "web" "3001:3001" \
             -e "NODE_ENV=production"
         deploy_service "admin" "sangiagao-admin" "admin" "3000:3000" \
@@ -180,11 +216,14 @@ case "$TARGET" in
         echo "  backend    Deploy backend only"
         echo "  web        Deploy web only"
         echo "  admin      Deploy admin only"
-        echo "  all        Deploy backend + web + admin"
+        echo "  chat       Deploy chat (Elixir) only"
+        echo "  coturn     Deploy coturn TURN server"
+        echo "  migrate    Run all SQL migrations"
+        echo "  all        Deploy backend + chat + web + admin"
         echo ""
         echo "Ví dụ:"
         echo "  bash infras/scripts/quick-deploy.sh all"
-        echo "  bash infras/scripts/quick-deploy.sh web"
+        echo "  bash infras/scripts/quick-deploy.sh backend"
         ;;
 esac
 
