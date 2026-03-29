@@ -35,12 +35,13 @@ class _SanGaoAppState extends ConsumerState<SanGaoApp> {
       router.go(route);
     };
 
-    // Init push notifications once authenticated
+    // Init push notifications + CallKit once authenticated
     ref.listen<AuthState>(authProvider, (prev, next) {
       if (next.status == AuthStatus.authenticated && !_pushInitialized) {
         _pushInitialized = true;
         final api = ref.read(apiServiceProvider);
         PushNotificationService(api).init();
+        PushNotificationService.initCallKitListeners();
       }
     });
 

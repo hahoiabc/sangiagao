@@ -3,12 +3,47 @@ import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
+import 'package:flutter_callkit_incoming/entities/entities.dart';
 import 'api_service.dart';
+import 'call_service.dart' show isInCall;
 
 /// Top-level handler required by Firebase for background messages.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
+
+  // Show incoming call UI even when app is in background
+  if (message.data['type'] == 'incoming_call') {
+    final callerName = message.data['caller_name'] ?? 'Người gọi';
+    final callType = message.data['call_type'] ?? 'audio';
+    final convId = message.data['conversation_id'] ?? '';
+    final callId = message.data['call_id'] ?? convId;
+
+    final params = CallKitParams(
+      id: callId,
+      nameCaller: callerName,
+      appName: 'SanGiaGao',
+      type: callType == 'video' ? 1 : 0,
+      duration: 60000,
+      android: const AndroidParams(
+        isShowLogo: false,
+        ringtonePath: 'system_ringtone_default',
+        backgroundColor: '#1a1a2e',
+        actionColor: '#4CAF50',
+      ),
+      ios: const IOSParams(
+        iconName: 'AppIcon',
+        ringtonePath: 'system_ringtone_default',
+      ),
+      extra: {
+        'conversation_id': convId,
+        'call_type': callType,
+      },
+    );
+
+    FlutterCallkitIncoming.showCallkitIncoming(params);
+  }
 }
 
 /// Global navigator key — set from main.dart to enable navigation from push
@@ -108,6 +143,16 @@ class PushNotificationService {
   }
 
   void _showLocalNotification(RemoteMessage message) {
+    // Handle incoming call push (data-only, no notification payload)
+    if (message.data['type'] == 'incoming_call') {
+      if (isInCall) {
+        // Already in a call — send busy (handled by signaling, skip CallKit)
+        return;
+      }
+      _showIncomingCall(message.data);
+      return;
+    }
+
     final notification = message.notification;
     if (notification == null) return;
 
@@ -231,8 +276,66 @@ class PushNotificationService {
     if (type == 'new_message' && conversationId != null) {
       clearUnreadForConversation(conversationId);
       onNavigate!('/chat/$conversationId');
+    } else if (type == 'incoming_call' && conversationId != null) {
+      onNavigate!('/chat/$conversationId');
     } else {
       onNavigate!('/notifications');
     }
+  }
+
+  /// Show native incoming call UI using CallKit (iOS) / ConnectionService (Android)
+  void _showIncomingCall(Map<String, dynamic> data) {
+    final callerName = data['caller_name'] ?? 'Người gọi';
+    final callType = data['call_type'] ?? 'audio';
+    final convId = data['conversation_id'] ?? '';
+    final callId = data['call_id'] ?? convId;
+
+    final params = CallKitParams(
+      id: callId,
+      nameCaller: callerName,
+      appName: 'SanGiaGao',
+      type: callType == 'video' ? 1 : 0,
+      duration: 60000, // 60s ring timeout
+      android: const AndroidParams(
+        isShowLogo: false,
+        ringtonePath: 'system_ringtone_default',
+        backgroundColor: '#1a1a2e',
+        actionColor: '#4CAF50',
+      ),
+      ios: const IOSParams(
+        iconName: 'AppIcon',
+        ringtonePath: 'system_ringtone_default',
+      ),
+      extra: {
+        'conversation_id': convId,
+        'call_type': callType,
+      },
+    );
+
+    FlutterCallkitIncoming.showCallkitIncoming(params);
+  }
+
+  /// Initialize CallKit event listeners — call from main.dart after push init
+  static void initCallKitListeners() {
+    FlutterCallkitIncoming.onEvent.listen((CallEvent? event) {
+      if (event == null) return;
+      final extra = event.body['extra'] as Map<String, dynamic>? ?? {};
+      final convId = extra['conversation_id'] as String?;
+
+      switch (event.event) {
+        case Event.actionCallAccept:
+          if (convId != null && onNavigate != null) {
+            onNavigate!('/chat/$convId?call=accept');
+          }
+          break;
+        case Event.actionCallDecline:
+        case Event.actionCallEnded:
+        case Event.actionCallTimeout:
+          // Call ended/declined — no navigation needed
+          break;
+        default:
+          break;
+      }
+    });
   }
 }

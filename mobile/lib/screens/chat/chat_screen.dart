@@ -20,6 +20,8 @@ import '../../models/listing.dart';
 import '../../models/user.dart';
 import '../../providers/providers.dart';
 import '../../services/push_notification_service.dart';
+import '../../services/call_service.dart';
+import '../call/active_call_screen.dart';
 import '../../theme/app_theme.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
@@ -609,6 +611,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
+  void _startCall(String callType) {
+    if (_otherUser == null || _currentUserId == null) return;
+    final api = ref.read(apiServiceProvider);
+    api.getToken().then((token) {
+      if (token == null || !mounted) return;
+      final callService = CallService(
+        api: api,
+        token: token,
+        conversationId: widget.conversationId,
+        currentUserId: _currentUserId!,
+        otherUserId: _otherUser!.id,
+        otherUserName: _otherUser!.name ?? 'Người dùng',
+        callType: callType,
+        isInitiator: true,
+      );
+      callService.start();
+      Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => ActiveCallScreen(callService: callService),
+      ));
+    });
+  }
+
   Future<void> _reportUser() async {
     if (_otherUser == null) return;
     final reasons = ['Spam', 'Quấy rối', 'Lừa đảo', 'Nội dung không phù hợp', 'Khác'];
@@ -787,6 +811,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 );
               }),
               actions: [
+                // Voice call button
+                IconButton(
+                  icon: const Icon(Icons.call),
+                  tooltip: 'Gọi thoại',
+                  onPressed: _otherUser != null ? () => _startCall('audio') : null,
+                ),
                 PopupMenuButton<String>(
                   onSelected: (value) {
                     if (value == 'report_user' && _otherUser != null) {

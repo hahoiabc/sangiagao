@@ -354,6 +354,32 @@ class ApiService {
     await _dio.post('/conversations/$convId/messages/batch-recall', data: {'message_ids': msgIds});
   }
 
+  // --- Calls ---
+  Future<Map<String, dynamic>> getTurnCredentials() async {
+    final res = await _dio.get('/calls/turn-credentials');
+    return res.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> initiateCall(String convId, String calleeId, String callType) async {
+    final res = await _dio.post('/conversations/$convId/calls', data: {
+      'callee_id': calleeId,
+      'call_type': callType,
+    });
+    return res.data as Map<String, dynamic>;
+  }
+
+  Future<void> answerCall(String callId) async {
+    await _dio.put('/conversations/calls/$callId/answer');
+  }
+
+  Future<void> endCallLog(String callId) async {
+    await _dio.put('/conversations/calls/$callId/end');
+  }
+
+  Future<void> rejectCall(String callId) async {
+    await _dio.put('/conversations/calls/$callId/reject');
+  }
+
   // --- Ratings ---
   Future<PaginatedResult<Rating>> getSellerRatings(String sellerId, {int page = 1, int limit = 20}) async {
     final res = await _dio.get('/users/$sellerId/ratings', queryParameters: {'page': page, 'limit': limit});
