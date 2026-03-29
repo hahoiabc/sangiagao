@@ -103,6 +103,13 @@ defmodule RiceChatWeb.CallChannel do
   end
 
   @impl true
+  def handle_in("call_ready", _params, socket) do
+    payload = %{user_id: socket.assigns.user_id}
+    broadcast_from!(socket, "call_ready", payload)
+    {:noreply, socket}
+  end
+
+  @impl true
   def handle_info(:call_timeout, socket) do
     if socket.assigns.in_call do
       {:noreply, socket}

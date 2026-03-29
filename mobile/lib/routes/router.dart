@@ -90,7 +90,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/chat/:id',
             redirect: (_, state) => _isValidId(state.pathParameters['id']) ? null : '/inbox',
-            builder: (_, state) => ChatScreen(conversationId: state.pathParameters['id']!),
+            builder: (_, state) => ChatScreen(
+              conversationId: state.pathParameters['id']!,
+              autoAcceptCall: state.uri.queryParameters['call'] == 'accept',
+            ),
           ),
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
           GoRoute(

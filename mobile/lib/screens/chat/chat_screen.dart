@@ -26,7 +26,8 @@ import '../../theme/app_theme.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String conversationId;
-  const ChatScreen({super.key, required this.conversationId});
+  final bool autoAcceptCall;
+  const ChatScreen({super.key, required this.conversationId, this.autoAcceptCall = false});
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -106,6 +107,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     // Always start polling immediately, WS will stop it if connected
     _startPolling();
     _connectPhoenix();
+
+    // Auto-accept incoming call (navigated from CallKit accept)
+    if (widget.autoAcceptCall && _otherUser != null && _currentUserId != null) {
+      _acceptIncomingCall();
+    }
   }
 
   Future<void> _loadConversation() async {
@@ -608,6 +614,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _selectMode = true;
       _selectedIds.clear();
       _selectedIds.add(msg.id);
+    });
+  }
+
+  void _acceptIncomingCall() {
+    if (_otherUser == null || _currentUserId == null) return;
+    final api = ref.read(apiServiceProvider);
+    api.getToken().then((token) {
+      if (token == null || !mounted) return;
+      final callService = CallService(
+        api: api,
+        token: token,
+        conversationId: widget.conversationId,
+        currentUserId: _currentUserId!,
+        otherUserId: _otherUser!.id,
+        otherUserName: _otherUser!.name ?? 'Người dùng',
+        callType: 'audio',
+        isInitiator: false,
+      );
+      callService.start();
+      Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => ActiveCallScreen(callService: callService),
+      ));
     });
   }
 

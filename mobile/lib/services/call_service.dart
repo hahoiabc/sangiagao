@@ -141,7 +141,7 @@ class CallService {
 
     if (isInitiator) {
       _setState(CallState.outgoing);
-      // Create call log via API
+      // Create call log via API (this also sends FCM push to callee)
       try {
         final result = await api.initiateCall(conversationId, otherUserId, callType);
         callLogId = result['id'] as String?;
@@ -149,13 +149,11 @@ class CallService {
         debugPrint('CallService: Failed to create call log: $e');
       }
       _signaling!.initiateCall(otherUserId, callType);
-
-      // Create offer
-      final offer = await _peerConnection!.createOffer();
-      await _peerConnection!.setLocalDescription(offer);
-      _signaling!.sendOffer(offer.sdp!);
+      // DO NOT create offer yet — wait for callee to send call_ready
     } else {
       _setState(CallState.incoming);
+      // Callee joined channel — tell caller we're ready for the offer
+      _signaling!.sendReady();
     }
   }
 
@@ -228,6 +226,16 @@ class CallService {
   }
 
   void _setupSignalingCallbacks() {
+    _signaling!.onCallReady = (payload) async {
+      // Callee joined and is ready — now create and send the offer
+      if (isInitiator && _peerConnection != null) {
+        debugPrint('CallService: callee ready, creating offer');
+        final offer = await _peerConnection!.createOffer();
+        await _peerConnection!.setLocalDescription(offer);
+        _signaling?.sendOffer(offer.sdp!);
+      }
+    };
+
     _signaling!.onCallOffer = (payload) async {
       final sdp = payload['sdp'] as String?;
       if (sdp != null) {

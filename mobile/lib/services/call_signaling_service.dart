@@ -25,6 +25,7 @@ class CallSignalingService {
   void Function(Map<String, dynamic>)? onCallEnd;
   void Function(Map<String, dynamic>)? onCallReject;
   void Function(Map<String, dynamic>)? onCallBusy;
+  void Function(Map<String, dynamic>)? onCallReady;
   void Function()? onCallTimeout;
   void Function()? onDisconnected;
 
@@ -105,6 +106,10 @@ class CallSignalingService {
     _send(_topic, 'call_busy', {});
   }
 
+  void sendReady() {
+    _send(_topic, 'call_ready', {});
+  }
+
   void _send(String topic, String event, Map<String, dynamic> payload) {
     if (_channel == null) return;
     final msg = jsonEncode({
@@ -150,6 +155,9 @@ class CallSignalingService {
           break;
         case 'call_busy':
           onCallBusy?.call(payload);
+          break;
+        case 'call_ready':
+          onCallReady?.call(payload);
           break;
         case 'call_timeout':
           onCallTimeout?.call();
