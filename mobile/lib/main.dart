@@ -54,7 +54,8 @@ class _SanGaoAppState extends ConsumerState<SanGaoApp> {
             callType: callType,
             onAccept: () {
               Navigator.of(ctx).pop();
-              router.go('/chat/$conversationId?call=accept');
+              final callParam = callId.isNotEmpty ? '&call_id=$callId' : '';
+              router.go('/chat/$conversationId?call=accept$callParam');
             },
             onReject: () {
               Navigator.of(ctx).pop();

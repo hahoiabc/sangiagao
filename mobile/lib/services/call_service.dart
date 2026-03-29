@@ -31,6 +31,7 @@ class CallService {
   String? callLogId;
   DateTime? _connectedAt;
   String? _remoteOfferSdp;
+  Completer<String>? _offerCompleter;
   bool _remoteDescriptionSet = false;
   bool _gracePeriodActive = false;
   int _iceRestartAttempts = 0;
@@ -174,15 +175,28 @@ class CallService {
   }
 
   Future<void> acceptCall([String? remoteSdp]) async {
-    final sdp = remoteSdp ?? _remoteOfferSdp;
+    String? sdp = remoteSdp ?? _remoteOfferSdp;
+
+    // If offer hasn't arrived yet, wait for it (up to 15 seconds)
     if (sdp == null) {
-      debugPrint('CallService: No remote SDP available to accept call');
-      _cleanup('no_sdp');
-      return;
+      debugPrint('CallService: Offer not yet received, waiting...');
+      _setState(CallState.connecting);
+      _offerCompleter = Completer<String>();
+      try {
+        sdp = await _offerCompleter!.future.timeout(const Duration(seconds: 15));
+      } on TimeoutException {
+        debugPrint('CallService: Timed out waiting for offer SDP');
+        _cleanup('no_sdp');
+        return;
+      } catch (e) {
+        debugPrint('CallService: Offer wait cancelled: $e');
+        return;
+      }
     }
 
-    if (!await requestPermissions()) {
-      rejectCall();
+    if (_peerConnection == null) {
+      debugPrint('CallService: No peer connection available');
+      _cleanup('no_peer_connection');
       return;
     }
 
@@ -292,6 +306,10 @@ class CallService {
       if (sdp != null) {
         _remoteOfferSdp = sdp;
         debugPrint('CallService: received remote offer SDP');
+        // If acceptCall() is waiting for the offer, complete it
+        if (_offerCompleter != null && !_offerCompleter!.isCompleted) {
+          _offerCompleter!.complete(sdp);
+        }
       }
     };
 
@@ -366,6 +384,12 @@ class CallService {
 
   void _cleanup(String reason) {
     debugPrint('CallService: cleanup — $reason');
+
+    // Cancel any pending offer wait
+    if (_offerCompleter != null && !_offerCompleter!.isCompleted) {
+      _offerCompleter!.completeError('cleanup: $reason');
+    }
+    _offerCompleter = null;
 
     // Determine call status for log
     String callStatus;

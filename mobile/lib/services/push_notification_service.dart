@@ -344,10 +344,13 @@ class PushNotificationService {
       final extra = event.body['extra'] as Map<String, dynamic>? ?? {};
       final convId = extra['conversation_id'] as String?;
 
+      final callId = extra['call_id'] as String? ?? event.body['id'] as String?;
+
       switch (event.event) {
         case Event.actionCallAccept:
           if (convId != null && onNavigate != null) {
-            onNavigate!('/chat/$convId?call=accept');
+            final callParam = callId != null ? '&call_id=$callId' : '';
+            onNavigate!('/chat/$convId?call=accept$callParam');
           }
           break;
         case Event.actionCallDecline:
