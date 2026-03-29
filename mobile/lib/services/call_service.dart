@@ -31,6 +31,11 @@ class CallService {
   String? callLogId;
   DateTime? _connectedAt;
   String? _remoteOfferSdp;
+  bool _remoteDescriptionSet = false;
+  bool _gracePeriodActive = false;
+
+  // Buffer ICE candidates received before remote SDP is set
+  final List<RTCIceCandidate> _pendingCandidates = [];
 
   // Callbacks
   void Function(CallState)? onStateChanged;
@@ -115,19 +120,22 @@ class CallService {
     };
 
     // Connection state
-    _peerConnection!.onConnectionState = (state) {
-      debugPrint('CallService: connection state: $state');
-      if (state == RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
+    _peerConnection!.onConnectionState = (rtcState) {
+      debugPrint('CallService: connection state: $rtcState');
+      if (rtcState == RTCPeerConnectionState.RTCPeerConnectionStateConnected) {
         _onConnected();
-      } else if (state == RTCPeerConnectionState.RTCPeerConnectionStateFailed ||
-          state == RTCPeerConnectionState.RTCPeerConnectionStateDisconnected) {
-        // Give 10s grace period for reconnection
-        Future.delayed(const Duration(seconds: 10), () {
-          if (_peerConnection?.connectionState ==
-              RTCPeerConnectionState.RTCPeerConnectionStateFailed) {
-            endCall();
-          }
-        });
+      } else if (rtcState == RTCPeerConnectionState.RTCPeerConnectionStateFailed ||
+          rtcState == RTCPeerConnectionState.RTCPeerConnectionStateDisconnected) {
+        if (!_gracePeriodActive) {
+          _gracePeriodActive = true;
+          Future.delayed(const Duration(seconds: 10), () {
+            _gracePeriodActive = false;
+            if (_peerConnection?.connectionState ==
+                RTCPeerConnectionState.RTCPeerConnectionStateFailed) {
+              endCall();
+            }
+          });
+        }
       }
     };
 
@@ -181,15 +189,24 @@ class CallService {
       }
     }
 
-    // Set remote description (offer)
-    await _peerConnection!.setRemoteDescription(
-      RTCSessionDescription(sdp, 'offer'),
-    );
+    try {
+      // Set remote description (offer)
+      await _peerConnection!.setRemoteDescription(
+        RTCSessionDescription(sdp, 'offer'),
+      );
+      _remoteDescriptionSet = true;
 
-    // Create answer
-    final answer = await _peerConnection!.createAnswer();
-    await _peerConnection!.setLocalDescription(answer);
-    _signaling!.sendAnswer(answer.sdp!);
+      // Flush buffered ICE candidates
+      await _flushPendingCandidates();
+
+      // Create answer
+      final answer = await _peerConnection!.createAnswer();
+      await _peerConnection!.setLocalDescription(answer);
+      _signaling!.sendAnswer(answer.sdp!);
+    } catch (e) {
+      debugPrint('CallService: acceptCall SDP error: $e');
+      _cleanup('sdp_error');
+    }
   }
 
   void _onConnected() {
@@ -209,7 +226,9 @@ class CallService {
 
   void toggleSpeaker() {
     isSpeaker = !isSpeaker;
-    Helper.setSpeakerphoneOn(isSpeaker);
+    _localStream?.getAudioTracks().forEach((track) {
+      track.enableSpeakerphone(isSpeaker);
+    });
   }
 
   void endCall() {
@@ -230,9 +249,14 @@ class CallService {
       // Callee joined and is ready — now create and send the offer
       if (isInitiator && _peerConnection != null) {
         debugPrint('CallService: callee ready, creating offer');
-        final offer = await _peerConnection!.createOffer();
-        await _peerConnection!.setLocalDescription(offer);
-        _signaling?.sendOffer(offer.sdp!);
+        try {
+          final offer = await _peerConnection!.createOffer();
+          await _peerConnection!.setLocalDescription(offer);
+          _signaling?.sendOffer(offer.sdp!);
+        } catch (e) {
+          debugPrint('CallService: create offer error: $e');
+          _cleanup('offer_error');
+        }
       }
     };
 
@@ -248,20 +272,32 @@ class CallService {
       final sdp = payload['sdp'] as String?;
       if (sdp != null && _peerConnection != null) {
         _setState(CallState.connecting);
-        await _peerConnection!.setRemoteDescription(
-          RTCSessionDescription(sdp, 'answer'),
-        );
+        try {
+          await _peerConnection!.setRemoteDescription(
+            RTCSessionDescription(sdp, 'answer'),
+          );
+          _remoteDescriptionSet = true;
+          await _flushPendingCandidates();
+        } catch (e) {
+          debugPrint('CallService: setRemoteDescription error: $e');
+        }
       }
     };
 
     _signaling!.onIceCandidate = (payload) async {
       final candidate = payload['candidate'] as Map<String, dynamic>?;
-      if (candidate != null && _peerConnection != null) {
-        await _peerConnection!.addCandidate(RTCIceCandidate(
+      if (candidate != null) {
+        final iceCandidate = RTCIceCandidate(
           candidate['candidate'] as String?,
           candidate['sdpMid'] as String?,
           candidate['sdpMLineIndex'] as int?,
-        ));
+        );
+        if (_remoteDescriptionSet && _peerConnection != null) {
+          await _peerConnection!.addCandidate(iceCandidate);
+        } else {
+          // Buffer until remote SDP is set
+          _pendingCandidates.add(iceCandidate);
+        }
       }
     };
 
@@ -288,6 +324,19 @@ class CallService {
     };
   }
 
+  /// Flush buffered ICE candidates after remote description is set
+  Future<void> _flushPendingCandidates() async {
+    if (_peerConnection == null) return;
+    for (final candidate in _pendingCandidates) {
+      try {
+        await _peerConnection!.addCandidate(candidate);
+      } catch (e) {
+        debugPrint('CallService: flush candidate error: $e');
+      }
+    }
+    _pendingCandidates.clear();
+  }
+
   void _cleanup(String reason) {
     debugPrint('CallService: cleanup — $reason');
 
@@ -296,12 +345,12 @@ class CallService {
       if (state == CallState.connected) {
         api.endCallLog(callLogId!).catchError((_) {});
       } else if (reason == 'timeout' || reason == 'disconnected') {
-        // Missed call — no answer within timeout
         api.endCallLog(callLogId!).catchError((_) {});
       }
     }
 
     _durationTimer?.cancel();
+    _pendingCandidates.clear();
     _localStream?.getTracks().forEach((track) => track.stop());
     _localStream?.dispose();
     _localStream = null;

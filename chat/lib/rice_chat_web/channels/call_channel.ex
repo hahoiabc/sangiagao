@@ -14,7 +14,8 @@ defmodule RiceChatWeb.CallChannel do
         socket =
           socket
           |> assign(:conversation_id, conversation_id)
-          |> assign(:in_call, false)
+          |> assign(:call_answered, false)
+          |> assign(:timeout_ref, nil)
 
         {:ok, socket}
 
@@ -37,10 +38,10 @@ defmodule RiceChatWeb.CallChannel do
     }
 
     broadcast!(socket, "call_initiate", payload)
-    socket = assign(socket, :in_call, true)
 
-    # Auto-timeout if not answered
-    Process.send_after(self(), :call_timeout, @call_timeout_ms)
+    # Auto-timeout if not answered within 60s
+    ref = Process.send_after(self(), :call_timeout, @call_timeout_ms)
+    socket = assign(socket, :timeout_ref, ref)
 
     {:reply, :ok, socket}
   end
@@ -64,7 +65,14 @@ defmodule RiceChatWeb.CallChannel do
     }
 
     broadcast_from!(socket, "call_answer", payload)
-    socket = assign(socket, :in_call, true)
+
+    # Cancel timeout — call was answered
+    cancel_timeout(socket.assigns.timeout_ref)
+    socket =
+      socket
+      |> assign(:call_answered, true)
+      |> assign(:timeout_ref, nil)
+
     {:noreply, socket}
   end
 
@@ -83,7 +91,8 @@ defmodule RiceChatWeb.CallChannel do
   def handle_in("call_end", _params, socket) do
     payload = %{user_id: socket.assigns.user_id}
     broadcast!(socket, "call_end", payload)
-    socket = assign(socket, :in_call, false)
+    cancel_timeout(socket.assigns.timeout_ref)
+    socket = assign(socket, :timeout_ref, nil)
     {:noreply, socket}
   end
 
@@ -91,7 +100,8 @@ defmodule RiceChatWeb.CallChannel do
   def handle_in("call_reject", _params, socket) do
     payload = %{user_id: socket.assigns.user_id}
     broadcast!(socket, "call_reject", payload)
-    socket = assign(socket, :in_call, false)
+    cancel_timeout(socket.assigns.timeout_ref)
+    socket = assign(socket, :timeout_ref, nil)
     {:noreply, socket}
   end
 
@@ -111,11 +121,25 @@ defmodule RiceChatWeb.CallChannel do
 
   @impl true
   def handle_info(:call_timeout, socket) do
-    if socket.assigns.in_call do
-      {:noreply, socket}
-    else
+    unless socket.assigns.call_answered do
       broadcast!(socket, "call_timeout", %{})
-      {:noreply, socket}
     end
+
+    {:noreply, socket}
   end
+
+  # Cleanup when user disconnects
+  @impl true
+  def terminate(_reason, socket) do
+    cancel_timeout(socket.assigns[:timeout_ref])
+
+    unless socket.assigns[:call_answered] do
+      broadcast!(socket, "call_end", %{user_id: socket.assigns.user_id, reason: "disconnected"})
+    end
+
+    :ok
+  end
+
+  defp cancel_timeout(nil), do: :ok
+  defp cancel_timeout(ref), do: Process.cancel_timer(ref)
 end

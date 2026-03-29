@@ -15,7 +15,11 @@ class CallSignalingService {
   StreamSubscription? _subscription;
   Timer? _heartbeat;
   int _ref = 0;
+  int _joinRef = 0;
   bool _joined = false;
+
+  // Buffer messages sent before join is confirmed
+  final List<String> _pendingMessages = [];
 
   // Event callbacks
   void Function(Map<String, dynamic>)? onCallInitiate;
@@ -67,12 +71,12 @@ class CallSignalingService {
 
     // Heartbeat every 30s
     _heartbeat = Timer.periodic(const Duration(seconds: 30), (_) {
-      _send('phoenix', 'heartbeat', {});
+      _sendRaw('phoenix', 'heartbeat', {});
     });
 
-    // Join call channel
-    _send(_topic, 'phx_join', {});
-    _joined = true;
+    // Join call channel — _joined will be set true when phx_reply confirms
+    _joinRef = ++_ref;
+    _sendRaw(_topic, 'phx_join', {}, ref: _joinRef);
   }
 
   void initiateCall(String calleeId, String callType) {
@@ -110,6 +114,7 @@ class CallSignalingService {
     _send(_topic, 'call_ready', {});
   }
 
+  /// Send a message, buffering if not yet joined
   void _send(String topic, String event, Map<String, dynamic> payload) {
     if (_channel == null) return;
     final msg = jsonEncode({
@@ -118,10 +123,30 @@ class CallSignalingService {
       'payload': payload,
       'ref': '${++_ref}',
     });
+    if (_joined) {
+      try {
+        _channel!.sink.add(msg);
+      } catch (e) {
+        debugPrint('CallSignaling: send error: $e');
+      }
+    } else {
+      _pendingMessages.add(msg);
+    }
+  }
+
+  /// Send raw — bypasses join check (used for join + heartbeat)
+  void _sendRaw(String topic, String event, Map<String, dynamic> payload, {int? ref}) {
+    if (_channel == null) return;
+    final msg = jsonEncode({
+      'topic': topic,
+      'event': event,
+      'payload': payload,
+      'ref': '${ref ?? ++_ref}',
+    });
     try {
       _channel!.sink.add(msg);
     } catch (e) {
-      debugPrint('CallSignaling: send error: $e');
+      debugPrint('CallSignaling: sendRaw error: $e');
     }
   }
 
@@ -131,6 +156,21 @@ class CallSignalingService {
       final topic = data['topic'] as String?;
       final event = data['event'] as String?;
       final payload = data['payload'] as Map<String, dynamic>? ?? {};
+      final ref = data['ref'] as String?;
+
+      // Handle join confirmation
+      if (event == 'phx_reply' && ref == '$_joinRef' && topic == _topic) {
+        final status = payload['status'] as String?;
+        if (status == 'ok') {
+          _joined = true;
+          debugPrint('CallSignaling: joined $topic');
+          _flushPendingMessages();
+        } else {
+          debugPrint('CallSignaling: join failed: $payload');
+          onDisconnected?.call();
+        }
+        return;
+      }
 
       if (topic != _topic) return;
 
@@ -168,14 +208,26 @@ class CallSignalingService {
     }
   }
 
+  void _flushPendingMessages() {
+    for (final msg in _pendingMessages) {
+      try {
+        _channel?.sink.add(msg);
+      } catch (e) {
+        debugPrint('CallSignaling: flush error: $e');
+      }
+    }
+    _pendingMessages.clear();
+  }
+
   void dispose() {
     _heartbeat?.cancel();
     _subscription?.cancel();
     if (_joined) {
-      _send(_topic, 'phx_leave', {});
+      _sendRaw(_topic, 'phx_leave', {});
     }
     _channel?.sink.close();
     _channel = null;
     _joined = false;
+    _pendingMessages.clear();
   }
 }

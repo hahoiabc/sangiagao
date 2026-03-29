@@ -109,8 +109,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _connectPhoenix();
 
     // Auto-accept incoming call (navigated from CallKit accept)
-    if (widget.autoAcceptCall && _otherUser != null && _currentUserId != null) {
-      _acceptIncomingCall();
+    if (widget.autoAcceptCall && _currentUserId != null) {
+      // Retry loading other user if needed (API might have been slow)
+      for (int i = 0; i < 3 && _otherUser == null; i++) {
+        await Future.delayed(const Duration(seconds: 1));
+        await _loadConversation();
+      }
+      if (_otherUser != null && mounted) {
+        _acceptIncomingCall();
+      }
     }
   }
 
