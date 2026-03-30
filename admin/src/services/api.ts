@@ -697,3 +697,60 @@ export async function sendNotification(token: string, data: SendNotificationRequ
     body: JSON.stringify(data),
   });
 }
+
+// --- System Inbox ---
+export interface InboxMessage {
+  id: string;
+  title: string;
+  body: string;
+  image_url?: string;
+  target: string;
+  is_pinned: boolean;
+  expires_at?: string;
+  created_by?: string;
+  created_at: string;
+}
+
+export interface CreateInboxRequest {
+  title: string;
+  body: string;
+  image_url?: string;
+  target?: string;
+  is_pinned?: boolean;
+  expires_at?: string;
+}
+
+export interface UpdateInboxRequest {
+  title?: string;
+  body?: string;
+  image_url?: string;
+  is_pinned?: boolean;
+  expires_at?: string;
+}
+
+export async function listInbox(token: string, page = 1, limit = 20): Promise<PaginatedResponse<InboxMessage>> {
+  return request<PaginatedResponse<InboxMessage>>(`/admin/inbox?page=${page}&limit=${limit}`, { token });
+}
+
+export async function createInbox(token: string, data: CreateInboxRequest): Promise<InboxMessage> {
+  return request<InboxMessage>("/admin/inbox", {
+    token,
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateInbox(token: string, id: string, data: UpdateInboxRequest): Promise<InboxMessage> {
+  return request<InboxMessage>(`/admin/inbox/${id}`, {
+    token,
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteInbox(token: string, id: string): Promise<{ message: string }> {
+  return request<{ message: string }>(`/admin/inbox/${id}`, {
+    token,
+    method: "DELETE",
+  });
+}

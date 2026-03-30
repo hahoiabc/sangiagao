@@ -66,12 +66,27 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    final inboxUnread = ref.watch(inboxUnreadProvider);
+    final isAuth = ref.watch(authProvider).status == AuthStatus.authenticated;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
           'Kết nối ngành gạo',
           style: TextStyle(color: ref.watch(themeProvider).primary),
         ),
+        actions: [
+          if (isAuth)
+            IconButton(
+              onPressed: () => context.push('/system-inbox'),
+              icon: Badge(
+                isLabelVisible: inboxUnread > 0,
+                label: Text(inboxUnread > 99 ? '99+' : '$inboxUnread'),
+                child: const Icon(Icons.mail_outline),
+              ),
+              tooltip: 'Hộp thư',
+            ),
+        ],
       ),
       body: _loading
           ? const PriceBoardSkeleton()
@@ -88,14 +103,62 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
                 )
               : RefreshIndicator(
                   onRefresh: _load,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                    itemCount: _data!.categories.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 24),
-                    itemBuilder: (context, index) {
-                      final cat = _data!.categories[index];
-                      return _buildCategorySection(cat, theme);
-                    },
+                  child: Column(
+                    children: [
+                      // Inbox banner
+                      if (isAuth && inboxUnread > 0)
+                        GestureDetector(
+                          onTap: () => context.push('/system-inbox'),
+                          child: Container(
+                            width: double.infinity,
+                            margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.mail, color: AppColors.primary, size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Bạn có $inboxUnread thông báo mới',
+                                    style: TextStyle(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  'Xem ngay',
+                                  style: TextStyle(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(Icons.chevron_right, color: AppColors.primary, size: 18),
+                              ],
+                            ),
+                          ),
+                        ),
+                      // Price board list
+                      Expanded(
+                        child: ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                          itemCount: _data!.categories.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 24),
+                          itemBuilder: (context, index) {
+                            final cat = _data!.categories[index];
+                            return _buildCategorySection(cat, theme);
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ),
     );

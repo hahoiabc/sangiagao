@@ -119,6 +119,17 @@ type FeedbackServiceInterface interface {
 	CountUnreplied(ctx context.Context) (int, error)
 }
 
+type InboxServiceInterface interface {
+	Create(ctx context.Context, adminID string, req *model.CreateInboxRequest) (*model.InboxMessage, error)
+	Update(ctx context.Context, id string, req *model.UpdateInboxRequest) (*model.InboxMessage, error)
+	Delete(ctx context.Context, id string) error
+	ListForUser(ctx context.Context, userID, userRole string, page, limit int) ([]*model.InboxMessage, int, error)
+	GetByID(ctx context.Context, id, userID string) (*model.InboxMessage, error)
+	MarkRead(ctx context.Context, userID, inboxID string) error
+	UnreadCount(ctx context.Context, userID, userRole string) (int, error)
+	ListAll(ctx context.Context, page, limit int) ([]*model.InboxMessage, int, error)
+}
+
 type PermissionServiceInterface interface {
 	HasPermission(role, permissionKey string) bool
 	GetAll(ctx context.Context) (map[string]map[string]bool, error)

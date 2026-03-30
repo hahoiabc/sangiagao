@@ -127,6 +127,7 @@ func main() {
 	convRepo := repository.NewConversationRepo(pgPool)
 	sponsorRepo := repository.NewSponsorRepo(pgPool)
 	feedbackRepo := repository.NewFeedbackRepo(pgPool)
+	inboxRepo := repository.NewInboxRepo(pgPool)
 	catalogRepo := repository.NewCatalogRepo(pgPool)
 	planRepo := repository.NewPlanRepo(pgPool)
 	permissionRepo := repository.NewPermissionRepo(pgPool)
@@ -167,6 +168,7 @@ func main() {
 	callService := service.NewCallService(callRepo, convRepo, userRepo)
 	sponsorService := service.NewSponsorService(sponsorRepo)
 	feedbackService := service.NewFeedbackService(feedbackRepo)
+	inboxService := service.NewInboxService(inboxRepo, notifService)
 	catalogService := service.NewCatalogService(catalogRepo)
 	permissionService := service.NewPermissionService(permissionRepo, appCache)
 	var uploadService *service.UploadService
@@ -192,6 +194,7 @@ func main() {
 	sponsorHandler := handler.NewSponsorHandler(sponsorService)
 	permissionHandler := handler.NewPermissionHandler(permissionService)
 	feedbackHandler := handler.NewFeedbackHandler(feedbackService, notifService)
+	inboxHandler := handler.NewInboxHandler(inboxService)
 	systemHandler := handler.NewSystemHandler(appCache)
 	callHandler := handler.NewCallHandler(callService, notifService, chatService)
 	wsHandler := handler.NewWSHandler(wsHub, jwtManager, chatService, cfg.CORSOrigins)
@@ -372,6 +375,15 @@ func main() {
 				notifications.PUT("/:id/read", notifHandler.MarkRead)
 			}
 
+			// System Inbox
+			inboxGroup := protected.Group("/inbox")
+			{
+				inboxGroup.GET("", inboxHandler.List)
+				inboxGroup.GET("/unread-count", inboxHandler.UnreadCount)
+				inboxGroup.GET("/:id", inboxHandler.GetByID)
+				inboxGroup.PUT("/:id/read", inboxHandler.MarkRead)
+			}
+
 			// Rating
 			protected.POST("/ratings", middleware.RequirePermission(permissionService, "ratings.create"), ratingHandler.Create)
 
@@ -430,6 +442,12 @@ func main() {
 				// Notifications — admin + editor
 				admin.POST("/notifications/broadcast", middleware.RequirePermission(permissionService, "notifications.broadcast"), notifHandler.Broadcast)
 				admin.POST("/notifications/send", middleware.RequirePermission(permissionService, "notifications.send_individual"), notifHandler.SendToUser)
+
+				// System Inbox management
+				admin.GET("/inbox", inboxHandler.AdminList)
+				admin.POST("/inbox", inboxHandler.AdminCreate)
+				admin.PUT("/inbox/:id", inboxHandler.AdminUpdate)
+				admin.DELETE("/inbox/:id", inboxHandler.AdminDelete)
 
 				// Permissions management — owner + admin only
 				admin.GET("/permissions", permissionHandler.GetPermissions)

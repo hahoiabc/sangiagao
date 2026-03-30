@@ -162,6 +162,11 @@ class _SanGaoAppState extends ConsumerState<SanGaoApp> {
       activeCallService?.endCall();
     };
 
+    // Wire system inbox push — increment badge
+    PushNotificationService.onSystemInbox = () {
+      ref.read(inboxUnreadProvider.notifier).increment();
+    };
+
     // Init push notifications + CallKit once authenticated
     ref.listen<AuthState>(authProvider, (prev, next) {
       if (next.status == AuthStatus.authenticated && !_pushInitialized) {

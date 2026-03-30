@@ -149,6 +149,27 @@ final unreadCountProvider = StateNotifierProvider<UnreadCountNotifier, int>(
   (ref) => UnreadCountNotifier(ref.read(apiServiceProvider)),
 );
 
+// System Inbox unread count for badge
+class InboxUnreadNotifier extends StateNotifier<int> {
+  final ApiService _api;
+
+  InboxUnreadNotifier(this._api) : super(0);
+
+  Future<void> refresh() async {
+    try {
+      state = await _api.getInboxUnreadCount();
+    } catch (_) {
+      // ignore
+    }
+  }
+
+  void increment() => state++;
+}
+
+final inboxUnreadProvider = StateNotifierProvider<InboxUnreadNotifier, int>(
+  (ref) => InboxUnreadNotifier(ref.read(apiServiceProvider)),
+);
+
 // Permission state
 class PermissionNotifier extends StateNotifier<Map<String, bool>> {
   final ApiService _api;

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
-import { LayoutDashboard, Users, ShoppingBasket, Flag, CreditCard, LogOut, Wheat, Megaphone, MessageSquareText, Menu, Activity, Package, GripVertical, TrendingUp, Bell } from "lucide-react";
+import { LayoutDashboard, Users, ShoppingBasket, Flag, CreditCard, LogOut, Wheat, Megaphone, MessageSquareText, Menu, Activity, Package, GripVertical, TrendingUp, Bell, Mail } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ const defaultNavItems = [
   { href: "/sponsors", label: "Tài trợ", icon: Megaphone, adminOnly: false },
   { href: "/feedbacks", label: "Góp ý", icon: MessageSquareText, adminOnly: false },
   { href: "/revenue", label: "Doanh thu", icon: TrendingUp, adminOnly: true },
+  { href: "/inbox", label: "Hộp thư", icon: Mail, adminOnly: false },
   { href: "/notifications", label: "Thông báo", icon: Bell, adminOnly: true },
   { href: "/monitoring", label: "Giám sát", icon: Activity, adminOnly: false },
 ];

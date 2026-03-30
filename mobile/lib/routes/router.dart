@@ -20,6 +20,8 @@ import '../screens/profile/change_password_screen.dart';
 import '../screens/profile/change_phone_screen.dart';
 import '../screens/profile/privacy_policy_screen.dart';
 import '../screens/profile/terms_of_service_screen.dart';
+import '../screens/inbox/system_inbox_screen.dart';
+import '../screens/inbox/inbox_detail_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
 import '../screens/feedback/feedback_screen.dart';
 import '../screens/feedback/feedback_history_screen.dart';
@@ -105,6 +107,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/subscription', builder: (_, __) => const SubscriptionScreen()),
           GoRoute(path: '/change-password', builder: (_, __) => const ChangePasswordScreen()),
           GoRoute(path: '/change-phone', builder: (_, __) => const ChangePhoneScreen()),
+          GoRoute(path: '/system-inbox', builder: (_, __) => const SystemInboxScreen()),
+          GoRoute(
+            path: '/system-inbox/:id',
+            redirect: (_, state) => _isValidId(state.pathParameters['id']) ? null : '/system-inbox',
+            builder: (_, state) => InboxDetailScreen(id: state.pathParameters['id']!),
+          ),
           GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
           GoRoute(path: '/feedback', builder: (_, __) => const FeedbackScreen()),
           GoRoute(path: '/feedback-history', builder: (_, __) => const FeedbackHistoryScreen()),

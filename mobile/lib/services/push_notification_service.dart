@@ -82,6 +82,7 @@ class PushNotificationService {
 
   /// Called when callee rejects/is busy — caller should end call
   static VoidCallback? onCallRejected;
+  static VoidCallback? onSystemInbox;
 
   /// Currently active conversation ID — suppress notifications for this chat
   static String? activeConversationId;
@@ -188,6 +189,12 @@ class PushNotificationService {
     if (message.data['type'] == 'call_rejected') {
       onCallRejected?.call();
       return;
+    }
+
+    // Handle system inbox push — increment badge
+    if (message.data['type'] == 'system_inbox') {
+      onSystemInbox?.call();
+      // Don't return — let it show as a local notification below
     }
 
     final notification = message.notification;
@@ -315,6 +322,8 @@ class PushNotificationService {
       onNavigate!('/chat/$conversationId');
     } else if (type == 'incoming_call' && conversationId != null) {
       onNavigate!('/chat/$conversationId');
+    } else if (type == 'system_inbox') {
+      onNavigate!('/system-inbox');
     } else {
       onNavigate!('/notifications');
     }

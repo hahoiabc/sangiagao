@@ -10,6 +10,7 @@ import '../models/user.dart';
 import '../models/listing.dart';
 import '../models/conversation.dart';
 import '../models/rating.dart';
+import '../models/inbox.dart';
 import '../models/price_board.dart';
 import '../models/product_catalog.dart';
 
@@ -422,6 +423,28 @@ class ApiService {
       'token': token,
       'platform': platform,
     });
+  }
+
+  // --- System Inbox ---
+  Future<({List<InboxMessage> items, int total, int unreadCount})> getInbox({int page = 1, int limit = 20}) async {
+    final res = await _dio.get('/inbox', queryParameters: {'page': page, 'limit': limit});
+    final data = res.data as Map<String, dynamic>;
+    final items = (data['data'] as List).map((j) => InboxMessage.fromJson(j as Map<String, dynamic>)).toList();
+    return (items: items, total: data['total'] as int, unreadCount: data['unread_count'] as int? ?? 0);
+  }
+
+  Future<InboxMessage> getInboxDetail(String id) async {
+    final res = await _dio.get('/inbox/$id');
+    return InboxMessage.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  Future<void> markInboxRead(String id) async {
+    await _dio.put('/inbox/$id/read');
+  }
+
+  Future<int> getInboxUnreadCount() async {
+    final res = await _dio.get('/inbox/unread-count');
+    return (res.data as Map<String, dynamic>)['unread_count'] as int? ?? 0;
   }
 
   // --- Subscription ---

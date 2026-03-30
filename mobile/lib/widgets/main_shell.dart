@@ -34,6 +34,7 @@ class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserv
     if (_isAuthenticated) {
       _checkSubscription();
       ref.read(unreadCountProvider.notifier).refresh();
+      ref.read(inboxUnreadProvider.notifier).refresh();
       ref.read(permissionProvider.notifier).load();
       _startTimers();
     } else {
@@ -52,7 +53,10 @@ class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserv
     _permPollTimer?.cancel();
     _unreadPollTimer = Timer.periodic(
       const Duration(seconds: 15),
-      (_) => ref.read(unreadCountProvider.notifier).refresh(),
+      (_) {
+        ref.read(unreadCountProvider.notifier).refresh();
+        ref.read(inboxUnreadProvider.notifier).refresh();
+      },
     );
     _permPollTimer = Timer.periodic(
       const Duration(seconds: 60),
@@ -73,6 +77,7 @@ class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserv
       _stopTimers();
     } else if (state == AppLifecycleState.resumed && _isAuthenticated) {
       ref.read(unreadCountProvider.notifier).refresh();
+      ref.read(inboxUnreadProvider.notifier).refresh();
       _startTimers();
     }
   }
@@ -122,6 +127,7 @@ class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserv
     if (location.startsWith('/profile')) return true;
     if (location.startsWith('/subscription')) return true;
     if (location.startsWith('/notifications')) return true;
+    if (location.startsWith('/system-inbox')) return true;
     if (location.startsWith('/feedback')) return true;
     if (location.startsWith('/seller')) return true;
     return false;
@@ -143,6 +149,7 @@ class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserv
   @override
   Widget build(BuildContext context) {
     final unreadCount = ref.watch(unreadCountProvider);
+    final inboxUnread = ref.watch(inboxUnreadProvider);
     final user = ref.watch(authProvider).user;
     // Watch permissions to rebuild when loaded
     ref.watch(permissionProvider);
@@ -151,7 +158,14 @@ class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserv
     final navItems = <_NavDest>[];
     if (_hasPerm('marketplace.browse')) {
       navItems.add(_NavDest(
-        dest: const NavigationDestination(icon: Icon(Icons.storefront), label: 'Sàn gạo'),
+        dest: NavigationDestination(
+          icon: Badge(
+            isLabelVisible: inboxUnread > 0 && _isAuthenticated,
+            label: Text(inboxUnread > 99 ? '99+' : '$inboxUnread'),
+            child: const Icon(Icons.storefront),
+          ),
+          label: 'Sàn gạo',
+        ),
         route: '/marketplace',
       ));
     }

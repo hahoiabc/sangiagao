@@ -119,6 +119,18 @@ type NotificationRepository interface {
 	UnreadCount(ctx context.Context, userID string) (int, error)
 }
 
+type InboxRepository interface {
+	Create(ctx context.Context, adminID string, req *model.CreateInboxRequest) (*model.InboxMessage, error)
+	Update(ctx context.Context, id string, req *model.UpdateInboxRequest) (*model.InboxMessage, error)
+	Delete(ctx context.Context, id string) error
+	ListForUser(ctx context.Context, userID, userRole string, page, limit int) ([]*model.InboxMessage, int, error)
+	GetByID(ctx context.Context, id, userID string) (*model.InboxMessage, error)
+	MarkRead(ctx context.Context, userID, inboxID string) error
+	UnreadCount(ctx context.Context, userID, userRole string) (int, error)
+	ListAll(ctx context.Context, page, limit int) ([]*model.InboxMessage, int, error)
+	GetTargetUserIDs(ctx context.Context, target string) ([]string, error)
+}
+
 type FeedbackRepository interface {
 	Create(ctx context.Context, userID, content string) (*model.Feedback, error)
 	ListByUser(ctx context.Context, userID string, page, limit int) ([]*model.Feedback, int, error)
