@@ -42,6 +42,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       await ref.read(authProvider.notifier).loginPassword(phone, password);
+      if (mounted) context.go('/marketplace');
+      return;
     } catch (e) {
       String msg = 'Đăng nhập thất bại';
       if (e is DioException && e.response?.data is Map) {

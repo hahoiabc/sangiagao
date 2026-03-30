@@ -18,9 +18,8 @@ type CallLog struct {
 }
 
 type CreateCallLogRequest struct {
-	ConversationID string `json:"conversation_id" binding:"required"`
-	CalleeID       string `json:"callee_id" binding:"required"`
-	CallType       string `json:"call_type" binding:"required,oneof=audio video"`
+	CalleeID string `json:"callee_id" binding:"required"`
+	CallType string `json:"call_type" binding:"required,oneof=audio video"`
 }
 
 type UpdateCallStatusRequest struct {
