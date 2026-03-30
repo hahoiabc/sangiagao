@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' show VoidCallback;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -54,6 +55,7 @@ typedef AcceptCallCallback = void Function({
   required String callerName,
   required String conversationId,
   required String callId,
+  required String callerId,
 });
 
 /// Callback to show in-app incoming call overlay (set from app-level)
@@ -62,6 +64,7 @@ typedef IncomingCallOverlayCallback = void Function({
   required String callType,
   required String conversationId,
   required String callId,
+  required String callerId,
 });
 
 class PushNotificationService {
@@ -76,6 +79,9 @@ class PushNotificationService {
 
   /// Set this to show a custom in-app incoming call overlay instead of CallKit when foreground
   static IncomingCallOverlayCallback? onIncomingCallOverlay;
+
+  /// Called when callee rejects/is busy — caller should end call
+  static VoidCallback? onCallRejected;
 
   /// Currently active conversation ID — suppress notifications for this chat
   static String? activeConversationId;
@@ -167,10 +173,20 @@ class PushNotificationService {
     // Handle incoming call push (data-only, no notification payload)
     if (message.data['type'] == 'incoming_call') {
       if (isInCall) {
-        // Already in a call — send busy (handled by signaling, skip CallKit)
+        // Already in a call — reject via API so caller gets notified
+        final callId = message.data['call_id'] as String?;
+        if (callId != null && callId.isNotEmpty) {
+          _api.rejectCall(callId).catchError((_) {});
+        }
         return;
       }
       _showIncomingCall(message.data);
+      return;
+    }
+
+    // Handle call rejected push (callee rejected/busy) — notify caller to end call
+    if (message.data['type'] == 'call_rejected') {
+      onCallRejected?.call();
       return;
     }
 
@@ -310,6 +326,7 @@ class PushNotificationService {
     final callType = data['call_type'] ?? 'audio';
     final convId = data['conversation_id'] ?? '';
     final callId = data['call_id'] ?? convId;
+    final callerId = data['caller_id'] ?? '';
 
     // Use in-app overlay if available (foreground + callback registered)
     if (onIncomingCallOverlay != null) {
@@ -318,6 +335,7 @@ class PushNotificationService {
         callType: callType,
         conversationId: convId,
         callId: callId,
+        callerId: callerId,
       );
       return;
     }
@@ -341,6 +359,8 @@ class PushNotificationService {
       extra: {
         'conversation_id': convId,
         'call_type': callType,
+        'caller_id': callerId,
+        'caller_name': callerName,
       },
     );
 
@@ -359,6 +379,7 @@ class PushNotificationService {
       final callId = extra['call_id'] as String? ?? (rawId is String ? rawId : null);
 
       final callerName = extra['caller_name'] as String? ?? 'Người gọi';
+      final callerId = extra['caller_id'] as String? ?? '';
 
       switch (event.event) {
         case Event.actionCallAccept:
@@ -369,6 +390,7 @@ class PushNotificationService {
                 callerName: callerName,
                 conversationId: convId,
                 callId: callId ?? '',
+                callerId: callerId,
               );
             } else if (onNavigate != null) {
               // Fallback to navigation

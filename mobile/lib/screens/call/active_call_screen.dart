@@ -22,6 +22,9 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
   final AudioPlayer _ringbackPlayer = AudioPlayer();
   bool _ringbackPlaying = false;
 
+  // Connecting timeout — end call if not connected within 30s
+  Timer? _connectingTimer;
+
   // Proximity sensor
   StreamSubscription? _proximitySub;
   bool _isNear = false;
@@ -44,6 +47,18 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
         _stopRingback();
       }
 
+      // Connecting timeout: auto-end if not connected within 30s
+      if (state == CallState.outgoing || state == CallState.connecting) {
+        _connectingTimer ??= Timer(const Duration(seconds: 30), () {
+          if (mounted && _state != CallState.connected && _state != CallState.ended) {
+            _call.endCall();
+          }
+        });
+      } else {
+        _connectingTimer?.cancel();
+        _connectingTimer = null;
+      }
+
       if (state == CallState.ended) {
         Future.delayed(const Duration(seconds: 1), () {
           if (mounted) Navigator.of(context).pop();
@@ -55,9 +70,14 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
       if (mounted) setState(() => _duration = seconds);
     };
 
-    // Start ringback if already outgoing
-    if (_state == CallState.outgoing) {
-      _startRingback();
+    // Start ringback + connecting timeout if already outgoing
+    if (_state == CallState.outgoing || _state == CallState.connecting) {
+      if (_state == CallState.outgoing) _startRingback();
+      _connectingTimer = Timer(const Duration(seconds: 30), () {
+        if (mounted && _state != CallState.connected && _state != CallState.ended) {
+          _call.endCall();
+        }
+      });
     }
 
     // Proximity sensor — turn off screen when near ear
@@ -102,6 +122,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
 
   @override
   void dispose() {
+    _connectingTimer?.cancel();
     _stopRingback();
     _ringbackPlayer.dispose();
     _proximitySub?.cancel();

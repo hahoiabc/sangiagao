@@ -34,6 +34,7 @@ class _SanGaoAppState extends ConsumerState<SanGaoApp> {
     required String callerName,
     required String conversationId,
     required String callId,
+    String callerId = '',
   }) async {
     final ctx = _navKey.currentContext;
     if (ctx == null) return;
@@ -42,27 +43,28 @@ class _SanGaoAppState extends ConsumerState<SanGaoApp> {
     final token = await api.getToken();
     final user = ref.read(authProvider).user;
 
-    debugPrint('CallService: _acceptCallDirect token=${token != null}, user=${user?.id}');
     if (token == null || user == null) {
-      // Not logged in — just navigate to chat as fallback
       ref.read(routerProvider).go('/chat/$conversationId');
       return;
     }
 
-    // Find other user ID from conversation
-    String? otherUserId;
+    // Use callerId from push data directly (avoid fetching 50 conversations)
+    String otherUserId = callerId;
     String otherUserName = callerName;
-    try {
-      final result = await api.getConversations(limit: 50);
-      final conv = result.data.where((c) => c.id == conversationId).firstOrNull;
-      otherUserId = conv?.otherUser?.id;
-      otherUserName = conv?.otherUser?.name ?? callerName;
-    } catch (e) {
-      debugPrint('CallService: Failed to load conversation: $e');
+
+    // Fallback: fetch from conversation list if callerId not provided
+    if (otherUserId.isEmpty) {
+      try {
+        final result = await api.getConversations(limit: 50);
+        final conv = result.data.where((c) => c.id == conversationId).firstOrNull;
+        otherUserId = conv?.otherUser?.id ?? '';
+        otherUserName = conv?.otherUser?.name ?? callerName;
+      } catch (e) {
+        debugPrint('CallService: Failed to load conversation: $e');
+      }
     }
 
-    if (otherUserId == null) {
-      debugPrint('CallService: could not find otherUserId, fallback to chat');
+    if (otherUserId.isEmpty) {
       ref.read(routerProvider).go('/chat/$conversationId');
       return;
     }
@@ -84,7 +86,6 @@ class _SanGaoAppState extends ConsumerState<SanGaoApp> {
     await callService.start();
 
     if (callService.state == CallState.ended) {
-      debugPrint('CallService: start() failed, navigating to chat');
       ref.read(routerProvider).go('/chat/$conversationId');
       return;
     }
@@ -114,6 +115,7 @@ class _SanGaoAppState extends ConsumerState<SanGaoApp> {
       required String callType,
       required String conversationId,
       required String callId,
+      required String callerId,
     }) {
       final ctx = _navKey.currentContext;
       if (ctx == null) return;
@@ -125,11 +127,11 @@ class _SanGaoAppState extends ConsumerState<SanGaoApp> {
             callType: callType,
             onAccept: () {
               Navigator.of(ctx).pop();
-              // Start call directly — no GoRouter, no ChatScreen dependency
               _acceptCallDirect(
                 callerName: callerName,
                 conversationId: conversationId,
                 callId: callId,
+                callerId: callerId,
               );
             },
             onReject: () {
@@ -145,12 +147,19 @@ class _SanGaoAppState extends ConsumerState<SanGaoApp> {
       required String callerName,
       required String conversationId,
       required String callId,
+      required String callerId,
     }) {
       _acceptCallDirect(
         callerName: callerName,
         conversationId: conversationId,
         callId: callId,
+        callerId: callerId,
       );
+    };
+
+    // Wire call rejected (callee busy/rejected via API push)
+    PushNotificationService.onCallRejected = () {
+      activeCallService?.endCall();
     };
 
     // Init push notifications + CallKit once authenticated

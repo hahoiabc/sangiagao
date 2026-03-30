@@ -114,6 +114,25 @@ func (h *CallHandler) RejectCall(c *gin.Context) {
 		return
 	}
 
+	// Notify caller that callee rejected/is busy
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("PANIC in reject push goroutine: %v", r)
+			}
+		}()
+		call, err := h.callService.GetCallByID(context.Background(), callID)
+		if err != nil || call == nil {
+			return
+		}
+		pushData := map[string]string{
+			"type":            "call_rejected",
+			"call_id":         callID,
+			"conversation_id": call.ConversationID,
+		}
+		_ = h.notifService.SendDataPush(context.Background(), call.CallerID, pushData)
+	}()
+
 	c.JSON(http.StatusOK, gin.H{"message": "Đã từ chối cuộc gọi"})
 }
 
@@ -128,7 +147,7 @@ func (h *CallHandler) MissCall(c *gin.Context) {
 
 	// Send missed call push to callee
 	go func() {
-		call, err := h.callService.GetCallByID(c.Request.Context(), callID)
+		call, err := h.callService.GetCallByID(context.Background(), callID)
 		if err != nil || call == nil {
 			return
 		}
@@ -179,33 +198,32 @@ func (h *CallHandler) GetCallHistory(c *gin.Context) {
 // GetTURNCredentials returns time-limited TURN server credentials
 func (h *CallHandler) GetTURNCredentials(c *gin.Context) {
 	turnHost := os.Getenv("TURN_HOST")
-	if turnHost == "" {
-		turnHost = "sangiagao.vn"
-	}
 	turnPort := os.Getenv("TURN_PORT")
-	if turnPort == "" {
-		turnPort = "3478"
-	}
 	turnUser := os.Getenv("TURN_USER")
-	if turnUser == "" {
-		turnUser = "riceturn"
-	}
 	turnPass := os.Getenv("TURN_PASSWORD")
-	if turnPass == "" {
-		turnPass = "riceturn_secret"
+
+	iceServers := []gin.H{
+		{"urls": "stun:stun.l.google.com:19302"},
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"ice_servers": []gin.H{
-			{"urls": "stun:stun.l.google.com:19302"},
-			{"urls": "stun:" + turnHost + ":" + turnPort},
-			{
+	// Only include TURN server if all credentials are configured
+	if turnHost != "" && turnUser != "" && turnPass != "" {
+		if turnPort == "" {
+			turnPort = "3478"
+		}
+		iceServers = append(iceServers,
+			gin.H{"urls": "stun:" + turnHost + ":" + turnPort},
+			gin.H{
 				"urls":       "turn:" + turnHost + ":" + turnPort,
 				"username":   turnUser,
 				"credential": turnPass,
 			},
-		},
-		"ttl": 86400,
-		"expires_at": time.Now().Add(24 * time.Hour).Unix(),
+		)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"ice_servers": iceServers,
+		"ttl":         86400,
+		"expires_at":  time.Now().Add(24 * time.Hour).Unix(),
 	})
 }

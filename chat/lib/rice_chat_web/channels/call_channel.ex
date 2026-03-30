@@ -143,9 +143,8 @@ defmodule RiceChatWeb.CallChannel do
   def terminate(_reason, socket) do
     cancel_timeout(socket.assigns[:timeout_ref])
 
-    # Only broadcast call_end if this user was actively in a call
-    # Prevents spurious call_end when someone just joins/leaves the channel
-    if socket.assigns[:call_active] && !socket.assigns[:call_answered] do
+    # Notify other side if this user was actively in a call
+    if socket.assigns[:call_active] do
       broadcast!(socket, "call_end", %{user_id: socket.assigns.user_id, reason: "disconnected"})
     end
 

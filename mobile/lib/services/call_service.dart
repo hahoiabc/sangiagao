@@ -10,6 +10,9 @@ enum CallState { idle, outgoing, incoming, connecting, connected, ended }
 /// Global flag — true when any call is active (for busy detection)
 bool isInCall = false;
 
+/// Global reference to current active CallService (for push-based call end)
+CallService? activeCallService;
+
 /// Manages WebRTC peer connection and call lifecycle.
 class CallService {
   final ApiService api;
@@ -452,11 +455,12 @@ class CallService {
 
     // Update call log via API based on reason
     if (callLogId != null) {
-      if (state == CallState.connected) {
+      if (state == CallState.connected || reason == 'disconnected') {
         api.endCallLog(callLogId!).catchError((_) {});
       } else if (reason == 'timeout') {
         api.missCall(callLogId!).catchError((_) {});
-      } else if (reason == 'disconnected') {
+      } else if (state == CallState.outgoing && reason == 'ended') {
+        // Caller cancelled before callee answered
         api.endCallLog(callLogId!).catchError((_) {});
       }
     }
@@ -481,7 +485,9 @@ class CallService {
 
   void _setState(CallState newState) {
     state = newState;
-    isInCall = newState != CallState.idle && newState != CallState.ended;
+    final active = newState != CallState.idle && newState != CallState.ended;
+    isInCall = active;
+    activeCallService = active ? this : null;
     onStateChanged?.call(newState);
   }
 
