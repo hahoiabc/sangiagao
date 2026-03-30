@@ -85,6 +85,7 @@ class CallService {
       _setState(CallState.ended);
       return;
     }
+    if (state == CallState.ended) return; // user cancelled during permission dialog
     debugPrint('CallService: permissions granted');
 
     // Get TURN credentials
@@ -101,6 +102,7 @@ class CallService {
     } catch (e) {
       debugPrint('CallService: Failed to get TURN credentials: $e');
     }
+    if (state == CallState.ended) return; // user cancelled during TURN fetch
 
     // Create peer connection
     final config = {
@@ -180,6 +182,8 @@ class CallService {
       if (!joinCompleter.isCompleted) joinCompleter.complete(true);
     };
 
+    if (state == CallState.ended) return; // user cancelled during setup
+
     _signaling!.connect();
 
     // Wait for channel join (max 10s)
@@ -189,6 +193,8 @@ class CallService {
     } on TimeoutException {
       debugPrint('CallService: signaling join timeout');
     }
+
+    if (state == CallState.ended) return; // user cancelled during signaling join
 
     if (!joined) {
       debugPrint('CallService: FAILED to join signaling channel');

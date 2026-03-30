@@ -87,19 +87,11 @@ class PushNotificationService {
   /// Pending CallKit accept data — stored when accept fires before callback is wired
   static Map<String, String>? _pendingAccept;
 
-  /// Set onAcceptCall and flush any pending accept that arrived before callback was ready
-  static set onAcceptCallSafe(AcceptCallCallback? callback) {
-    onAcceptCall = callback;
-    if (callback != null && _pendingAccept != null) {
-      final data = _pendingAccept!;
-      _pendingAccept = null;
-      callback(
-        callerName: data['callerName'] ?? 'Người gọi',
-        conversationId: data['conversationId'] ?? '',
-        callId: data['callId'] ?? '',
-        callerId: data['callerId'] ?? '',
-      );
-    }
+  /// Consume pending accept data (returns and clears). Called from main.dart after auth is ready.
+  static Map<String, String>? consumePendingAccept() {
+    final data = _pendingAccept;
+    _pendingAccept = null;
+    return data;
   }
 
   /// Currently active conversation ID — suppress notifications for this chat

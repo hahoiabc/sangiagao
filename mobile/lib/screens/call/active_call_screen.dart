@@ -139,6 +139,8 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
 
   String get _statusText {
     switch (_state) {
+      case CallState.idle:
+        return 'Đang kết nối...';
       case CallState.outgoing:
         return 'Đang gọi...';
       case CallState.incoming:
@@ -149,8 +151,6 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
         return _formatDuration(_duration);
       case CallState.ended:
         return 'Đã kết thúc';
-      default:
-        return '';
     }
   }
 

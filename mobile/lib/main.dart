@@ -15,6 +15,11 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
+  // Register CallKit listener EARLY — before runApp — so cold-start accept
+  // events are captured into _pendingAccept buffer immediately.
+  PushNotificationService.initCallKitListeners();
+
   runApp(const ProviderScope(child: SanGaoApp()));
 }
 
@@ -29,6 +34,21 @@ class _SanGaoAppState extends ConsumerState<SanGaoApp> {
   bool _pushInitialized = false;
   final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
 
+  /// Flush any pending CallKit accept that was buffered during cold start.
+  /// Called ONLY after auth is confirmed ready.
+  void _flushPendingAccept() {
+    final pending = PushNotificationService.consumePendingAccept();
+    if (pending != null) {
+      debugPrint('CallKit: flushing pending accept after auth ready');
+      _acceptCallDirect(
+        callerName: pending['callerName'] ?? 'Người gọi',
+        conversationId: pending['conversationId'] ?? '',
+        callId: pending['callId'] ?? '',
+        callerId: pending['callerId'] ?? '',
+      );
+    }
+  }
+
   /// Accept call directly — bypass GoRouter/ChatScreen entirely
   Future<void> _acceptCallDirect({
     required String callerName,
@@ -40,10 +60,22 @@ class _SanGaoAppState extends ConsumerState<SanGaoApp> {
     if (ctx == null) return;
 
     final api = ref.read(apiServiceProvider);
-    final token = await api.getToken();
-    final user = ref.read(authProvider).user;
+    String? token = await api.getToken();
+    var user = ref.read(authProvider).user;
+
+    // Safety net: if auth not ready yet (cold start), wait up to 8s
+    if (token == null || user == null) {
+      debugPrint('CallKit: auth not ready, waiting...');
+      for (int i = 0; i < 16; i++) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        token = await api.getToken();
+        user = ref.read(authProvider).user;
+        if (token != null && user != null) break;
+      }
+    }
 
     if (token == null || user == null) {
+      debugPrint('CallKit: auth still not ready after wait, fallback to chat');
       ref.read(routerProvider).go('/chat/$conversationId');
       return;
     }
@@ -83,26 +115,19 @@ class _SanGaoAppState extends ConsumerState<SanGaoApp> {
       callService.callLogId = callId;
     }
 
-    await callService.start();
-
-    if (callService.state == CallState.ended) {
-      ref.read(routerProvider).go('/chat/$conversationId');
-      return;
-    }
-
-    // Accept call and wait for WebRTC setup before showing UI
-    await callService.acceptCall();
-
-    if (callService.state == CallState.ended) {
-      ref.read(routerProvider).go('/chat/$conversationId');
-      return;
-    }
-
-    if (ctx == _navKey.currentContext) {
-      Navigator.of(ctx).push(MaterialPageRoute(
+    // Push ActiveCallScreen IMMEDIATELY — show "Đang kết nối..." right away
+    // instead of waiting for start()/acceptCall() while user stares at marketplace
+    final navCtx = _navKey.currentContext;
+    if (navCtx != null) {
+      Navigator.of(navCtx).push(MaterialPageRoute(
         builder: (_) => ActiveCallScreen(callService: callService),
       ));
     }
+
+    // Now run start + accept in background — screen updates via onStateChanged
+    await callService.start();
+    if (callService.state == CallState.ended) return;
+    await callService.acceptCall();
   }
 
   @override
@@ -148,9 +173,9 @@ class _SanGaoAppState extends ConsumerState<SanGaoApp> {
       );
     };
 
-    // Wire CallKit accept (background case) — also bypass GoRouter
-    // Uses onAcceptCallSafe to flush any pending accept from cold start
-    PushNotificationService.onAcceptCallSafe = ({
+    // Wire CallKit accept (background case) — bypass GoRouter
+    // Note: pending accept is flushed separately in auth listener, NOT here
+    PushNotificationService.onAcceptCall = ({
       required String callerName,
       required String conversationId,
       required String callId,
@@ -180,7 +205,10 @@ class _SanGaoAppState extends ConsumerState<SanGaoApp> {
         _pushInitialized = true;
         final api = ref.read(apiServiceProvider);
         PushNotificationService(api).init();
-        PushNotificationService.initCallKitListeners();
+        // initCallKitListeners() already called in main() for cold-start support
+
+        // Flush any pending CallKit accept that arrived during cold start
+        _flushPendingAccept();
       }
     });
 

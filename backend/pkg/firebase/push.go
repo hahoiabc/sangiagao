@@ -230,11 +230,12 @@ func (s *FCMSender) SendDataOnly(ctx context.Context, tokens []string, data map[
 				APNS: &fcmAPNS{
 					Headers: map[string]string{
 						"apns-priority":  "10",
-						"apns-push-type": "background",
+						"apns-push-type": "voip",
 					},
 					Payload: &fcmAPNSPayload{
 						APS: &fcmAPS{
 							ContentAvailable: 1,
+							Sound:            "default",
 						},
 					},
 				},
