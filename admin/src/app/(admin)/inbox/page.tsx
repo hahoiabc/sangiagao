@@ -25,7 +25,7 @@ const TARGET_OPTIONS = [
 ];
 
 export default function InboxPage() {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const [items, setItems] = useState<InboxMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [formMode, setFormMode] = useState<FormMode>(null);
@@ -43,13 +43,13 @@ export default function InboxPage() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [user]);
 
   async function load() {
-    if (!token) return;
+    if (!user) return;
     setLoading(true);
     try {
-      const res = await listInbox(token, 1, 50);
+      const res = await listInbox(1, 50);
       setItems(res.data || []);
     } catch {
       toast.error("Không thể tải danh sách hộp thư");
@@ -81,7 +81,7 @@ export default function InboxPage() {
   }
 
   async function handleSubmit() {
-    if (!token || !title.trim() || !body.trim()) return;
+    if (!user || !title.trim() || !body.trim()) return;
 
     try {
       if (formMode === "create") {
@@ -93,7 +93,7 @@ export default function InboxPage() {
         };
         if (imageUrl.trim()) data.image_url = imageUrl.trim();
         if (expiresAt) data.expires_at = new Date(expiresAt).toISOString();
-        await createInbox(token, data);
+        await createInbox(data);
         toast.success("Đã tạo thông báo + gửi push");
       } else if (formMode === "edit" && editId) {
         const data: UpdateInboxRequest = {
@@ -103,7 +103,7 @@ export default function InboxPage() {
         };
         if (imageUrl.trim()) data.image_url = imageUrl.trim();
         if (expiresAt) data.expires_at = new Date(expiresAt).toISOString();
-        await updateInbox(token, editId, data);
+        await updateInbox(editId, data);
         toast.success("Đã cập nhật thông báo");
       }
       resetForm();
@@ -115,9 +115,9 @@ export default function InboxPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!token) return;
+    if (!user) return;
     try {
-      await deleteInbox(token, id);
+      await deleteInbox(id);
       toast.success("Đã xóa thông báo");
       setConfirmDeleteId(null);
       load();

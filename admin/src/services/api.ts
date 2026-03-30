@@ -728,29 +728,26 @@ export interface UpdateInboxRequest {
   expires_at?: string;
 }
 
-export async function listInbox(token: string, page = 1, limit = 20): Promise<PaginatedResponse<InboxMessage>> {
-  return request<PaginatedResponse<InboxMessage>>(`/admin/inbox?page=${page}&limit=${limit}`, { token });
+export async function listInbox(page = 1, limit = 20): Promise<PaginatedResponse<InboxMessage>> {
+  return request<PaginatedResponse<InboxMessage>>(`/admin/inbox?page=${page}&limit=${limit}`);
 }
 
-export async function createInbox(token: string, data: CreateInboxRequest): Promise<InboxMessage> {
+export async function createInbox(data: CreateInboxRequest): Promise<InboxMessage> {
   return request<InboxMessage>("/admin/inbox", {
-    token,
     method: "POST",
     body: JSON.stringify(data),
   });
 }
 
-export async function updateInbox(token: string, id: string, data: UpdateInboxRequest): Promise<InboxMessage> {
+export async function updateInbox(id: string, data: UpdateInboxRequest): Promise<InboxMessage> {
   return request<InboxMessage>(`/admin/inbox/${id}`, {
-    token,
     method: "PUT",
     body: JSON.stringify(data),
   });
 }
 
-export async function deleteInbox(token: string, id: string): Promise<{ message: string }> {
+export async function deleteInbox(id: string): Promise<{ message: string }> {
   return request<{ message: string }>(`/admin/inbox/${id}`, {
-    token,
     method: "DELETE",
   });
 }
