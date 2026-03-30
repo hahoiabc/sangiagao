@@ -37,6 +37,7 @@ class CallService {
   Completer<String>? _offerCompleter;
   bool _remoteDescriptionSet = false;
   bool _gracePeriodActive = false;
+  bool _accepting = false; // Guard against double-accept
   int _iceRestartAttempts = 0;
   static const _maxIceRestarts = 2;
 
@@ -223,6 +224,13 @@ class CallService {
   }
 
   Future<void> acceptCall([String? remoteSdp]) async {
+    // Guard: prevent double-accept or accept after cleanup
+    if (_accepting || state == CallState.connected || state == CallState.ended) {
+      debugPrint('CallService: acceptCall skipped — accepting=$_accepting state=$state');
+      return;
+    }
+    _accepting = true;
+
     String? sdp = remoteSdp ?? _remoteOfferSdp;
 
     // If offer hasn't arrived yet, wait for it (up to 15 seconds)
@@ -459,8 +467,8 @@ class CallService {
         api.endCallLog(callLogId!).catchError((_) {});
       } else if (reason == 'timeout') {
         api.missCall(callLogId!).catchError((_) {});
-      } else if (state == CallState.outgoing && reason == 'ended') {
-        // Caller cancelled before callee answered
+      } else if ((state == CallState.outgoing || state == CallState.connecting) && reason == 'ended') {
+        // Caller cancelled before callee answered (outgoing or connecting)
         api.endCallLog(callLogId!).catchError((_) {});
       }
     }
@@ -492,6 +500,8 @@ class CallService {
   }
 
   void dispose() {
+    _durationTimer?.cancel();
+    _durationTimer = null;
     if (state != CallState.ended) {
       _cleanup('disposed');
     }

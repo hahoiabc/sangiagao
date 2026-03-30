@@ -90,7 +90,13 @@ class _SanGaoAppState extends ConsumerState<SanGaoApp> {
       return;
     }
 
-    callService.acceptCall();
+    // Accept call and wait for WebRTC setup before showing UI
+    await callService.acceptCall();
+
+    if (callService.state == CallState.ended) {
+      ref.read(routerProvider).go('/chat/$conversationId');
+      return;
+    }
 
     if (ctx == _navKey.currentContext) {
       Navigator.of(ctx).push(MaterialPageRoute(
@@ -143,7 +149,8 @@ class _SanGaoAppState extends ConsumerState<SanGaoApp> {
     };
 
     // Wire CallKit accept (background case) — also bypass GoRouter
-    PushNotificationService.onAcceptCall = ({
+    // Uses onAcceptCallSafe to flush any pending accept from cold start
+    PushNotificationService.onAcceptCallSafe = ({
       required String callerName,
       required String conversationId,
       required String callId,

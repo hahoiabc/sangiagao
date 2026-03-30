@@ -47,9 +47,9 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
         _stopRingback();
       }
 
-      // Connecting timeout: auto-end if not connected within 30s
+      // Connecting timeout: auto-end if not connected within 60s (matches Elixir)
       if (state == CallState.outgoing || state == CallState.connecting) {
-        _connectingTimer ??= Timer(const Duration(seconds: 30), () {
+        _connectingTimer ??= Timer(const Duration(seconds: 60), () {
           if (mounted && _state != CallState.connected && _state != CallState.ended) {
             _call.endCall();
           }
@@ -73,7 +73,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
     // Start ringback + connecting timeout if already outgoing
     if (_state == CallState.outgoing || _state == CallState.connecting) {
       if (_state == CallState.outgoing) _startRingback();
-      _connectingTimer = Timer(const Duration(seconds: 30), () {
+      _connectingTimer = Timer(const Duration(seconds: 60), () {
         if (mounted && _state != CallState.connected && _state != CallState.ended) {
           _call.endCall();
         }

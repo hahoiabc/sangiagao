@@ -84,6 +84,24 @@ class PushNotificationService {
   static VoidCallback? onCallRejected;
   static VoidCallback? onSystemInbox;
 
+  /// Pending CallKit accept data — stored when accept fires before callback is wired
+  static Map<String, String>? _pendingAccept;
+
+  /// Set onAcceptCall and flush any pending accept that arrived before callback was ready
+  static set onAcceptCallSafe(AcceptCallCallback? callback) {
+    onAcceptCall = callback;
+    if (callback != null && _pendingAccept != null) {
+      final data = _pendingAccept!;
+      _pendingAccept = null;
+      callback(
+        callerName: data['callerName'] ?? 'Người gọi',
+        conversationId: data['conversationId'] ?? '',
+        callId: data['callId'] ?? '',
+        callerId: data['callerId'] ?? '',
+      );
+    }
+  }
+
   /// Currently active conversation ID — suppress notifications for this chat
   static String? activeConversationId;
 
@@ -401,10 +419,14 @@ class PushNotificationService {
                 callId: callId ?? '',
                 callerId: callerId,
               );
-            } else if (onNavigate != null) {
-              // Fallback to navigation
-              final callParam = callId != null ? '&call_id=$callId' : '';
-              onNavigate!('/chat/$convId?call=accept$callParam');
+            } else {
+              // Callback not wired yet (cold start) — buffer for when it's ready
+              _pendingAccept = {
+                'callerName': callerName,
+                'conversationId': convId,
+                'callId': callId ?? '',
+                'callerId': callerId,
+              };
             }
           }
           break;
