@@ -92,33 +92,33 @@ func (r *InboxRepo) Delete(ctx context.Context, id string) error {
 }
 
 // targetFilter builds WHERE clause for target matching user role.
-// target can be: "all_users", "role:member", "role:seller", etc.
-func targetFilter(userRole string) string {
-	return `(si.target = 'all_users' OR si.target = 'role:' || $2)`
+// roleParam is the PostgreSQL parameter index for userRole (e.g. "$1" or "$2").
+func targetFilter(roleParam string) string {
+	return `(si.target = 'all_users' OR si.target = 'role:' || ` + roleParam + `)`
 }
 
 func (r *InboxRepo) ListForUser(ctx context.Context, userID, userRole string, page, limit int) ([]*model.InboxMessage, int, error) {
 	offset := (page - 1) * limit
 
-	// Count
+	// Count — only needs userRole ($1)
 	var total int
 	err := r.pool.QueryRow(ctx,
 		`SELECT COUNT(*) FROM system_inbox si
-		 WHERE (`+targetFilter(userRole)+`)
+		 WHERE (`+targetFilter("$1")+`)
 		   AND (si.expires_at IS NULL OR si.expires_at > NOW())`,
-		userID, userRole,
+		userRole,
 	).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	// List with read status
+	// List with read status — $1=userID, $2=userRole, $3=limit, $4=offset
 	rows, err := r.pool.Query(ctx,
 		`SELECT si.id, si.title, si.body, si.image_url, si.target, si.is_pinned, si.expires_at, si.created_by, si.created_at,
 		        (irs.user_id IS NOT NULL) AS is_read
 		 FROM system_inbox si
 		 LEFT JOIN inbox_read_status irs ON irs.inbox_id = si.id AND irs.user_id = $1
-		 WHERE (`+targetFilter(userRole)+`)
+		 WHERE (`+targetFilter("$2")+`)
 		   AND (si.expires_at IS NULL OR si.expires_at > NOW())
 		 ORDER BY si.is_pinned DESC, si.created_at DESC
 		 LIMIT $3 OFFSET $4`,
@@ -174,7 +174,7 @@ func (r *InboxRepo) UnreadCount(ctx context.Context, userID, userRole string) (i
 	var count int
 	err := r.pool.QueryRow(ctx,
 		`SELECT COUNT(*) FROM system_inbox si
-		 WHERE (`+targetFilter(userRole)+`)
+		 WHERE (`+targetFilter("$2")+`)
 		   AND (si.expires_at IS NULL OR si.expires_at > NOW())
 		   AND si.id NOT IN (SELECT inbox_id FROM inbox_read_status WHERE user_id = $1)`,
 		userID, userRole,
