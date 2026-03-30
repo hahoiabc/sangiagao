@@ -129,6 +129,7 @@ type InboxRepository interface {
 	UnreadCount(ctx context.Context, userID, userRole string) (int, error)
 	ListAll(ctx context.Context, page, limit int) ([]*model.InboxMessage, int, error)
 	GetTargetUserIDs(ctx context.Context, target string) ([]string, error)
+	CleanupOld(ctx context.Context, cutoff time.Time) (int64, error)
 }
 
 type FeedbackRepository interface {

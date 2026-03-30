@@ -226,6 +226,18 @@ func main() {
 		}
 	}()
 
+	// --- Inbox cleanup cron (daily, remove messages > 90 days) ---
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			cutoff := time.Now().AddDate(0, 0, -90)
+			if n, err := inboxRepo.CleanupOld(context.Background(), cutoff); err == nil && n > 0 {
+				slog.Info("Cleaned up old inbox messages", "deleted", n)
+			}
+		}
+	}()
+
 	// --- Rate Limiter ---
 	globalLimiter := middleware.NewRateLimiterStore(cfg.RateLimitRPS, cfg.RateLimitBurst)
 	authLimiter := middleware.NewRateLimiterStore(3, 5) // Stricter for auth

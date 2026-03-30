@@ -247,3 +247,12 @@ func (r *InboxRepo) GetTargetUserIDs(ctx context.Context, target string) ([]stri
 	}
 	return ids, rows.Err()
 }
+
+// CleanupOld deletes inbox messages older than the given cutoff and their read statuses (CASCADE).
+func (r *InboxRepo) CleanupOld(ctx context.Context, cutoff time.Time) (int64, error) {
+	tag, err := r.pool.Exec(ctx, `DELETE FROM system_inbox WHERE created_at < $1`, cutoff)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}
