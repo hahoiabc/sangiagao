@@ -40,6 +40,7 @@ class CallSignalingService {
 
   void connect() {
     final wsUrl = '${Env.wsBaseUrl}?token=$token';
+    debugPrint('CallSignaling: connecting to $wsUrl (release=${!kDebugMode})');
 
     try {
       if (!kDebugMode) {
@@ -53,6 +54,7 @@ class CallSignalingService {
       } else {
         _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
       }
+      debugPrint('CallSignaling: WebSocket channel created');
     } catch (e) {
       debugPrint('CallSignaling: connect error: $e');
       return;
@@ -65,7 +67,7 @@ class CallSignalingService {
         onDisconnected?.call();
       },
       onDone: () {
-        debugPrint('CallSignaling: WS closed');
+        debugPrint('CallSignaling: WS closed (closeCode=${_channel?.closeCode}, reason=${_channel?.closeReason})');
         onDisconnected?.call();
       },
     );

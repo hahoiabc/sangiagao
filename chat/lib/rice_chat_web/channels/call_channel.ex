@@ -14,6 +14,7 @@ defmodule RiceChatWeb.CallChannel do
         socket =
           socket
           |> assign(:conversation_id, conversation_id)
+          |> assign(:call_active, false)
           |> assign(:call_answered, false)
           |> assign(:timeout_ref, nil)
 
@@ -37,11 +38,16 @@ defmodule RiceChatWeb.CallChannel do
       conversation_id: conversation_id
     }
 
-    broadcast!(socket, "call_initiate", payload)
+    # broadcast_from! — caller doesn't need to receive their own initiate
+    broadcast_from!(socket, "call_initiate", payload)
 
     # Auto-timeout if not answered within 60s
     ref = Process.send_after(self(), :call_timeout, @call_timeout_ms)
-    socket = assign(socket, :timeout_ref, ref)
+
+    socket =
+      socket
+      |> assign(:call_active, true)
+      |> assign(:timeout_ref, ref)
 
     {:reply, :ok, socket}
   end
@@ -90,7 +96,8 @@ defmodule RiceChatWeb.CallChannel do
   @impl true
   def handle_in("call_end", _params, socket) do
     payload = %{user_id: socket.assigns.user_id}
-    broadcast!(socket, "call_end", payload)
+    # broadcast_from! — only notify the OTHER side, not the one who ended
+    broadcast_from!(socket, "call_end", payload)
     cancel_timeout(socket.assigns.timeout_ref)
     socket = assign(socket, :timeout_ref, nil)
     {:noreply, socket}
@@ -99,7 +106,8 @@ defmodule RiceChatWeb.CallChannel do
   @impl true
   def handle_in("call_reject", _params, socket) do
     payload = %{user_id: socket.assigns.user_id}
-    broadcast!(socket, "call_reject", payload)
+    # broadcast_from! — only notify the other side
+    broadcast_from!(socket, "call_reject", payload)
     cancel_timeout(socket.assigns.timeout_ref)
     socket = assign(socket, :timeout_ref, nil)
     {:noreply, socket}
@@ -108,7 +116,8 @@ defmodule RiceChatWeb.CallChannel do
   @impl true
   def handle_in("call_busy", _params, socket) do
     payload = %{user_id: socket.assigns.user_id}
-    broadcast!(socket, "call_busy", payload)
+    # broadcast_from! — only notify the caller
+    broadcast_from!(socket, "call_busy", payload)
     {:noreply, socket}
   end
 
@@ -116,6 +125,7 @@ defmodule RiceChatWeb.CallChannel do
   def handle_in("call_ready", _params, socket) do
     payload = %{user_id: socket.assigns.user_id}
     broadcast_from!(socket, "call_ready", payload)
+    socket = assign(socket, :call_active, true)
     {:noreply, socket}
   end
 
@@ -133,7 +143,9 @@ defmodule RiceChatWeb.CallChannel do
   def terminate(_reason, socket) do
     cancel_timeout(socket.assigns[:timeout_ref])
 
-    unless socket.assigns[:call_answered] do
+    # Only broadcast call_end if this user was actively in a call
+    # Prevents spurious call_end when someone just joins/leaves the channel
+    if socket.assigns[:call_active] && !socket.assigns[:call_answered] do
       broadcast!(socket, "call_end", %{user_id: socket.assigns.user_id, reason: "disconnected"})
     end
 

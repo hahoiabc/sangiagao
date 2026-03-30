@@ -117,7 +117,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         await _loadConversation();
       }
       if (_otherUser != null && mounted) {
-        _acceptIncomingCall();
+        await _acceptIncomingCall();
       }
     }
   }

@@ -145,6 +145,14 @@ func main() {
 	ratingService := service.NewRatingService(ratingRepo)
 	reportService := service.NewReportService(reportRepo)
 	pushSender := firebase.NewFCMSender(cfg.FirebaseCredPath)
+	// Auto-delete expired FCM tokens (404 response) from DB
+	if fcmSender, ok := pushSender.(*firebase.FCMSender); ok {
+		fcmSender.OnInvalidToken = func(deviceToken string) {
+			if err := notifRepo.DeleteToken(context.Background(), deviceToken); err != nil {
+				slog.Warn("Failed to delete invalid FCM token", "error", err)
+			}
+		}
+	}
 	notifService := service.NewNotificationService(notifRepo, pushSender)
 	subService.SetNotifier(notifService)
 	subService.SetOnExpiry(func(ctx context.Context) {

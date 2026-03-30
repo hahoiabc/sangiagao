@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -17,6 +18,9 @@ import (
 // PushSender sends push notifications via FCM HTTP v1 API.
 type PushSender interface {
 	SendToTokens(ctx context.Context, tokens []string, title, body, imageURL string, data map[string]string) error
+	// SendDataOnly sends a data-only FCM message (no notification field).
+	// Used for incoming calls so onBackgroundMessage always fires on Android.
+	SendDataOnly(ctx context.Context, tokens []string, data map[string]string) error
 }
 
 // FCMSender implements PushSender using Firebase Cloud Messaging HTTP v1 API.
@@ -24,6 +28,10 @@ type FCMSender struct {
 	projectID   string
 	tokenSource oauth2.TokenSource
 	httpClient  *http.Client
+
+	// OnInvalidToken is called when FCM returns 404 (token expired/unregistered).
+	// Set this to auto-delete stale tokens from the database.
+	OnInvalidToken func(deviceToken string)
 }
 
 // NewFCMSender creates a new FCM sender. Pass empty credPath for mock mode.
@@ -69,7 +77,7 @@ type fcmV1Request struct {
 
 type fcmV1Message struct {
 	Token        string            `json:"token"`
-	Notification *fcmNotification  `json:"notification"`
+	Notification *fcmNotification  `json:"notification,omitempty"`
 	Data         map[string]string `json:"data,omitempty"`
 	Android      *fcmAndroid       `json:"android,omitempty"`
 	APNS         *fcmAPNS          `json:"apns,omitempty"`
@@ -106,7 +114,8 @@ type fcmAPS struct {
 	ContentAvailable int    `json:"content-available,omitempty"`
 }
 
-func (s *FCMSender) SendToTokens(ctx context.Context, tokens []string, title, body, imageURL string, data map[string]string) error {
+// sendFCM is the shared send logic for both SendToTokens and SendDataOnly.
+func (s *FCMSender) sendFCM(ctx context.Context, tokens []string, msg func(deviceToken string) fcmV1Request, label string) error {
 	token, err := s.tokenSource.Token()
 	if err != nil {
 		return fmt.Errorf("FCM: failed to get access token: %w", err)
@@ -114,9 +123,65 @@ func (s *FCMSender) SendToTokens(ctx context.Context, tokens []string, title, bo
 
 	url := fmt.Sprintf("https://fcm.googleapis.com/v1/projects/%s/messages:send", s.projectID)
 	var failCount int
+	var successCount int
 
 	for _, deviceToken := range tokens {
-		msg := fcmV1Request{
+		fcmReq := msg(deviceToken)
+
+		payload, err := json.Marshal(fcmReq)
+		if err != nil {
+			failCount++
+			continue
+		}
+
+		req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(payload))
+		if err != nil {
+			failCount++
+			continue
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+token.AccessToken)
+
+		resp, err := s.httpClient.Do(req)
+		if err != nil {
+			log.Printf("FCM %s error for token %s...: %v", label, deviceToken[:min(10, len(deviceToken))], err)
+			failCount++
+			continue
+		}
+
+		if resp.StatusCode == http.StatusOK {
+			resp.Body.Close()
+			successCount++
+			continue
+		}
+
+		// Read error response body for debugging
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		resp.Body.Close()
+
+		log.Printf("FCM %s failed for token %s...: status %d, body: %s",
+			label, deviceToken[:min(10, len(deviceToken))], resp.StatusCode, string(body))
+
+		// 404 = token expired/unregistered — auto-cleanup
+		if resp.StatusCode == http.StatusNotFound && s.OnInvalidToken != nil {
+			log.Printf("FCM: removing invalid token %s...", deviceToken[:min(10, len(deviceToken))])
+			s.OnInvalidToken(deviceToken)
+		}
+
+		failCount++
+	}
+
+	log.Printf("FCM %s: %d/%d succeeded", label, successCount, len(tokens))
+
+	if failCount > 0 && failCount == len(tokens) {
+		return fmt.Errorf("FCM: all %d %s notifications failed", failCount, label)
+	}
+	return nil
+}
+
+func (s *FCMSender) SendToTokens(ctx context.Context, tokens []string, title, body, imageURL string, data map[string]string) error {
+	return s.sendFCM(ctx, tokens, func(deviceToken string) fcmV1Request {
+		return fcmV1Request{
 			Message: fcmV1Message{
 				Token: deviceToken,
 				Notification: &fcmNotification{
@@ -147,42 +212,35 @@ func (s *FCMSender) SendToTokens(ctx context.Context, tokens []string, title, bo
 				},
 			},
 		}
+	}, "notification")
+}
 
-		payload, err := json.Marshal(msg)
-		if err != nil {
-			failCount++
-			continue
+// SendDataOnly sends a data-only FCM message without notification field.
+// Critical for incoming calls: ensures onBackgroundMessage fires on Android
+// even when the app is killed, so CallKit can show the incoming call UI.
+func (s *FCMSender) SendDataOnly(ctx context.Context, tokens []string, data map[string]string) error {
+	return s.sendFCM(ctx, tokens, func(deviceToken string) fcmV1Request {
+		return fcmV1Request{
+			Message: fcmV1Message{
+				Token: deviceToken,
+				Data:  data,
+				Android: &fcmAndroid{
+					Priority: "high",
+				},
+				APNS: &fcmAPNS{
+					Headers: map[string]string{
+						"apns-priority":  "10",
+						"apns-push-type": "background",
+					},
+					Payload: &fcmAPNSPayload{
+						APS: &fcmAPS{
+							ContentAvailable: 1,
+						},
+					},
+				},
+			},
 		}
-
-		req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(payload))
-		if err != nil {
-			failCount++
-			continue
-		}
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", "Bearer "+token.AccessToken)
-
-		resp, err := s.httpClient.Do(req)
-		if err != nil {
-			log.Printf("FCM send error for token %s...: %v", deviceToken[:min(10, len(deviceToken))], err)
-			failCount++
-			continue
-		}
-		resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			log.Printf("FCM send failed for token %s...: status %d", deviceToken[:min(10, len(deviceToken))], resp.StatusCode)
-			failCount++
-		}
-	}
-
-	if failCount > 0 && failCount == len(tokens) {
-		return fmt.Errorf("FCM: all %d notifications failed to send", failCount)
-	}
-	if failCount > 0 {
-		log.Printf("FCM: %d/%d notifications failed", failCount, len(tokens))
-	}
-	return nil
+	}, "data-only")
 }
 
 // MockPushSender logs push notifications instead of sending them.
@@ -191,6 +249,13 @@ type MockPushSender struct{}
 func (m *MockPushSender) SendToTokens(ctx context.Context, tokens []string, title, body, imageURL string, data map[string]string) error {
 	if len(tokens) > 0 {
 		fmt.Printf("[PUSH MOCK] To %d device(s): %s — %s\n", len(tokens), title, body)
+	}
+	return nil
+}
+
+func (m *MockPushSender) SendDataOnly(ctx context.Context, tokens []string, data map[string]string) error {
+	if len(tokens) > 0 {
+		fmt.Printf("[PUSH MOCK] Data-only to %d device(s): %v\n", len(tokens), data)
 	}
 	return nil
 }

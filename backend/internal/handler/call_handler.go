@@ -48,8 +48,15 @@ func (h *CallHandler) InitiateCall(c *gin.Context) {
 		return
 	}
 
-	// Send FCM data-only push to callee to show incoming call UI
+	// Send data-only FCM push to callee to show incoming call UI.
+	// Data-only (no notification field) ensures onBackgroundMessage fires on Android.
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("PANIC in call push goroutine: %v", r)
+			}
+		}()
+
 		callerName, _ := h.chatService.GetUserName(context.Background(), userID)
 		if callerName == "" {
 			callerName = "Người gọi"
@@ -62,8 +69,12 @@ func (h *CallHandler) InitiateCall(c *gin.Context) {
 			"caller_name":     callerName,
 			"call_type":       req.CallType,
 		}
-		if err := h.notifService.SendPushOnly(context.Background(), req.CalleeID, callerName, "Cuộc gọi đến", pushData); err != nil {
-			log.Printf("Failed to send call push to %s: %v", req.CalleeID, err)
+		log.Printf("CALL PUSH: sending incoming_call push from %s to %s (callId=%s, conv=%s)",
+			userID, req.CalleeID, call.ID, conversationID)
+		if err := h.notifService.SendDataPush(context.Background(), req.CalleeID, pushData); err != nil {
+			log.Printf("CALL PUSH FAILED: to %s: %v", req.CalleeID, err)
+		} else {
+			log.Printf("CALL PUSH OK: to %s", req.CalleeID)
 		}
 	}()
 

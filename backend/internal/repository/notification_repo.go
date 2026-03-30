@@ -84,13 +84,32 @@ func (r *NotificationRepo) MarkRead(ctx context.Context, id, userID string) erro
 }
 
 func (r *NotificationRepo) RegisterDevice(ctx context.Context, userID, token, platform string) error {
-	_, err := r.pool.Exec(ctx,
+	// Delete old tokens for this user+platform first, then insert new one.
+	// Prevents stale token accumulation when FCM refreshes tokens.
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// Remove old tokens for this user on same platform (keep other platforms)
+	_, _ = tx.Exec(ctx,
+		`DELETE FROM device_tokens WHERE user_id = $1 AND platform = $2 AND token != $3`,
+		userID, platform, token,
+	)
+
+	// Insert new token (ignore if already exists)
+	_, err = tx.Exec(ctx,
 		`INSERT INTO device_tokens (user_id, token, platform)
 		 VALUES ($1, $2, $3)
 		 ON CONFLICT (user_id, token) DO NOTHING`,
 		userID, token, platform,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 }
 
 func (r *NotificationRepo) GetDeviceTokens(ctx context.Context, userID string) ([]string, error) {
@@ -111,6 +130,12 @@ func (r *NotificationRepo) GetDeviceTokens(ctx context.Context, userID string) (
 		tokens = append(tokens, token)
 	}
 	return tokens, rows.Err()
+}
+
+// DeleteToken removes a specific device token (used when FCM returns 404).
+func (r *NotificationRepo) DeleteToken(ctx context.Context, token string) error {
+	_, err := r.pool.Exec(ctx, `DELETE FROM device_tokens WHERE token = $1`, token)
+	return err
 }
 
 func (r *NotificationRepo) UnreadCount(ctx context.Context, userID string) (int, error) {
