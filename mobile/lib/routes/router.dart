@@ -50,7 +50,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/marketplace';
       }
 
-      if (isAuth && (loc == '/login' || loc == '/register' || loc == '/forgot-password')) {
+      if (isAuth && (loc == '/login' || loc == '/register' || loc == '/forgot-password' || loc == '/splash')) {
         return '/marketplace';
       }
 
