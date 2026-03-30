@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -26,6 +27,7 @@ func (h *InboxHandler) List(c *gin.Context) {
 
 	items, total, err := h.inboxService.ListForUser(c.Request.Context(), userID, userRole, page, limit)
 	if err != nil {
+		log.Printf("[INBOX] ListForUser error: userID=%s role=%s err=%v", userID, userRole, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal", "message": "Lỗi tải hộp thư"})
 		return
 	}
