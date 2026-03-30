@@ -49,6 +49,13 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 /// Global navigator key — set from main.dart to enable navigation from push
 typedef PushNavigateCallback = void Function(String route);
 
+/// Callback to accept a call directly (bypasses GoRouter)
+typedef AcceptCallCallback = void Function({
+  required String callerName,
+  required String conversationId,
+  required String callId,
+});
+
 /// Callback to show in-app incoming call overlay (set from app-level)
 typedef IncomingCallOverlayCallback = void Function({
   required String callerName,
@@ -63,6 +70,9 @@ class PushNotificationService {
       FlutterLocalNotificationsPlugin();
 
   static PushNavigateCallback? onNavigate;
+
+  /// Set this to accept a call directly (bypasses GoRouter) — from main.dart
+  static AcceptCallCallback? onAcceptCall;
 
   /// Set this to show a custom in-app incoming call overlay instead of CallKit when foreground
   static IncomingCallOverlayCallback? onIncomingCallOverlay;
@@ -341,16 +351,30 @@ class PushNotificationService {
   static void initCallKitListeners() {
     FlutterCallkitIncoming.onEvent.listen((CallEvent? event) {
       if (event == null) return;
-      final extra = event.body['extra'] as Map<String, dynamic>? ?? {};
+      final rawExtra = event.body['extra'];
+      final extra = rawExtra is Map ? Map<String, dynamic>.from(rawExtra) : <String, dynamic>{};
       final convId = extra['conversation_id'] as String?;
 
-      final callId = extra['call_id'] as String? ?? event.body['id'] as String?;
+      final rawId = event.body['id'];
+      final callId = extra['call_id'] as String? ?? (rawId is String ? rawId : null);
+
+      final callerName = extra['caller_name'] as String? ?? 'Người gọi';
 
       switch (event.event) {
         case Event.actionCallAccept:
-          if (convId != null && onNavigate != null) {
-            final callParam = callId != null ? '&call_id=$callId' : '';
-            onNavigate!('/chat/$convId?call=accept$callParam');
+          if (convId != null) {
+            if (onAcceptCall != null) {
+              // Direct call accept — bypasses GoRouter
+              onAcceptCall!(
+                callerName: callerName,
+                conversationId: convId,
+                callId: callId ?? '',
+              );
+            } else if (onNavigate != null) {
+              // Fallback to navigation
+              final callParam = callId != null ? '&call_id=$callId' : '';
+              onNavigate!('/chat/$convId?call=accept$callParam');
+            }
           }
           break;
         case Event.actionCallDecline:

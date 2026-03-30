@@ -99,9 +99,36 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
+  @override
+  void didUpdateWidget(covariant ChatScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Handle case where user was already on this ChatScreen and accepted an incoming call
+    // GoRouter updates widget props without calling initState again
+    if (widget.autoAcceptCall && !oldWidget.autoAcceptCall && _currentUserId != null) {
+      debugPrint('ChatScreen: didUpdateWidget — autoAcceptCall changed to true');
+      if (_otherUser != null) {
+        _acceptIncomingCall();
+      } else {
+        // Retry loading other user then accept
+        _retryLoadAndAccept();
+      }
+    }
+  }
+
+  Future<void> _retryLoadAndAccept() async {
+    for (int i = 0; i < 3 && _otherUser == null; i++) {
+      await Future.delayed(const Duration(seconds: 1));
+      await _loadConversation();
+    }
+    if (_otherUser != null && mounted) {
+      await _acceptIncomingCall();
+    }
+  }
+
   Future<void> _init() async {
     final user = ref.read(authProvider).user;
     _currentUserId = user?.id;
+    debugPrint('ChatScreen._init(): userId=$_currentUserId, autoAccept=${widget.autoAcceptCall}');
     await Future.wait([_loadMessages(), _loadConversation()]);
     // Mark messages as read and refresh badge
     _markReadAndRefreshBadge();
@@ -111,13 +138,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     // Auto-accept incoming call (navigated from CallKit accept)
     if (widget.autoAcceptCall && _currentUserId != null) {
+      debugPrint('ChatScreen: autoAcceptCall=true, callId=${widget.callId}');
       // Retry loading other user if needed (API might have been slow)
       for (int i = 0; i < 3 && _otherUser == null; i++) {
+        debugPrint('ChatScreen: waiting for otherUser... attempt ${i + 1}/3');
         await Future.delayed(const Duration(seconds: 1));
         await _loadConversation();
       }
       if (_otherUser != null && mounted) {
+        debugPrint('ChatScreen: otherUser loaded, calling _acceptIncomingCall');
         await _acceptIncomingCall();
+      } else {
+        debugPrint('ChatScreen: autoAcceptCall failed — otherUser=${_otherUser?.id}');
       }
     }
   }
@@ -626,10 +658,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _acceptIncomingCall() async {
+    debugPrint('ChatScreen._acceptIncomingCall: otherUser=${_otherUser?.id}');
     if (_otherUser == null || _currentUserId == null) return;
     final api = ref.read(apiServiceProvider);
     final token = await api.getToken();
-    if (token == null || !mounted) return;
+    if (token == null || !mounted) {
+      debugPrint('ChatScreen._acceptIncomingCall: abort — no token or unmounted');
+      return;
+    }
 
     final callService = CallService(
       api: api,
@@ -647,14 +683,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
     callService.onCallEnded = (status, duration) => addCallLogMessage(status, duration);
 
-    // MUST await start() so peer connection + signaling are ready
     await callService.start();
-    if (!mounted || callService.state == CallState.ended) return;
+    if (!mounted || callService.state == CallState.ended) {
+      return;
+    }
 
-    // Navigate to call screen
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => ActiveCallScreen(callService: callService),
-    ));
+    callService.acceptCall();
+
+    if (mounted) {
+      Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => ActiveCallScreen(callService: callService),
+      ));
+    }
   }
 
   Future<void> _startCall(String callType) async {

@@ -187,7 +187,7 @@ class CallService {
     }
 
     if (!joined) {
-      debugPrint('CallService: failed to join signaling channel');
+      debugPrint('CallService: FAILED to join signaling channel');
       _cleanup('signaling_failed');
       return;
     }
@@ -215,7 +215,7 @@ class CallService {
     } else {
       _setState(CallState.incoming);
       _signaling!.sendReady();
-      debugPrint('CallService: call_ready sent, waiting for offer...');
+      debugPrint('CallService: callee ready, call_ready sent');
     }
   }
 
