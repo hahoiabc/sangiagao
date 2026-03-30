@@ -40,11 +40,11 @@ class CallSignalingService {
 
   void connect() {
     final wsUrl = '${Env.wsBaseUrl}?token=$token';
-    debugPrint('CallSignaling: connecting to $wsUrl (release=${!kDebugMode})');
+    debugPrint('CallSignaling: connecting to ${Env.wsBaseUrl}?token=<redacted>');
 
     try {
+      final uri = Uri.parse(wsUrl);
       if (!kDebugMode) {
-        final uri = Uri.parse(wsUrl);
         _channel = IOWebSocketChannel.connect(
           uri,
           customClient: HttpClient()
@@ -52,11 +52,12 @@ class CallSignalingService {
                 host == 'sangiagao.vn' || host == 'www.sangiagao.vn',
         );
       } else {
-        _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
+        _channel = WebSocketChannel.connect(uri);
       }
       debugPrint('CallSignaling: WebSocket channel created');
     } catch (e) {
       debugPrint('CallSignaling: connect error: $e');
+      onDisconnected?.call();
       return;
     }
 

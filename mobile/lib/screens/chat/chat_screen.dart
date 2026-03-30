@@ -157,10 +157,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         return;
       }
 
-      final wsUrl = Uri.parse(_phoenixWsUrl);
+      // Pass token as query param — Phoenix UserSocket reads it from connect params
+      final wsUrl = Uri.parse('$_phoenixWsUrl?token=$token');
       _channel = IOWebSocketChannel.connect(
         wsUrl,
-        headers: {'Authorization': 'Bearer $token'},
         customClient: !kDebugMode ? (HttpClient()
           ..badCertificateCallback = (cert, host, port) =>
               ['sangiagao.vn', 'www.sangiagao.vn'].contains(host)) : null,
@@ -649,7 +649,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     // MUST await start() so peer connection + signaling are ready
     await callService.start();
-    if (!mounted) return;
+    if (!mounted || callService.state == CallState.ended) return;
 
     // Navigate to call screen
     Navigator.of(context).push(MaterialPageRoute(
