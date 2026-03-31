@@ -103,20 +103,21 @@ func main() {
 	slog.Info("Phone encryption initialized")
 
 	var smsSender sms.Sender
+	var zaloSenderRef *sms.ZaloZNSSender // for admin ZNS management
 	switch cfg.SMSProvider {
 	case "zalo":
-		zaloSender := sms.NewZaloZNSSender(cfg.ZaloAppID, cfg.ZaloAppSecret, cfg.ZaloZNSTemplateID, cfg.ZaloRefreshToken)
+		zaloSenderRef = sms.NewZaloZNSSender(cfg.ZaloAppID, cfg.ZaloAppSecret, cfg.ZaloZNSTemplateID, cfg.ZaloRefreshToken)
 		if appCache != nil {
-			zaloSender.SetCache(appCache)
+			zaloSenderRef.SetCache(appCache)
 		}
-		smsSender = zaloSender
+		smsSender = zaloSenderRef
 		slog.Info("SMS provider: Zalo ZNS")
 	case "zalo+mock":
-		zaloSender := sms.NewZaloZNSSender(cfg.ZaloAppID, cfg.ZaloAppSecret, cfg.ZaloZNSTemplateID, cfg.ZaloRefreshToken)
+		zaloSenderRef = sms.NewZaloZNSSender(cfg.ZaloAppID, cfg.ZaloAppSecret, cfg.ZaloZNSTemplateID, cfg.ZaloRefreshToken)
 		if appCache != nil {
-			zaloSender.SetCache(appCache)
+			zaloSenderRef.SetCache(appCache)
 		}
-		smsSender = sms.NewFallbackSender(zaloSender, sms.NewMockSender())
+		smsSender = sms.NewFallbackSender(zaloSenderRef, sms.NewMockSender())
 		slog.Info("SMS provider: Zalo ZNS + Mock fallback")
 	default:
 		smsSender = sms.NewMockSender()
@@ -208,6 +209,7 @@ func main() {
 	feedbackHandler := handler.NewFeedbackHandler(feedbackService, notifService)
 	inboxHandler := handler.NewInboxHandler(inboxService)
 	systemHandler := handler.NewSystemHandler(appCache)
+	znsHandler := handler.NewZNSHandler(zaloSenderRef)
 	wsHandler := handler.NewWSHandler(wsHub, jwtManager, chatService, cfg.CORSOrigins)
 	var uploadHandler *handler.UploadHandler
 	if uploadService != nil {
@@ -458,6 +460,11 @@ func main() {
 				// Notifications — admin + editor
 				admin.POST("/notifications/broadcast", middleware.RequirePermission(permissionService, "notifications.broadcast"), notifHandler.Broadcast)
 				admin.POST("/notifications/send", middleware.RequirePermission(permissionService, "notifications.send_individual"), notifHandler.SendToUser)
+
+				// Zalo ZNS management
+				admin.GET("/zalo-zns/status", znsHandler.GetStatus)
+				admin.PUT("/zalo-zns/refresh-token", znsHandler.UpdateRefreshToken)
+				admin.POST("/zalo-zns/test", znsHandler.TestSend)
 
 				// System Inbox management
 				admin.GET("/inbox", inboxHandler.AdminList)

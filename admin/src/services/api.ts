@@ -751,3 +751,37 @@ export async function deleteInbox(id: string): Promise<{ message: string }> {
     method: "DELETE",
   });
 }
+
+// --- Zalo ZNS ---
+export interface ZaloZNSStatus {
+  enabled: boolean;
+  message?: string;
+  app_id?: string;
+  app_secret?: string;
+  template_id?: string;
+  refresh_token?: string;
+  access_token?: string;
+  token_expiry?: string;
+  refresh_source?: string;
+  redis_connected?: boolean;
+}
+
+export async function getZaloZNSStatus(token: string): Promise<ZaloZNSStatus> {
+  return request<ZaloZNSStatus>("/admin/zalo-zns/status", { token });
+}
+
+export async function updateZaloRefreshToken(token: string, refreshToken: string): Promise<{ message: string }> {
+  return request<{ message: string }>("/admin/zalo-zns/refresh-token", {
+    token,
+    method: "PUT",
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+}
+
+export async function testZaloZNS(token: string, phone: string): Promise<{ message: string }> {
+  return request<{ message: string }>("/admin/zalo-zns/test", {
+    token,
+    method: "POST",
+    body: JSON.stringify({ phone }),
+  });
+}

@@ -67,6 +67,66 @@ func (z *ZaloZNSSender) SetCache(c cache.Cache) {
 	}
 }
 
+// Status returns current ZNS configuration status (secrets masked).
+func (z *ZaloZNSSender) Status() map[string]interface{} {
+	z.mu.Lock()
+	defer z.mu.Unlock()
+
+	mask := func(s string) string {
+		if len(s) <= 8 {
+			return "***"
+		}
+		return s[:4] + "..." + s[len(s)-4:]
+	}
+
+	tokenStatus := "no_token"
+	if z.accessToken != "" {
+		if time.Now().Before(z.tokenExpiry) {
+			tokenStatus = "valid"
+		} else {
+			tokenStatus = "expired"
+		}
+	}
+
+	refreshSource := "env"
+	if z.cache != nil {
+		if raw, err := z.cache.Get(context.Background(), zaloRefreshTokenKey); err == nil && len(raw) > 0 {
+			refreshSource = "redis"
+		}
+	}
+
+	return map[string]interface{}{
+		"app_id":          mask(z.appID),
+		"app_secret":      mask(z.appSecret),
+		"template_id":     z.templateID,
+		"refresh_token":   mask(z.refreshToken),
+		"access_token":    tokenStatus,
+		"token_expiry":    z.tokenExpiry.Format(time.RFC3339),
+		"refresh_source":  refreshSource,
+		"redis_connected": z.cache != nil,
+	}
+}
+
+// UpdateRefreshToken sets a new refresh token and persists to Redis.
+func (z *ZaloZNSSender) UpdateRefreshToken(token string) error {
+	z.mu.Lock()
+	defer z.mu.Unlock()
+
+	z.refreshToken = token
+	// Invalidate current access token to force re-auth with new refresh token
+	z.accessToken = ""
+	z.tokenExpiry = time.Time{}
+
+	if z.cache != nil {
+		if err := z.cache.Set(context.Background(), zaloRefreshTokenKey, []byte(token), zaloRefreshTokenTTL); err != nil {
+			return fmt.Errorf("persist to redis: %w", err)
+		}
+	}
+
+	log.Printf("[ZALO ZNS] Refresh token updated manually")
+	return nil
+}
+
 func (z *ZaloZNSSender) SendOTP(phone, code string) error {
 	// Convert 0xxx → 84xxx
 	if len(phone) > 0 && phone[0] == '0' {
