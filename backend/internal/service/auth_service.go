@@ -16,6 +16,7 @@ import (
 	"github.com/sangiagao/rice-marketplace/internal/repository"
 	jwtpkg "github.com/sangiagao/rice-marketplace/pkg/jwt"
 	"github.com/sangiagao/rice-marketplace/pkg/sms"
+	"github.com/sangiagao/rice-marketplace/pkg/workerpool"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -56,6 +57,11 @@ type AuthService struct {
 	subRepo    SubscriptionRepository
 	jwtManager *jwtpkg.Manager
 	smsSender  sms.Sender
+	pool       *workerpool.Pool
+}
+
+func (s *AuthService) SetPool(p *workerpool.Pool) {
+	s.pool = p
 }
 
 func NewAuthService(
@@ -109,8 +115,16 @@ func (s *AuthService) SendOTP(ctx context.Context, phone string) error {
 		return fmt.Errorf("create OTP: %w", err)
 	}
 
-	if err := s.smsSender.SendOTP(phone, code); err != nil {
-		return fmt.Errorf("send SMS: %w", err)
+	// Send OTP async — don't block HTTP response waiting for Zalo API
+	sendFn := func() {
+		if err := s.smsSender.SendOTP(phone, code); err != nil {
+			log.Printf("[OTP] Failed to send OTP to %s: %v", phone, err)
+		}
+	}
+	if s.pool != nil {
+		s.pool.Submit(sendFn)
+	} else {
+		go sendFn()
 	}
 
 	return nil

@@ -290,6 +290,8 @@ func TestSendOTP_Success(t *testing.T) {
 
 	require.NoError(t, err)
 	otpRepo.AssertExpectations(t)
+	// SMS is sent async (goroutine), wait briefly for it to complete
+	time.Sleep(50 * time.Millisecond)
 	smsMock.AssertExpectations(t)
 }
 

@@ -149,6 +149,7 @@ func main() {
 	// --- Services ---
 	spamService := service.NewSpamService(spamRepo)
 	authService := service.NewAuthService(userRepo, otpRepo, subRepo, jwtManager, smsSender)
+	authService.SetPool(pushPool)
 	userService := service.NewUserService(userRepo, subRepo)
 	listingService := service.NewListingService(listingRepo, sponsorRepo, userRepo, catalogRepo)
 	if appCache != nil {
