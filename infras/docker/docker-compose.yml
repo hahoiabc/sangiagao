@@ -98,22 +98,6 @@ services:
       - backend
     restart: unless-stopped
 
-  # ========================
-  # coturn - TURN/STUN for WebRTC calls
-  # ========================
-  coturn:
-    image: coturn/coturn:4
-    container_name: rice_coturn
-    ports:
-      - "3478:3478/udp"
-      - "3478:3478/tcp"
-    volumes:
-      - ../configs/coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
-    command: -c /etc/coturn/turnserver.conf
-    networks:
-      - backend
-    restart: unless-stopped
-
 networks:
   backend:
     name: rice_backend

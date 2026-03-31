@@ -32,10 +32,3 @@
 -keep class com.google.firebase.** { *; }
 -dontwarn com.google.firebase.**
 
-# FlutterCallkitIncoming — required for background call UI
--keep class com.hiennv.flutter_callkit_incoming.** { *; }
--dontwarn com.hiennv.flutter_callkit_incoming.**
-
-# WebRTC
--keep class org.webrtc.** { *; }
--dontwarn org.webrtc.**

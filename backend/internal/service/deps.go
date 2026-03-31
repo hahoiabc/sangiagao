@@ -163,15 +163,6 @@ type SpamRepository interface {
 	Cleanup(ctx context.Context, olderThan time.Time) (int, error)
 }
 
-type CallRepository interface {
-	Create(ctx context.Context, callerID, calleeID, conversationID, callType string) (*model.CallLog, error)
-	GetByID(ctx context.Context, id string) (*model.CallLog, error)
-	UpdateStatus(ctx context.Context, id, status string, duration int) error
-	MarkAnswered(ctx context.Context, id string) error
-	EndCall(ctx context.Context, id string) error
-	ListByConversation(ctx context.Context, conversationID string, page, limit int) ([]*model.CallLog, int, error)
-}
-
 type ConversationRepository interface {
 	FindOrCreate(ctx context.Context, buyerID, sellerID string, listingID *string) (*model.Conversation, error)
 	GetByID(ctx context.Context, id string) (*model.Conversation, error)

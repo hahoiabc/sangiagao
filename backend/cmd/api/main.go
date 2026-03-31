@@ -164,8 +164,6 @@ func main() {
 	if appCache != nil {
 		chatService.SetCache(appCache)
 	}
-	callRepo := repository.NewCallRepository(pgPool)
-	callService := service.NewCallService(callRepo, convRepo, userRepo)
 	sponsorService := service.NewSponsorService(sponsorRepo)
 	feedbackService := service.NewFeedbackService(feedbackRepo)
 	inboxService := service.NewInboxService(inboxRepo, notifService)
@@ -196,7 +194,6 @@ func main() {
 	feedbackHandler := handler.NewFeedbackHandler(feedbackService, notifService)
 	inboxHandler := handler.NewInboxHandler(inboxService)
 	systemHandler := handler.NewSystemHandler(appCache)
-	callHandler := handler.NewCallHandler(callService, notifService, chatService)
 	wsHandler := handler.NewWSHandler(wsHub, jwtManager, chatService, cfg.CORSOrigins)
 	var uploadHandler *handler.UploadHandler
 	if uploadService != nil {
@@ -362,17 +359,7 @@ func main() {
 				conversations.POST("/:id/messages/batch-delete", convHandler.BatchDeleteMessages)
 				conversations.POST("/:id/messages/batch-recall", convHandler.BatchRecallMessages)
 
-				// Voice calls
-				conversations.POST("/:id/calls", middleware.UserRateLimit(appCache, "ratelimit:call", 10, 1*time.Minute), callHandler.InitiateCall)
-				conversations.GET("/:id/calls", callHandler.GetCallHistory)
-				conversations.PUT("/calls/:call_id/answer", callHandler.AnswerCall)
-				conversations.PUT("/calls/:call_id/end", callHandler.EndCall)
-				conversations.PUT("/calls/:call_id/reject", callHandler.RejectCall)
-				conversations.PUT("/calls/:call_id/miss", callHandler.MissCall)
-			}
-
-			// TURN credentials for WebRTC
-			protected.GET("/calls/turn-credentials", callHandler.GetTURNCredentials)
+				}
 
 			// Subscription
 			protected.GET("/subscription/status", subHandler.GetStatus)

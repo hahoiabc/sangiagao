@@ -4,77 +4,16 @@ import 'dart:ui' show VoidCallback;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
-import 'package:flutter_callkit_incoming/entities/entities.dart';
 import 'api_service.dart';
-import 'call_service.dart' show isInCall;
 
 /// Top-level handler required by Firebase for background messages.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-
-  print('[BG_CALL] Background handler fired, type=${message.data['type']}, data=${message.data}');
-
-  // Show incoming call UI even when app is in background/killed
-  if (message.data['type'] == 'incoming_call') {
-    final callerName = message.data['caller_name'] ?? 'Người gọi';
-    final callType = message.data['call_type'] ?? 'audio';
-    final convId = message.data['conversation_id'] ?? '';
-    final callId = message.data['call_id'] ?? convId;
-    final callerId = message.data['caller_id'] ?? '';
-
-    print('[BG_CALL] Showing CallKit: caller=$callerName, callId=$callId, callerId=$callerId');
-
-    final params = CallKitParams(
-      id: callId,
-      nameCaller: callerName,
-      appName: 'SanGiaGao',
-      type: callType == 'video' ? 1 : 0,
-      duration: 60000,
-      android: const AndroidParams(
-        isShowLogo: false,
-        isShowFullLockedScreen: true,
-        ringtonePath: 'system_ringtone_default',
-        backgroundColor: '#1a1a2e',
-        actionColor: '#4CAF50',
-      ),
-      ios: const IOSParams(
-        iconName: 'AppIcon',
-        ringtonePath: 'system_ringtone_default',
-      ),
-      extra: {
-        'conversation_id': convId,
-        'call_type': callType,
-        'caller_id': callerId,
-        'caller_name': callerName,
-      },
-    );
-
-    await FlutterCallkitIncoming.showCallkitIncoming(params);
-    print('[BG_CALL] CallKit shown successfully');
-  }
 }
 
 /// Global navigator key — set from main.dart to enable navigation from push
 typedef PushNavigateCallback = void Function(String route);
-
-/// Callback to accept a call directly (bypasses GoRouter)
-typedef AcceptCallCallback = void Function({
-  required String callerName,
-  required String conversationId,
-  required String callId,
-  required String callerId,
-});
-
-/// Callback to show in-app incoming call overlay (set from app-level)
-typedef IncomingCallOverlayCallback = void Function({
-  required String callerName,
-  required String callType,
-  required String conversationId,
-  required String callId,
-  required String callerId,
-});
 
 class PushNotificationService {
   final ApiService _api;
@@ -82,42 +21,7 @@ class PushNotificationService {
       FlutterLocalNotificationsPlugin();
 
   static PushNavigateCallback? onNavigate;
-
-  /// Set this to accept a call directly (bypasses GoRouter) — from main.dart
-  static AcceptCallCallback? onAcceptCall;
-
-  /// Set this to show a custom in-app incoming call overlay instead of CallKit when foreground
-  static IncomingCallOverlayCallback? onIncomingCallOverlay;
-
-  /// Called when callee rejects/is busy — caller should end call
-  static VoidCallback? onCallRejected;
   static VoidCallback? onSystemInbox;
-
-  /// Called when callee declines from CallKit UI — need to reject via API
-  static void Function(String callId)? onDeclineCall;
-
-  /// Pending CallKit accept data — stored when accept fires before callback is wired
-  static Map<String, String>? _pendingAccept;
-
-  /// Pending CallKit decline callId — stored when decline fires before callback is wired
-  static String? _pendingDecline;
-
-  /// Check if there's a pending accept (for cold-start routing — keep splash screen)
-  static bool get hasPendingAccept => _pendingAccept != null;
-
-  /// Consume pending accept data (returns and clears). Called from main.dart after auth is ready.
-  static Map<String, String>? consumePendingAccept() {
-    final data = _pendingAccept;
-    _pendingAccept = null;
-    return data;
-  }
-
-  /// Consume pending decline callId (returns and clears). Called from main.dart after auth is ready.
-  static String? consumePendingDecline() {
-    final data = _pendingDecline;
-    _pendingDecline = null;
-    return data;
-  }
 
   /// Currently active conversation ID — suppress notifications for this chat
   static String? activeConversationId;
@@ -147,15 +51,6 @@ class PushNotificationService {
     enableVibration: false,
   );
 
-  static const _callChannel = AndroidNotificationChannel(
-    'sangiagao_calls',
-    'Cuộc gọi',
-    description: 'Thông báo cuộc gọi đến',
-    importance: Importance.max,
-    playSound: true,
-    enableVibration: true,
-  );
-
   PushNotificationService(this._api);
 
   Future<void> init() async {
@@ -163,10 +58,9 @@ class PushNotificationService {
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
 
-    // Create all notification channels
+    // Create notification channels
     await androidPlugin?.createNotificationChannel(_channel);
     await androidPlugin?.createNotificationChannel(_silentChannel);
-    await androidPlugin?.createNotificationChannel(_callChannel);
 
     // Init local notifications with tap callback
     await _localNotifications.initialize(
@@ -216,49 +110,6 @@ class PushNotificationService {
   }
 
   void _showLocalNotification(RemoteMessage message) {
-    // Handle incoming call push (data-only, no notification payload)
-    if (message.data['type'] == 'incoming_call') {
-      if (isInCall) {
-        // Already in a call — reject via API so caller gets notified
-        final callId = message.data['call_id'] as String?;
-        if (callId != null && callId.isNotEmpty) {
-          _api.rejectCall(callId).catchError((_) {});
-        }
-        return;
-      }
-      _showIncomingCall(message.data);
-      return;
-    }
-
-    // Handle call rejected push (callee rejected/busy) — notify caller to end call
-    if (message.data['type'] == 'call_rejected') {
-      onCallRejected?.call();
-      return;
-    }
-
-    // Handle missed call push — show local notification
-    if (message.data['type'] == 'missed_call') {
-      final callerName = message.data['caller_name'] ?? 'Người gọi';
-      _localNotifications.show(
-        'missed_call_${message.data['call_id']}'.hashCode,
-        'Cuộc gọi nhỡ',
-        '$callerName đã gọi cho bạn',
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            _channel.id,
-            _channel.name,
-            channelDescription: _channel.description,
-            importance: Importance.high,
-            priority: Priority.high,
-            icon: '@mipmap/ic_launcher',
-          ),
-          iOS: const DarwinNotificationDetails(sound: 'default'),
-        ),
-        payload: jsonEncode(message.data),
-      );
-      return;
-    }
-
     // Handle system inbox push — increment badge
     if (message.data['type'] == 'system_inbox') {
       onSystemInbox?.call();
@@ -297,8 +148,6 @@ class PushNotificationService {
     // Pick channel based on sound decision
     final channelToUse = playSound ? _channel : _silentChannel;
 
-    // #1 + #2 + #3: Group by convId, replace notification (same ID per conv),
-    // suppress sound on 2nd+ message
     _localNotifications.show(
       convId?.hashCode ?? notification.hashCode,
       notification.title,
@@ -315,7 +164,6 @@ class PushNotificationService {
           playSound: playSound,
           enableVibration: playSound,
         ),
-        // #4: iOS threadIdentifier for per-conversation grouping
         iOS: DarwinNotificationDetails(
           threadIdentifier: convId,
           sound: playSound ? 'default' : null,
@@ -388,116 +236,10 @@ class PushNotificationService {
     if (type == 'new_message' && conversationId != null) {
       clearUnreadForConversation(conversationId);
       onNavigate!('/chat/$conversationId');
-    } else if (type == 'incoming_call' && conversationId != null) {
-      onNavigate!('/chat/$conversationId');
     } else if (type == 'system_inbox') {
       onNavigate!('/system-inbox');
     } else {
       onNavigate!('/notifications');
     }
-  }
-
-  /// Show incoming call UI — prefer in-app overlay if set, else use CallKit
-  void _showIncomingCall(Map<String, dynamic> data) {
-    final callerName = data['caller_name'] ?? 'Người gọi';
-    final callType = data['call_type'] ?? 'audio';
-    final convId = data['conversation_id'] ?? '';
-    final callId = data['call_id'] ?? convId;
-    final callerId = data['caller_id'] ?? '';
-
-    // Use in-app overlay if available (foreground + callback registered)
-    if (onIncomingCallOverlay != null) {
-      onIncomingCallOverlay!(
-        callerName: callerName,
-        callType: callType,
-        conversationId: convId,
-        callId: callId,
-        callerId: callerId,
-      );
-      return;
-    }
-
-    final params = CallKitParams(
-      id: callId,
-      nameCaller: callerName,
-      appName: 'SanGiaGao',
-      type: callType == 'video' ? 1 : 0,
-      duration: 60000, // 60s ring timeout
-      android: const AndroidParams(
-        isShowLogo: false,
-        ringtonePath: 'system_ringtone_default',
-        backgroundColor: '#1a1a2e',
-        actionColor: '#4CAF50',
-      ),
-      ios: const IOSParams(
-        iconName: 'AppIcon',
-        ringtonePath: 'system_ringtone_default',
-      ),
-      extra: {
-        'conversation_id': convId,
-        'call_type': callType,
-        'caller_id': callerId,
-        'caller_name': callerName,
-      },
-    );
-
-    FlutterCallkitIncoming.showCallkitIncoming(params);
-  }
-
-  /// Initialize CallKit event listeners — call from main.dart after push init
-  static void initCallKitListeners() {
-    FlutterCallkitIncoming.onEvent.listen((CallEvent? event) {
-      if (event == null) return;
-      final rawExtra = event.body['extra'];
-      final extra = rawExtra is Map ? Map<String, dynamic>.from(rawExtra) : <String, dynamic>{};
-      final convId = extra['conversation_id'] as String?;
-
-      final rawId = event.body['id'];
-      final callId = extra['call_id'] as String? ?? (rawId is String ? rawId : null);
-
-      final callerName = extra['caller_name'] as String? ?? 'Người gọi';
-      final callerId = extra['caller_id'] as String? ?? '';
-
-      switch (event.event) {
-        case Event.actionCallAccept:
-          if (convId != null) {
-            if (onAcceptCall != null) {
-              // Direct call accept — bypasses GoRouter
-              onAcceptCall!(
-                callerName: callerName,
-                conversationId: convId,
-                callId: callId ?? '',
-                callerId: callerId,
-              );
-            } else {
-              // Callback not wired yet (cold start) — buffer for when it's ready
-              _pendingAccept = {
-                'callerName': callerName,
-                'conversationId': convId,
-                'callId': callId ?? '',
-                'callerId': callerId,
-              };
-            }
-          }
-          break;
-        case Event.actionCallDecline:
-          // B declined from CallKit UI → reject via API so A knows immediately
-          if (callId != null && callId.isNotEmpty) {
-            if (onDeclineCall != null) {
-              onDeclineCall!(callId);
-            } else {
-              // Callback not wired yet (cold start) — buffer for when it's ready
-              _pendingDecline = callId;
-            }
-          }
-          break;
-        case Event.actionCallEnded:
-        case Event.actionCallTimeout:
-          // Call ended/timed out — no action needed
-          break;
-        default:
-          break;
-      }
-    });
   }
 }

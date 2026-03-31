@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 
 	"github.com/sangiagao/rice-marketplace/internal/model"
@@ -79,26 +78,6 @@ func (s *NotificationService) SendPushOnly(ctx context.Context, userID, title, b
 	}
 	log.Printf("SendPushOnly: sending to %d device(s) for user %s", len(tokens), userID)
 	return s.pushSender.SendToTokens(ctx, tokens, title, body, "", data)
-}
-
-// SendDataPush sends a data-only push (no notification field) for incoming calls.
-// Data-only ensures Android's onBackgroundMessage fires reliably.
-func (s *NotificationService) SendDataPush(ctx context.Context, userID string, data map[string]string) error {
-	if s.pushSender == nil {
-		log.Printf("SendDataPush: pushSender is nil, skipping push to user %s", userID)
-		return fmt.Errorf("push sender not configured")
-	}
-	tokens, err := s.notifRepo.GetDeviceTokens(ctx, userID)
-	if err != nil {
-		log.Printf("SendDataPush: error getting device tokens for user %s: %v", userID, err)
-		return err
-	}
-	if len(tokens) == 0 {
-		log.Printf("SendDataPush: no device tokens found for user %s — push NOT sent", userID)
-		return fmt.Errorf("no device tokens for user %s", userID)
-	}
-	log.Printf("SendDataPush: sending data-only push to %d device(s) for user %s", len(tokens), userID)
-	return s.pushSender.SendDataOnly(ctx, tokens, data)
 }
 
 func (s *NotificationService) UnreadCount(ctx context.Context, userID string) (int, error) {

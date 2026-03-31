@@ -87,7 +87,6 @@ type NotificationServiceInterface interface {
 	UnreadCount(ctx context.Context, userID string) (int, error)
 	BroadcastNotification(ctx context.Context, nType, title, body, imageURL string, data json.RawMessage) (int, error)
 	SendPushOnly(ctx context.Context, userID, title, body string, data map[string]string) error
-	SendDataPush(ctx context.Context, userID string, data map[string]string) error
 }
 
 type AdminServiceInterface interface {

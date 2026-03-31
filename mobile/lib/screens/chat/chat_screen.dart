@@ -20,16 +20,11 @@ import '../../models/listing.dart';
 import '../../models/user.dart';
 import '../../providers/providers.dart';
 import '../../services/push_notification_service.dart';
-import '../../services/call_service.dart';
-import '../call/active_call_screen.dart';
-import '../call/call_history_screen.dart';
 import '../../theme/app_theme.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String conversationId;
-  final bool autoAcceptCall;
-  final String? callId;
-  const ChatScreen({super.key, required this.conversationId, this.autoAcceptCall = false, this.callId});
+  const ChatScreen({super.key, required this.conversationId});
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -100,59 +95,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
-  @override
-  void didUpdateWidget(covariant ChatScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // Handle case where user was already on this ChatScreen and accepted an incoming call
-    // GoRouter updates widget props without calling initState again
-    if (widget.autoAcceptCall && !oldWidget.autoAcceptCall && _currentUserId != null) {
-      debugPrint('ChatScreen: didUpdateWidget — autoAcceptCall changed to true');
-      if (_otherUser != null) {
-        _acceptIncomingCall();
-      } else {
-        // Retry loading other user then accept
-        _retryLoadAndAccept();
-      }
-    }
-  }
-
-  Future<void> _retryLoadAndAccept() async {
-    for (int i = 0; i < 3 && _otherUser == null; i++) {
-      await Future.delayed(const Duration(seconds: 1));
-      await _loadConversation();
-    }
-    if (_otherUser != null && mounted) {
-      await _acceptIncomingCall();
-    }
-  }
-
   Future<void> _init() async {
     final user = ref.read(authProvider).user;
     _currentUserId = user?.id;
-    debugPrint('ChatScreen._init(): userId=$_currentUserId, autoAccept=${widget.autoAcceptCall}');
     await Future.wait([_loadMessages(), _loadConversation()]);
     // Mark messages as read and refresh badge
     _markReadAndRefreshBadge();
     // Always start polling immediately, WS will stop it if connected
     _startPolling();
     _connectPhoenix();
-
-    // Auto-accept incoming call (navigated from CallKit accept)
-    if (widget.autoAcceptCall && _currentUserId != null) {
-      debugPrint('ChatScreen: autoAcceptCall=true, callId=${widget.callId}');
-      // Retry loading other user if needed (API might have been slow)
-      for (int i = 0; i < 3 && _otherUser == null; i++) {
-        debugPrint('ChatScreen: waiting for otherUser... attempt ${i + 1}/3');
-        await Future.delayed(const Duration(seconds: 1));
-        await _loadConversation();
-      }
-      if (_otherUser != null && mounted) {
-        debugPrint('ChatScreen: otherUser loaded, calling _acceptIncomingCall');
-        await _acceptIncomingCall();
-      } else {
-        debugPrint('ChatScreen: autoAcceptCall failed — otherUser=${_otherUser?.id}');
-      }
-    }
   }
 
   Future<void> _loadConversation() async {
@@ -658,73 +609,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
-  Future<void> _acceptIncomingCall() async {
-    debugPrint('ChatScreen._acceptIncomingCall: otherUser=${_otherUser?.id}');
-    if (_otherUser == null || _currentUserId == null) return;
-    final api = ref.read(apiServiceProvider);
-    final token = await api.getToken();
-    if (token == null || !mounted) {
-      debugPrint('ChatScreen._acceptIncomingCall: abort — no token or unmounted');
-      return;
-    }
-
-    final callService = CallService(
-      api: api,
-      token: token,
-      conversationId: widget.conversationId,
-      currentUserId: _currentUserId!,
-      otherUserId: _otherUser!.id,
-      otherUserName: _otherUser!.name ?? 'Người dùng',
-      callType: 'audio',
-      isInitiator: false,
-    );
-    // Pass callLogId from push notification if available
-    if (widget.callId != null) {
-      callService.callLogId = widget.callId;
-    }
-    callService.onCallEnded = (status, duration) => addCallLogMessage(status, duration);
-
-    await callService.start();
-    if (!mounted || callService.state == CallState.ended) {
-      return;
-    }
-
-    callService.acceptCall();
-
-    if (mounted) {
-      Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => ActiveCallScreen(callService: callService),
-      ));
-    }
-  }
-
-  Future<void> _startCall(String callType) async {
-    if (_otherUser == null || _currentUserId == null) return;
-    final api = ref.read(apiServiceProvider);
-    final token = await api.getToken();
-    if (token == null || !mounted) return;
-
-    final callService = CallService(
-      api: api,
-      token: token,
-      conversationId: widget.conversationId,
-      currentUserId: _currentUserId!,
-      otherUserId: _otherUser!.id,
-      otherUserName: _otherUser!.name ?? 'Người dùng',
-      callType: callType,
-      isInitiator: true,
-    );
-    callService.onCallEnded = (status, duration) => addCallLogMessage(status, duration);
-
-    // MUST await start() so peer connection + signaling are ready before UI
-    await callService.start();
-    if (!mounted || callService.state == CallState.ended) return;
-
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => ActiveCallScreen(callService: callService),
-    ));
-  }
-
   Future<void> _reportUser() async {
     if (_otherUser == null) return;
     final reasons = ['Spam', 'Quấy rối', 'Lừa đảo', 'Nội dung không phù hợp', 'Khác'];
@@ -903,27 +787,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 );
               }),
               actions: [
-                // Voice call button
-                IconButton(
-                  icon: const Icon(Icons.call),
-                  tooltip: 'Gọi thoại',
-                  onPressed: _otherUser != null ? () => _startCall('audio') : null,
-                ),
                 PopupMenuButton<String>(
                   onSelected: (value) {
                     if (value == 'report_user' && _otherUser != null) {
                       _reportUser();
-                    } else if (value == 'call_history') {
-                      Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => CallHistoryScreen(
-                          conversationId: widget.conversationId,
-                          currentUserId: _currentUserId!,
-                        ),
-                      ));
                     }
                   },
                   itemBuilder: (_) => [
-                    const PopupMenuItem(value: 'call_history', child: Text('Lịch sử cuộc gọi')),
                     const PopupMenuItem(value: 'report_user', child: Text('Báo cáo người dùng')),
                   ],
                 ),
@@ -1056,107 +926,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
       ],
     );
-  }
-
-  /// Call log bubble — centered, shows call icon + status + duration + "Gọi lại" button
-  Widget _buildCallLogBubble(Message msg) {
-    // content format: "status|duration_seconds|caller_id"
-    // e.g. "answered|45|user-123" or "missed|0|user-456"
-    final parts = msg.content.split('|');
-    final callStatus = parts.isNotEmpty ? parts[0] : 'ended';
-    final duration = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
-    final callerId = parts.length > 2 ? parts[2] : '';
-    final isOutgoing = callerId == _currentUserId;
-
-    IconData icon;
-    Color iconColor;
-    String statusText;
-
-    switch (callStatus) {
-      case 'missed':
-        icon = Icons.phone_missed;
-        iconColor = Colors.red;
-        statusText = isOutgoing ? 'Không trả lời' : 'Cuộc gọi nhỡ';
-        break;
-      case 'rejected':
-        icon = Icons.phone_disabled;
-        iconColor = Colors.orange;
-        statusText = isOutgoing ? 'Bị từ chối' : 'Đã từ chối';
-        break;
-      case 'answered':
-        icon = isOutgoing ? Icons.phone_forwarded : Icons.phone_callback;
-        iconColor = Colors.green;
-        final m = duration ~/ 60;
-        final s = duration % 60;
-        statusText = 'Cuộc gọi thoại ${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
-        break;
-      default:
-        icon = Icons.phone;
-        iconColor = AppColors.textHint;
-        statusText = 'Cuộc gọi kết thúc';
-    }
-
-    final parsed = DateTime.tryParse(msg.createdAt);
-    final time = parsed != null ? DateFormat('HH:mm').format(parsed.toLocal()) : '';
-
-    return Center(
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.chatBubbleOther.withAlpha(128),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: iconColor, size: 20),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(statusText, style: TextStyle(fontSize: 13, color: AppColors.textPrimary)),
-                Text(time, style: TextStyle(fontSize: 11, color: AppColors.textHint)),
-              ],
-            ),
-            const SizedBox(width: 12),
-            if (_otherUser != null)
-              GestureDetector(
-                onTap: () => _startCall('audio'),
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.green,
-                  ),
-                  child: const Icon(Icons.phone, color: Colors.white, size: 16),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Add a call log message to chat after call ends
-  void addCallLogMessage(String status, int durationSeconds) {
-    if (_currentUserId == null) return;
-    final msg = Message(
-      id: 'call_${DateTime.now().millisecondsSinceEpoch}',
-      conversationId: widget.conversationId,
-      senderId: _currentUserId!,
-      content: '$status|$durationSeconds|$_currentUserId',
-      type: 'call_log',
-      createdAt: DateTime.now().toIso8601String(),
-    );
-    if (mounted) {
-      setState(() {
-        _messages.add(msg);
-      });
-      _scrollToBottom();
-    }
   }
 
   Widget _buildAudioBubble(Message msg, bool isMe) {
@@ -1308,10 +1077,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final isAudio = msg.type == 'audio';
     final isRecalled = msg.type == 'recalled';
     final isListingLink = msg.type == 'listing_link';
-    final isCallLog = msg.type == 'call_log';
     final showAvatar = !isMe && isFirstInChain;
 
-    if (isCallLog) return _buildCallLogBubble(msg);
     final isSelected = _selectedIds.contains(msg.id);
 
     final bubble = GestureDetector(

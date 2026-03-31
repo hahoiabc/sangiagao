@@ -21,8 +21,6 @@ NETWORK="rice_internal"
 ENV_BACKEND="$PROJECT_ROOT/infras/.env.backend"
 ENV_CHAT="$PROJECT_ROOT/infras/.env.chat"
 FIREBASE_CRED="$PROJECT_ROOT/infras/firebase-credentials.json"
-COTURN_CONF="$PROJECT_ROOT/infras/configs/coturn/turnserver.conf"
-
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -70,7 +68,7 @@ verify() {
     sleep 2
 
     # Check all containers
-    local required=("backend" "web" "admin" "chat" "rice_coturn" "rice_postgres" "rice_redis" "rice_mongodb" "minio" "rice_nginx")
+    local required=("backend" "web" "admin" "chat" "rice_postgres" "rice_redis" "rice_mongodb" "minio" "rice_nginx")
     for c in "${required[@]}"; do
         if docker ps --format '{{.Names}}' | grep -q "^${c}$"; then
             ok "$c: running"
@@ -168,23 +166,6 @@ case "$TARGET" in
             --env-file "$ENV_CHAT"
         verify
         ;;
-    coturn)
-        warn "Deploying coturn TURN server..."
-        docker stop rice_coturn 2>/dev/null || true
-        docker rm rice_coturn 2>/dev/null || true
-        docker run -d \
-            --name rice_coturn \
-            --hostname rice_coturn \
-            --network "$NETWORK" \
-            -p 3478:3478/udp \
-            -p 3478:3478/tcp \
-            -v "$COTURN_CONF:/etc/coturn/turnserver.conf:ro" \
-            --restart unless-stopped \
-            coturn/coturn:4 \
-            -c /etc/coturn/turnserver.conf
-        ok "coturn started"
-        verify
-        ;;
     migrate)
         warn "Running pending migrations..."
         source "$PROJECT_ROOT/.env.production"
@@ -217,7 +198,6 @@ case "$TARGET" in
         echo "  web        Deploy web only"
         echo "  admin      Deploy admin only"
         echo "  chat       Deploy chat (Elixir) only"
-        echo "  coturn     Deploy coturn TURN server"
         echo "  migrate    Run all SQL migrations"
         echo "  all        Deploy backend + chat + web + admin"
         echo ""

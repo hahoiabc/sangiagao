@@ -18,9 +18,6 @@ import (
 // PushSender sends push notifications via FCM HTTP v1 API.
 type PushSender interface {
 	SendToTokens(ctx context.Context, tokens []string, title, body, imageURL string, data map[string]string) error
-	// SendDataOnly sends a data-only FCM message (no notification field).
-	// Used for incoming calls so onBackgroundMessage always fires on Android.
-	SendDataOnly(ctx context.Context, tokens []string, data map[string]string) error
 }
 
 // FCMSender implements PushSender using Firebase Cloud Messaging HTTP v1 API.
@@ -215,40 +212,6 @@ func (s *FCMSender) SendToTokens(ctx context.Context, tokens []string, title, bo
 	}, "notification")
 }
 
-// SendDataOnly sends a data-only high-priority FCM message for incoming calls.
-// MUST NOT have a "notification" field — otherwise Android OS intercepts it and
-// shows a text notification instead of firing onBackgroundMessage/native handler.
-//
-// Delivery chain on Android:
-// 1. Native: CallFirebaseService.onMessageReceived → shows CallKit directly (Kotlin)
-// 2. Dart backup: firebaseMessagingBackgroundHandler → shows CallKit (if native missed)
-func (s *FCMSender) SendDataOnly(ctx context.Context, tokens []string, data map[string]string) error {
-	return s.sendFCM(ctx, tokens, func(deviceToken string) fcmV1Request {
-		return fcmV1Request{
-			Message: fcmV1Message{
-				Token: deviceToken,
-				// NO Notification field — data-only ensures native handler fires
-				Data: data,
-				Android: &fcmAndroid{
-					Priority: "high",
-				},
-				APNS: &fcmAPNS{
-					Headers: map[string]string{
-						"apns-priority":  "10",
-						"apns-push-type": "voip",
-					},
-					Payload: &fcmAPNSPayload{
-						APS: &fcmAPS{
-							ContentAvailable: 1,
-							Sound:            "default",
-						},
-					},
-				},
-			},
-		}
-	}, "incoming-call")
-}
-
 // MockPushSender logs push notifications instead of sending them.
 type MockPushSender struct{}
 
@@ -259,9 +222,3 @@ func (m *MockPushSender) SendToTokens(ctx context.Context, tokens []string, titl
 	return nil
 }
 
-func (m *MockPushSender) SendDataOnly(ctx context.Context, tokens []string, data map[string]string) error {
-	if len(tokens) > 0 {
-		fmt.Printf("[PUSH MOCK] Data-only to %d device(s): %v\n", len(tokens), data)
-	}
-	return nil
-}

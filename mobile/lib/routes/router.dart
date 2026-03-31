@@ -1,7 +1,6 @@
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/providers.dart';
-import '../services/push_notification_service.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/auth/role_screen.dart';
@@ -54,11 +53,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       if (isAuth && (loc == '/login' || loc == '/register' || loc == '/forgot-password' || loc == '/splash')) {
-        // Cold-start call: keep splash screen while waiting for _flushPendingAccept
-        // to push ActiveCallScreen — prevents marketplace flash
-        if (loc == '/splash' && PushNotificationService.hasPendingAccept) {
-          return null; // stay on splash
-        }
         return '/marketplace';
       }
 
@@ -100,8 +94,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             redirect: (_, state) => _isValidId(state.pathParameters['id']) ? null : '/inbox',
             builder: (_, state) => ChatScreen(
               conversationId: state.pathParameters['id']!,
-              autoAcceptCall: state.uri.queryParameters['call'] == 'accept',
-              callId: state.uri.queryParameters['call_id'],
             ),
           ),
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
