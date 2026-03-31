@@ -192,6 +192,15 @@ func sampleListing(userID string) *model.Listing {
 
 // --- Create Tests ---
 
+// testCatalog returns catalog data used by in-memory cache in tests.
+func testCatalog() []model.RiceCategory {
+	return []model.RiceCategory{
+		{Key: "gao_deo_thom", Label: "Gạo dẻo thơm", Products: []model.RiceProduct{
+			{Key: "st_25", Label: "ST25", Category: "gao_deo_thom"},
+		}},
+	}
+}
+
 func TestListingCreate_Success(t *testing.T) {
 	repo := new(mockListingRepo)
 	catRepo := new(mockCatalogRepo)
@@ -200,8 +209,7 @@ func TestListingCreate_Success(t *testing.T) {
 	req := &model.CreateListingRequest{Title: "Gạo ST25", Category: "gao_deo_thom", RiceType: "st_25", QuantityKG: 500, PricePerKG: 28000}
 	expected := sampleListing("user-1")
 	repo.On("CountTodayByUser", mock.Anything, "user-1").Return(0, nil)
-	catRepo.On("ValidateCategory", mock.Anything, "gao_deo_thom").Return(true, nil)
-	catRepo.On("ValidateProductInCategory", mock.Anything, "gao_deo_thom", "st_25").Return(true, nil)
+	catRepo.On("GetCatalogForAPI", mock.Anything).Return(testCatalog(), nil)
 	repo.On("Create", mock.Anything, "user-1", req).Return(expected, nil)
 
 	result, err := svc.Create(context.Background(), "user-1", req)
@@ -227,8 +235,7 @@ func TestListingCreate_RepoError(t *testing.T) {
 
 	req := &model.CreateListingRequest{Title: "Test", Category: "gao_deo_thom", RiceType: "st_25", QuantityKG: 1, PricePerKG: 1}
 	repo.On("CountTodayByUser", mock.Anything, "user-1").Return(0, nil)
-	catRepo.On("ValidateCategory", mock.Anything, "gao_deo_thom").Return(true, nil)
-	catRepo.On("ValidateProductInCategory", mock.Anything, "gao_deo_thom", "st_25").Return(true, nil)
+	catRepo.On("GetCatalogForAPI", mock.Anything).Return(testCatalog(), nil)
 	repo.On("Create", mock.Anything, "user-1", req).Return(nil, assert.AnError)
 
 	_, err := svc.Create(context.Background(), "user-1", req)

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"sync"
 	"time"
 
 	"github.com/sangiagao/rice-marketplace/internal/model"
@@ -29,12 +31,24 @@ var ErrDailyLimitReached = errors.New("bạn đã đạt giới hạn 50 tin đ�
 
 const maxListingsPerDay = 50
 
+// catalogCache holds in-memory catalog data to avoid DB queries on every listing create.
+type catalogCache struct {
+	mu            sync.RWMutex
+	categories    map[string]bool            // category_key → exists
+	products      map[string]map[string]bool // category_key → product_key → exists
+	productLabels map[string]string          // product_key → label
+	loadedAt      time.Time
+}
+
+const catalogCacheTTL = 10 * time.Minute
+
 type ListingService struct {
 	listingRepo ListingRepository
 	sponsorRepo SponsorRepository
 	userRepo    UserRepository
 	catalogRepo CatalogRepository
 	cache       cache.Cache
+	catCache    catalogCache
 }
 
 func NewListingService(listingRepo ListingRepository, sponsorRepo SponsorRepository, userRepo UserRepository, catalogRepo CatalogRepository) *ListingService {
@@ -44,6 +58,70 @@ func NewListingService(listingRepo ListingRepository, sponsorRepo SponsorReposit
 // SetCache enables caching for marketplace queries (optional).
 func (s *ListingService) SetCache(c cache.Cache) {
 	s.cache = c
+}
+
+// loadCatalogCache loads catalog data into memory. Thread-safe, skips if cache is fresh.
+func (s *ListingService) loadCatalogCache(ctx context.Context) {
+	s.catCache.mu.RLock()
+	if !s.catCache.loadedAt.IsZero() && time.Since(s.catCache.loadedAt) < catalogCacheTTL {
+		s.catCache.mu.RUnlock()
+		return
+	}
+	s.catCache.mu.RUnlock()
+
+	// Double-check under write lock
+	s.catCache.mu.Lock()
+	defer s.catCache.mu.Unlock()
+	if !s.catCache.loadedAt.IsZero() && time.Since(s.catCache.loadedAt) < catalogCacheTTL {
+		return
+	}
+
+	catalog, err := s.catalogRepo.GetCatalogForAPI(ctx)
+	if err != nil {
+		log.Printf("[CATALOG CACHE] Failed to load: %v", err)
+		return
+	}
+
+	categories := make(map[string]bool)
+	products := make(map[string]map[string]bool)
+	labels := make(map[string]string)
+
+	for _, cat := range catalog {
+		categories[cat.Key] = true
+		products[cat.Key] = make(map[string]bool)
+		for _, p := range cat.Products {
+			products[cat.Key][p.Key] = true
+			labels[p.Key] = p.Label
+		}
+	}
+
+	s.catCache.categories = categories
+	s.catCache.products = products
+	s.catCache.productLabels = labels
+	s.catCache.loadedAt = time.Now()
+}
+
+// validateCatalog checks category+product from in-memory cache, falls back to DB on cache miss.
+func (s *ListingService) validateCatalog(ctx context.Context, categoryKey, productKey string) (bool, bool, string) {
+	s.loadCatalogCache(ctx)
+
+	s.catCache.mu.RLock()
+	defer s.catCache.mu.RUnlock()
+
+	if s.catCache.categories == nil {
+		// Cache failed to load — caller should fall back to DB
+		return false, false, ""
+	}
+
+	catOK := s.catCache.categories[categoryKey]
+	prodOK := false
+	if catOK {
+		if prods, ok := s.catCache.products[categoryKey]; ok {
+			prodOK = prods[productKey]
+		}
+	}
+	label := s.catCache.productLabels[productKey]
+	return catOK, prodOK, label
 }
 
 // --- Seller operations ---
@@ -74,25 +152,37 @@ func (s *ListingService) Create(ctx context.Context, userID string, req *model.C
 		return nil, ErrDailyLimitReached
 	}
 
-	// Validate category and product against database catalog
-	validCat, err := s.catalogRepo.ValidateCategory(ctx, req.Category)
-	if err != nil {
-		return nil, fmt.Errorf("validate category: %w", err)
-	}
-	if !validCat {
-		return nil, ErrInvalidCategory
-	}
-	validProd, err := s.catalogRepo.ValidateProductInCategory(ctx, req.Category, req.RiceType)
-	if err != nil {
-		return nil, fmt.Errorf("validate product: %w", err)
-	}
-	if !validProd {
+	// Validate category and product from in-memory cache (avoids 2-3 DB queries per create)
+	catOK, prodOK, productLabel := s.validateCatalog(ctx, req.Category, req.RiceType)
+	if !catOK {
+		// Fallback to DB if cache empty
+		validCat, err := s.catalogRepo.ValidateCategory(ctx, req.Category)
+		if err != nil {
+			return nil, fmt.Errorf("validate category: %w", err)
+		}
+		if !validCat {
+			return nil, ErrInvalidCategory
+		}
+		validProd, err := s.catalogRepo.ValidateProductInCategory(ctx, req.Category, req.RiceType)
+		if err != nil {
+			return nil, fmt.Errorf("validate product: %w", err)
+		}
+		if !validProd {
+			return nil, ErrInvalidProduct
+		}
+		if req.Title == "" {
+			if label, err := s.catalogRepo.GetProductLabelByKey(ctx, req.RiceType); err == nil && label != "" {
+				productLabel = label
+			}
+		}
+	} else if !prodOK {
 		return nil, ErrInvalidProduct
 	}
+
 	// Auto-generate title from product label if not provided
 	if req.Title == "" {
-		if label, err := s.catalogRepo.GetProductLabelByKey(ctx, req.RiceType); err == nil && label != "" {
-			req.Title = label
+		if productLabel != "" {
+			req.Title = productLabel
 		} else {
 			req.Title = req.RiceType
 		}
@@ -149,7 +239,9 @@ func (s *ListingService) Delete(ctx context.Context, userID, id string) error {
 
 func (s *ListingService) InvalidateMarketplaceCache(ctx context.Context) {
 	if s.cache != nil {
-		_ = s.cache.DeleteByPrefix(ctx, marketplaceCachePrefix)
+		// Only invalidate priceboard (aggregate data changes).
+		// Marketplace listing pages use TTL-based expiry (5 min) — no need to
+		// scan+delete all marketplace:* keys on every create/update/delete.
 		_ = s.cache.Delete(ctx, "priceboard:v1")
 	}
 }

@@ -16,8 +16,8 @@ func NewPostgresPool(dsn string) (*pgxpool.Pool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
-	config.MaxConns = 50
-	config.MinConns = 5
+	config.MaxConns = 150
+	config.MinConns = 10
 	config.MaxConnLifetime = 30 * time.Minute
 	config.MaxConnIdleTime = 5 * time.Minute
 	config.HealthCheckPeriod = 1 * time.Minute
