@@ -333,8 +333,10 @@ class ApiService {
     return PaginatedResult.fromJson(res.data, (j) => Message.fromJson(j));
   }
 
-  Future<Message> sendMessage(String convId, String content, {String type = 'text'}) async {
-    final res = await _dio.post('/conversations/$convId/messages', data: {'content': content, 'type': type});
+  Future<Message> sendMessage(String convId, String content, {String type = 'text', String? replyToId}) async {
+    final data = <String, dynamic>{'content': content, 'type': type};
+    if (replyToId != null) data['reply_to_id'] = replyToId;
+    final res = await _dio.post('/conversations/$convId/messages', data: data);
     return Message.fromJson(res.data);
   }
 
@@ -353,6 +355,13 @@ class ApiService {
 
   Future<void> batchRecallMessages(String convId, List<String> msgIds) async {
     await _dio.post('/conversations/$convId/messages/batch-recall', data: {'message_ids': msgIds});
+  }
+
+  Future<List<MessageReaction>> toggleReaction(String convId, String msgId, String emoji) async {
+    final res = await _dio.put('/conversations/$convId/messages/$msgId/reaction', data: {'emoji': emoji});
+    return (res.data['reactions'] as List<dynamic>)
+        .map((r) => MessageReaction.fromJson(r as Map<String, dynamic>))
+        .toList();
   }
 
   // --- Ratings ---

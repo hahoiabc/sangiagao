@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -365,10 +366,19 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
                           value: [listing.ward, listing.province].where((s) => s != null && s.isNotEmpty).join(', '),
                         ),
                       if (seller.phone.isNotEmpty)
-                        _DetailRow(
-                          icon: Icons.phone,
-                          label: 'Điện thoại',
-                          value: seller.phone,
+                        GestureDetector(
+                          onTap: () {
+                            Clipboard.setData(ClipboardData(text: seller.phone));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Đã sao chép số điện thoại'), duration: Duration(seconds: 2)),
+                            );
+                          },
+                          child: _DetailRow(
+                            icon: Icons.phone,
+                            label: 'Điện thoại',
+                            value: seller.phone,
+                            trailing: const Icon(Icons.copy, size: 16, color: AppColors.textHint),
+                          ),
                         ),
                     ],
                   ),
@@ -622,7 +632,8 @@ class _DetailRow extends StatelessWidget {
   final String label;
   final String value;
   final Color? valueColor;
-  const _DetailRow({required this.icon, required this.label, required this.value, this.valueColor});
+  final Widget? trailing;
+  const _DetailRow({required this.icon, required this.label, required this.value, this.valueColor, this.trailing});
 
   @override
   Widget build(BuildContext context) {
@@ -644,6 +655,10 @@ class _DetailRow extends StatelessWidget {
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: valueColor ?? AppColors.textPrimary),
             ),
           ),
+          if (trailing != null) ...[
+            const SizedBox(width: 8),
+            trailing!,
+          ],
         ],
       ),
     );

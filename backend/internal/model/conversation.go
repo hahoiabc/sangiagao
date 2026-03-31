@@ -16,13 +16,31 @@ type Conversation struct {
 }
 
 type Message struct {
-	ID             string     `json:"id"`
-	ConversationID string     `json:"conversation_id"`
-	SenderID       string     `json:"sender_id"`
-	Content        string     `json:"content"`
-	Type           string     `json:"type"`
-	ReadAt         *time.Time `json:"read_at,omitempty"`
-	CreatedAt      time.Time  `json:"created_at"`
+	ID             string            `json:"id"`
+	ConversationID string            `json:"conversation_id"`
+	SenderID       string            `json:"sender_id"`
+	Content        string            `json:"content"`
+	Type           string            `json:"type"`
+	ReadAt         *time.Time        `json:"read_at,omitempty"`
+	ReplyToID      *string           `json:"reply_to_id,omitempty"`
+	ReplyTo        *ReplyMessage     `json:"reply_to,omitempty"`
+	Reactions      []MessageReaction `json:"reactions,omitempty"`
+	CreatedAt      time.Time         `json:"created_at"`
+}
+
+type ReplyMessage struct {
+	ID       string `json:"id"`
+	SenderID string `json:"sender_id"`
+	Content  string `json:"content"`
+	Type     string `json:"type"`
+}
+
+type MessageReaction struct {
+	ID        string    `json:"id"`
+	MessageID string    `json:"message_id"`
+	UserID    string    `json:"user_id"`
+	Emoji     string    `json:"emoji"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type CreateConversationRequest struct {
@@ -31,6 +49,11 @@ type CreateConversationRequest struct {
 }
 
 type SendMessageRequest struct {
-	Content string `json:"content" binding:"required,max=5000"`
-	Type    string `json:"type" binding:"omitempty,max=50"`
+	Content   string  `json:"content" binding:"required,max=5000"`
+	Type      string  `json:"type" binding:"omitempty,max=50"`
+	ReplyToID *string `json:"reply_to_id"`
+}
+
+type ToggleReactionRequest struct {
+	Emoji string `json:"emoji" binding:"required,max=10"`
 }

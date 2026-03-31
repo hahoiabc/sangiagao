@@ -84,6 +84,13 @@ func (m *mockChatService) GetUserName(ctx context.Context, userID string) (strin
 	args := m.Called(ctx, userID)
 	return args.String(0), args.Error(1)
 }
+func (m *mockChatService) ToggleReaction(ctx context.Context, userID, conversationID, messageID, emoji string) ([]model.MessageReaction, error) {
+	args := m.Called(ctx, userID, conversationID, messageID, emoji)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]model.MessageReaction), args.Error(1)
+}
 
 func setupConvRouter(h *ConversationHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)

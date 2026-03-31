@@ -358,6 +358,7 @@ func main() {
 				conversations.PUT("/:id/messages/:msgId/recall", convHandler.RecallMessage)
 				conversations.POST("/:id/messages/batch-delete", convHandler.BatchDeleteMessages)
 				conversations.POST("/:id/messages/batch-recall", convHandler.BatchRecallMessages)
+				conversations.PUT("/:id/messages/:msgId/reaction", convHandler.ToggleReaction)
 
 				}
 

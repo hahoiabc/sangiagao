@@ -286,3 +286,30 @@ func (h *ConversationHandler) BatchRecallMessages(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Đã thu hồi tin nhắn"})
 }
+
+func (h *ConversationHandler) ToggleReaction(c *gin.Context) {
+	userID := c.GetString("user_id")
+	conversationID := c.Param("id")
+	messageID := c.Param("msgId")
+
+	var req model.ToggleReactionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "message": err.Error()})
+		return
+	}
+
+	reactions, err := h.chatService.ToggleReaction(c.Request.Context(), userID, conversationID, messageID, req.Emoji)
+	if err != nil {
+		switch err {
+		case service.ErrMessageNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": "not_found", "message": err.Error()})
+		case service.ErrNotParticipant:
+			c.JSON(http.StatusForbidden, gin.H{"error": "forbidden", "message": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal", "message": "thả cảm xúc thất bại"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"reactions": reactions})
+}

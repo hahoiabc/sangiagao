@@ -125,20 +125,25 @@ func (r *ConversationRepo) ListByUser(ctx context.Context, userID string, page, 
 	return convs, total, rows.Err()
 }
 
-func (r *ConversationRepo) SendMessage(ctx context.Context, conversationID, senderID, content, msgType string) (*model.Message, error) {
+func (r *ConversationRepo) SendMessage(ctx context.Context, conversationID, senderID, content, msgType string, replyToID *string) (*model.Message, error) {
 	if msgType == "" {
 		msgType = "text"
 	}
 
 	var msg model.Message
 	err := r.pool.QueryRow(ctx,
-		`INSERT INTO messages (conversation_id, sender_id, content, type)
-		 VALUES ($1, $2, $3, $4)
-		 RETURNING id, conversation_id, sender_id, content, type, read_at, created_at`,
-		conversationID, senderID, content, msgType,
-	).Scan(&msg.ID, &msg.ConversationID, &msg.SenderID, &msg.Content, &msg.Type, &msg.ReadAt, &msg.CreatedAt)
+		`INSERT INTO messages (conversation_id, sender_id, content, type, reply_to_id)
+		 VALUES ($1, $2, $3, $4, $5)
+		 RETURNING id, conversation_id, sender_id, content, type, read_at, reply_to_id, created_at`,
+		conversationID, senderID, content, msgType, replyToID,
+	).Scan(&msg.ID, &msg.ConversationID, &msg.SenderID, &msg.Content, &msg.Type, &msg.ReadAt, &msg.ReplyToID, &msg.CreatedAt)
 	if err != nil {
 		return nil, err
+	}
+
+	// Load reply_to message if present
+	if msg.ReplyToID != nil {
+		r.loadReplyTo(ctx, &msg)
 	}
 
 	// Update last_message_at
@@ -147,6 +152,19 @@ func (r *ConversationRepo) SendMessage(ctx context.Context, conversationID, send
 	)
 
 	return &msg, nil
+}
+
+func (r *ConversationRepo) loadReplyTo(ctx context.Context, msg *model.Message) {
+	if msg.ReplyToID == nil {
+		return
+	}
+	var reply model.ReplyMessage
+	err := r.pool.QueryRow(ctx,
+		`SELECT id, sender_id, content, type FROM messages WHERE id = $1`, *msg.ReplyToID,
+	).Scan(&reply.ID, &reply.SenderID, &reply.Content, &reply.Type)
+	if err == nil {
+		msg.ReplyTo = &reply
+	}
 }
 
 func (r *ConversationRepo) GetMessages(ctx context.Context, conversationID, readerID string, page, limit int) ([]*model.Message, int, error) {
@@ -165,7 +183,7 @@ func (r *ConversationRepo) GetMessages(ctx context.Context, conversationID, read
 	}
 
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, conversation_id, sender_id, content, type, read_at, created_at
+		`SELECT id, conversation_id, sender_id, content, type, read_at, reply_to_id, created_at
 		 FROM messages
 		 WHERE conversation_id = $1
 		   AND NOT (sender_id = $2 AND deleted_by_sender = true)
@@ -179,17 +197,59 @@ func (r *ConversationRepo) GetMessages(ctx context.Context, conversationID, read
 	defer rows.Close()
 
 	var messages []*model.Message
+	var msgIDs []string
 	for rows.Next() {
 		var m model.Message
-		if err := rows.Scan(&m.ID, &m.ConversationID, &m.SenderID, &m.Content, &m.Type, &m.ReadAt, &m.CreatedAt); err != nil {
+		if err := rows.Scan(&m.ID, &m.ConversationID, &m.SenderID, &m.Content, &m.Type, &m.ReadAt, &m.ReplyToID, &m.CreatedAt); err != nil {
 			return nil, 0, err
 		}
 		messages = append(messages, &m)
+		msgIDs = append(msgIDs, m.ID)
 	}
 	if messages == nil {
 		messages = []*model.Message{}
 	}
-	return messages, total, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	// Load reply_to for messages that have reply_to_id
+	for _, m := range messages {
+		r.loadReplyTo(ctx, m)
+	}
+
+	// Load reactions for all messages in batch
+	if len(msgIDs) > 0 {
+		r.loadReactions(ctx, messages, msgIDs)
+	}
+
+	return messages, total, nil
+}
+
+func (r *ConversationRepo) loadReactions(ctx context.Context, messages []*model.Message, msgIDs []string) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, message_id, user_id, emoji, created_at
+		 FROM message_reactions WHERE message_id = ANY($1::uuid[])
+		 ORDER BY created_at`, msgIDs,
+	)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	reactionMap := make(map[string][]model.MessageReaction)
+	for rows.Next() {
+		var r model.MessageReaction
+		if err := rows.Scan(&r.ID, &r.MessageID, &r.UserID, &r.Emoji, &r.CreatedAt); err != nil {
+			continue
+		}
+		reactionMap[r.MessageID] = append(reactionMap[r.MessageID], r)
+	}
+	for _, m := range messages {
+		if reactions, ok := reactionMap[m.ID]; ok {
+			m.Reactions = reactions
+		}
+	}
 }
 
 func (r *ConversationRepo) MarkRead(ctx context.Context, conversationID, readerID string) error {
@@ -247,9 +307,9 @@ func (r *ConversationRepo) RecallMessage(ctx context.Context, messageID string) 
 func (r *ConversationRepo) GetMessageByID(ctx context.Context, messageID string) (*model.Message, error) {
 	var m model.Message
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, conversation_id, sender_id, content, type, read_at, created_at
+		`SELECT id, conversation_id, sender_id, content, type, read_at, reply_to_id, created_at
 		 FROM messages WHERE id = $1`, messageID,
-	).Scan(&m.ID, &m.ConversationID, &m.SenderID, &m.Content, &m.Type, &m.ReadAt, &m.CreatedAt)
+	).Scan(&m.ID, &m.ConversationID, &m.SenderID, &m.Content, &m.Type, &m.ReadAt, &m.ReplyToID, &m.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, errors.New("message not found")
 	}
@@ -268,4 +328,55 @@ func (r *ConversationRepo) IsParticipant(ctx context.Context, conversationID, us
 		)`, conversationID, userID,
 	).Scan(&exists)
 	return exists, err
+}
+
+// --- Reactions ---
+
+func (r *ConversationRepo) ToggleReaction(ctx context.Context, messageID, userID, emoji string) (bool, error) {
+	// Try to delete first (toggle off)
+	result, err := r.pool.Exec(ctx,
+		`DELETE FROM message_reactions WHERE message_id = $1 AND user_id = $2 AND emoji = $3`,
+		messageID, userID, emoji,
+	)
+	if err != nil {
+		return false, err
+	}
+	if result.RowsAffected() > 0 {
+		return false, nil // removed
+	}
+
+	// Insert (toggle on)
+	_, err = r.pool.Exec(ctx,
+		`INSERT INTO message_reactions (message_id, user_id, emoji) VALUES ($1, $2, $3)
+		 ON CONFLICT (message_id, user_id, emoji) DO NOTHING`,
+		messageID, userID, emoji,
+	)
+	if err != nil {
+		return false, err
+	}
+	return true, nil // added
+}
+
+func (r *ConversationRepo) GetReactionsByMessage(ctx context.Context, messageID string) ([]model.MessageReaction, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, message_id, user_id, emoji, created_at
+		 FROM message_reactions WHERE message_id = $1 ORDER BY created_at`, messageID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var reactions []model.MessageReaction
+	for rows.Next() {
+		var r model.MessageReaction
+		if err := rows.Scan(&r.ID, &r.MessageID, &r.UserID, &r.Emoji, &r.CreatedAt); err != nil {
+			return nil, err
+		}
+		reactions = append(reactions, r)
+	}
+	if reactions == nil {
+		reactions = []model.MessageReaction{}
+	}
+	return reactions, rows.Err()
 }

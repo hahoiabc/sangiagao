@@ -167,7 +167,7 @@ type ConversationRepository interface {
 	FindOrCreate(ctx context.Context, buyerID, sellerID string, listingID *string) (*model.Conversation, error)
 	GetByID(ctx context.Context, id string) (*model.Conversation, error)
 	ListByUser(ctx context.Context, userID string, page, limit int) ([]*model.Conversation, int, error)
-	SendMessage(ctx context.Context, conversationID, senderID, content, msgType string) (*model.Message, error)
+	SendMessage(ctx context.Context, conversationID, senderID, content, msgType string, replyToID *string) (*model.Message, error)
 	GetMessages(ctx context.Context, conversationID, readerID string, page, limit int) ([]*model.Message, int, error)
 	MarkRead(ctx context.Context, conversationID, readerID string) error
 	IsParticipant(ctx context.Context, conversationID, userID string) (bool, error)
@@ -176,4 +176,6 @@ type ConversationRepository interface {
 	DeleteMessages(ctx context.Context, messageIDs []string, asSender bool) error
 	RecallMessage(ctx context.Context, messageID string) error
 	RecallMessages(ctx context.Context, messageIDs []string) error
+	ToggleReaction(ctx context.Context, messageID, userID, emoji string) (bool, error)
+	GetReactionsByMessage(ctx context.Context, messageID string) ([]model.MessageReaction, error)
 }

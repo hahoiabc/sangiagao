@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart' show Share;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:record/record.dart';
@@ -73,6 +75,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   // Listing link cache
   final Map<String, ListingDetail?> _listingCache = {};
+
+  // Reply mode
+  Message? _replyingTo;
+
+  // Reaction emojis
+  static const _reactionEmojis = ['👍', '❤️', '😂', '😮', '😢', '😡'];
 
   // Phoenix chat service URL
   static const String _phoenixWsUrl = Env.wsBaseUrl;
@@ -272,6 +280,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     if (event == 'read_receipt') return;
 
+    if (event == 'reaction' && topic == 'chat:${widget.conversationId}') {
+      final msgId = payload['message_id']?.toString();
+      final userId = payload['user_id']?.toString();
+      final emoji = payload['emoji']?.toString();
+      if (msgId != null && userId != null && emoji != null && userId != _currentUserId) {
+        // Reload messages to get updated reactions from server
+        _pollNewMessages();
+      }
+      return;
+    }
+
     if (event == 'typing' && topic == 'chat:${widget.conversationId}') {
       final typingUserId = payload['user_id']?.toString();
       if (typingUserId != null && typingUserId != _currentUserId) {
@@ -316,14 +335,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (text.isEmpty) return;
     _msgCtrl.clear();
     _typingDebounce?.cancel();
-    await _sendMessage(text, 'text');
+    final replyId = _replyingTo?.id;
+    setState(() => _replyingTo = null);
+    await _sendMessage(text, 'text', replyToId: replyId);
   }
 
-  Future<void> _sendMessage(String content, String type) async {
+  Future<void> _sendMessage(String content, String type, {String? replyToId}) async {
     try {
       // Send via HTTP API — backend handles persistence and WS broadcast
       final msg = await ref.read(apiServiceProvider).sendMessage(
-        widget.conversationId, content, type: type,
+        widget.conversationId, content, type: type, replyToId: replyToId,
       );
       setState(() => _messages.add(msg));
       _scrollToBottom();
@@ -563,6 +584,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     final isMe = msg.senderId == _currentUserId;
     final canRecall = isMe && _canRecall(msg);
+    final isText = msg.type == 'text';
 
     showModalBottomSheet(
       context: context,
@@ -570,6 +592,62 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Reaction row
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: _reactionEmojis.map((emoji) {
+                  final hasReacted = msg.reactions.any((r) => r.emoji == emoji && r.userId == _currentUserId);
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                      _toggleReaction(msg, emoji);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: hasReacted
+                          ? BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(20),
+                            )
+                          : null,
+                      child: Text(emoji, style: const TextStyle(fontSize: 24)),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.reply, color: AppColors.primary),
+              title: const Text('Trả lời'),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _replyingTo = msg);
+              },
+            ),
+            if (isText)
+              ListTile(
+                leading: const Icon(Icons.copy, color: AppColors.info),
+                title: const Text('Sao chép'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Clipboard.setData(ClipboardData(text: msg.content));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Đã sao chép'), duration: Duration(seconds: 1)),
+                  );
+                },
+              ),
+            if (isText)
+              ListTile(
+                leading: const Icon(Icons.share, color: AppColors.primary),
+                title: const Text('Chia sẻ'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Share.share(msg.content);
+                },
+              ),
             if (canRecall)
               ListTile(
                 leading: const Icon(Icons.replay, color: AppColors.warning),
@@ -599,6 +677,45 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _toggleReaction(Message msg, String emoji) async {
+    try {
+      final reactions = await ref.read(apiServiceProvider).toggleReaction(
+        widget.conversationId, msg.id, emoji,
+      );
+      // Broadcast via WS so the other user sees it
+      if (_joined && _channel != null) {
+        _phoenixSend('chat:${widget.conversationId}', 'reaction', {
+          'message_id': msg.id,
+          'emoji': emoji,
+        });
+      }
+      setState(() {
+        final idx = _messages.indexWhere((m) => m.id == msg.id);
+        if (idx != -1) {
+          final old = _messages[idx];
+          _messages[idx] = Message(
+            id: old.id,
+            conversationId: old.conversationId,
+            senderId: old.senderId,
+            content: old.content,
+            type: old.type,
+            readAt: old.readAt,
+            replyToId: old.replyToId,
+            replyTo: old.replyTo,
+            reactions: reactions,
+            createdAt: old.createdAt,
+          );
+        }
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Thả cảm xúc thất bại: $e')),
+        );
+      }
+    }
   }
 
   void _enterSelectMode(Message msg) {
@@ -1106,36 +1223,48 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           else if (isListingLink)
             _buildListingLinkBubble(msg, isMe)
           else if (isAudio)
-            _buildAudioBubble(msg, isMe)
+            Column(
+              crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: [
+                if (msg.replyTo != null) _buildReplyQuote(msg.replyTo!, isMe),
+                _buildAudioBubble(msg, isMe),
+              ],
+            )
           else if (isImage)
-            GestureDetector(
-              onTap: _selectMode ? null : () => _showFullImage(msg.content),
-              child: ClipRRect(
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(16),
-                  topRight: const Radius.circular(16),
-                  bottomLeft: Radius.circular(isMe ? 16 : 4),
-                  bottomRight: Radius.circular(isMe ? 4 : 16),
-                ),
-                child: CachedNetworkImage(
-                  imageUrl: msg.content,
-                  width: 200,
-                  height: 200,
-                  fit: BoxFit.cover,
-                  placeholder: (_, __) => Container(
-                    width: 200,
-                    height: 200,
-                    color: AppColors.chatBubbleOther,
-                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            Column(
+              crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: [
+                if (msg.replyTo != null) _buildReplyQuote(msg.replyTo!, isMe),
+                GestureDetector(
+                  onTap: _selectMode ? null : () => _showFullImage(msg.content),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(16),
+                      topRight: const Radius.circular(16),
+                      bottomLeft: Radius.circular(isMe ? 16 : 4),
+                      bottomRight: Radius.circular(isMe ? 4 : 16),
+                    ),
+                    child: CachedNetworkImage(
+                      imageUrl: msg.content,
+                      width: 200,
+                      height: 200,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => Container(
+                        width: 200,
+                        height: 200,
+                        color: AppColors.chatBubbleOther,
+                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      ),
+                      errorWidget: (_, __, ___) => Container(
+                        width: 200,
+                        height: 200,
+                        color: AppColors.chatBubbleOther,
+                        child: const Icon(Icons.broken_image, size: 48, color: AppColors.textHint),
+                      ),
+                    ),
                   ),
-                  errorWidget: (_, __, ___) => Container(
-                    width: 200,
-                    height: 200,
-                    color: AppColors.chatBubbleOther,
-                    child: const Icon(Icons.broken_image, size: 48, color: AppColors.textHint),
-                  ),
                 ),
-              ),
+              ],
             )
           else
             Container(
@@ -1149,11 +1278,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   bottomRight: Radius.circular(isMe ? 4 : 16),
                 ),
               ),
-              child: Text(
-                msg.content,
-                style: TextStyle(color: isMe ? Colors.white : AppColors.textPrimary),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (msg.replyTo != null) ...[
+                    _buildReplyQuote(msg.replyTo!, isMe),
+                    const SizedBox(height: 6),
+                  ],
+                  Text(
+                    msg.content,
+                    style: TextStyle(color: isMe ? Colors.white : AppColors.textPrimary),
+                  ),
+                ],
               ),
             ),
+          // Reactions display
+          if (msg.reactions.isNotEmpty)
+            _buildReactionsRow(msg),
           if (isMe && msg.isRead)
             Padding(
               padding: const EdgeInsets.only(top: 2, right: 4),
@@ -1250,6 +1392,106 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
+  Widget _buildReplyQuote(ReplyMessage reply, bool isMe) {
+    String preview;
+    switch (reply.type) {
+      case 'image':
+        preview = '[Hình ảnh]';
+        break;
+      case 'audio':
+        preview = '[Tin nhắn thoại]';
+        break;
+      case 'listing_link':
+        preview = '[Tin đăng]';
+        break;
+      default:
+        preview = reply.content.length > 80 ? '${reply.content.substring(0, 80)}...' : reply.content;
+    }
+    final isMeSender = reply.senderId == _currentUserId;
+    final senderName = isMeSender ? 'Bạn' : (_otherUser?.name ?? 'Đối phương');
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: isMe ? Colors.white.withValues(alpha: 0.15) : AppColors.border.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(8),
+        border: Border(
+          left: BorderSide(
+            color: isMe ? Colors.white70 : AppColors.primary,
+            width: 3,
+          ),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            senderName,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isMe ? Colors.white : AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            preview,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              color: isMe ? Colors.white70 : AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReactionsRow(Message msg) {
+    // Group reactions by emoji with count
+    final Map<String, List<String>> grouped = {};
+    for (final r in msg.reactions) {
+      grouped.putIfAbsent(r.emoji, () => []).add(r.userId);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Wrap(
+        spacing: 4,
+        children: grouped.entries.map((e) {
+          final hasMyReaction = e.value.contains(_currentUserId);
+          return GestureDetector(
+            onTap: () => _toggleReaction(msg, e.key),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: hasMyReaction
+                    ? AppColors.primary.withValues(alpha: 0.15)
+                    : AppColors.chatBubbleOther,
+                borderRadius: BorderRadius.circular(12),
+                border: hasMyReaction
+                    ? Border.all(color: AppColors.primary.withValues(alpha: 0.4))
+                    : null,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(e.key, style: const TextStyle(fontSize: 14)),
+                  if (e.value.length > 1) ...[
+                    const SizedBox(width: 2),
+                    Text('${e.value.length}', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                  ],
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   void _showFullImage(String url) {
     showDialog(
       context: context,
@@ -1320,7 +1562,51 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
       ),
       child: SafeArea(
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Reply preview bar
+            if (_replyingTo != null)
+              Container(
+                padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+                decoration: BoxDecoration(
+                  color: AppColors.chatBubbleOther.withValues(alpha: 0.5),
+                  border: Border(left: BorderSide(color: AppColors.primary, width: 3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.reply, size: 16, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _replyingTo!.senderId == _currentUserId ? 'Bạn' : (_otherUser?.name ?? 'Đối phương'),
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
+                          ),
+                          Text(
+                            _replyingTo!.type == 'image' ? '[Hình ảnh]'
+                                : _replyingTo!.type == 'audio' ? '[Tin nhắn thoại]'
+                                : _replyingTo!.content.length > 50 ? '${_replyingTo!.content.substring(0, 50)}...' : _replyingTo!.content,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      onPressed: () => setState(() => _replyingTo = null),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+              ),
+            Row(
           children: [
             _uploadingImage
                 ? const Padding(
@@ -1367,6 +1653,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               onPressed: _send,
               icon: const Icon(Icons.send),
             ),
+          ],
+        ),
           ],
         ),
       ),

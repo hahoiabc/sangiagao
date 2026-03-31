@@ -27,7 +27,11 @@ defmodule RiceChatWeb.ChatChannel do
   end
 
   @impl true
-  def handle_in("new_message", %{"content" => content, "type" => type}, socket) do
+  def handle_in("new_message", payload, socket) do
+    content = payload["content"] || ""
+    type = payload["type"] || "text"
+    reply_to_id = payload["reply_to_id"]
+
     cond do
       type not in @valid_types ->
         {:reply, {:error, %{reason: "invalid message type"}}, socket}
@@ -49,6 +53,7 @@ defmodule RiceChatWeb.ChatChannel do
           sender_id: socket.assigns.user_id,
           content: content,
           type: type,
+          reply_to_id: reply_to_id,
           timestamp: DateTime.utc_now(),
           read_at: nil
         }
@@ -77,18 +82,30 @@ defmodule RiceChatWeb.ChatChannel do
     {:noreply, socket}
   end
 
+  @impl true
+  def handle_in("reaction", %{"message_id" => message_id, "emoji" => emoji}, socket) do
+    broadcast!(socket, "reaction", %{
+      message_id: message_id,
+      user_id: socket.assigns.user_id,
+      emoji: emoji
+    })
+    {:noreply, socket}
+  end
+
   # --- Serialization ---
 
   defp serialize_message(msg) do
-    %{
+    base = %{
       id: to_string(msg[:id] || msg[:_id] || ""),
       conversation_id: to_string(msg[:conversation_id] || ""),
       sender_id: to_string(msg[:sender_id] || ""),
       content: to_string(msg[:content] || ""),
       type: to_string(msg[:type] || "text"),
+      reply_to_id: if(msg[:reply_to_id], do: to_string(msg[:reply_to_id]), else: nil),
       timestamp: format_dt(msg[:timestamp]),
       read_at: format_dt(msg[:read_at])
     }
+    base
   end
 
   defp format_dt(nil), do: nil

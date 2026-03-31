@@ -33,8 +33,8 @@ func (m *mockConvRepo) ListByUser(ctx context.Context, userID string, page, limi
 	}
 	return args.Get(0).([]*model.Conversation), args.Int(1), args.Error(2)
 }
-func (m *mockConvRepo) SendMessage(ctx context.Context, conversationID, senderID, content, msgType string) (*model.Message, error) {
-	args := m.Called(ctx, conversationID, senderID, content, msgType)
+func (m *mockConvRepo) SendMessage(ctx context.Context, conversationID, senderID, content, msgType string, replyToID *string) (*model.Message, error) {
+	args := m.Called(ctx, conversationID, senderID, content, msgType, replyToID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -73,6 +73,17 @@ func (m *mockConvRepo) RecallMessage(ctx context.Context, messageID string) erro
 }
 func (m *mockConvRepo) RecallMessages(ctx context.Context, messageIDs []string) error {
 	return m.Called(ctx, messageIDs).Error(0)
+}
+func (m *mockConvRepo) ToggleReaction(ctx context.Context, messageID, userID, emoji string) (bool, error) {
+	args := m.Called(ctx, messageID, userID, emoji)
+	return args.Bool(0), args.Error(1)
+}
+func (m *mockConvRepo) GetReactionsByMessage(ctx context.Context, messageID string) ([]model.MessageReaction, error) {
+	args := m.Called(ctx, messageID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]model.MessageReaction), args.Error(1)
 }
 
 // --- Tests ---
@@ -142,7 +153,7 @@ func TestChatSendMessage_Success(t *testing.T) {
 	svc := NewChatService(repo, nil)
 
 	repo.On("IsParticipant", mock.Anything, "conv-1", "user-1").Return(true, nil)
-	repo.On("SendMessage", mock.Anything, "conv-1", "user-1", "Hello", "text").
+	repo.On("SendMessage", mock.Anything, "conv-1", "user-1", "Hello", "text", (*string)(nil)).
 		Return(&model.Message{ID: "msg-1", Content: "Hello", Type: "text"}, nil)
 
 	req := &model.SendMessageRequest{Content: "Hello"}
@@ -218,7 +229,7 @@ func TestChatSendMessage_ImageType(t *testing.T) {
 	svc := NewChatService(repo, nil)
 
 	repo.On("IsParticipant", mock.Anything, "conv-1", "user-1").Return(true, nil)
-	repo.On("SendMessage", mock.Anything, "conv-1", "user-1", "https://img.com/photo.jpg", "image").
+	repo.On("SendMessage", mock.Anything, "conv-1", "user-1", "https://img.com/photo.jpg", "image", (*string)(nil)).
 		Return(&model.Message{ID: "msg-2", Type: "image"}, nil)
 
 	req := &model.SendMessageRequest{Content: "https://img.com/photo.jpg", Type: "image"}

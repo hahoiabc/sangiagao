@@ -102,7 +102,7 @@ func (s *ChatService) SendMessage(ctx context.Context, userID, conversationID st
 	if msgType == "" {
 		msgType = "text"
 	}
-	return s.convRepo.SendMessage(ctx, conversationID, userID, req.Content, msgType)
+	return s.convRepo.SendMessage(ctx, conversationID, userID, req.Content, msgType, req.ReplyToID)
 }
 
 func (s *ChatService) GetMessages(ctx context.Context, userID, conversationID string, page, limit int) ([]*model.Message, int, error) {
@@ -252,4 +252,25 @@ func (s *ChatService) RecallMessages(ctx context.Context, userID, conversationID
 		}
 	}
 	return s.convRepo.RecallMessages(ctx, messageIDs)
+}
+
+func (s *ChatService) ToggleReaction(ctx context.Context, userID, conversationID, messageID, emoji string) ([]model.MessageReaction, error) {
+	msg, err := s.convRepo.GetMessageByID(ctx, messageID)
+	if err != nil {
+		return nil, ErrMessageNotFound
+	}
+	if msg.ConversationID != conversationID {
+		return nil, ErrMessageNotFound
+	}
+	ok, err := s.convRepo.IsParticipant(ctx, conversationID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, ErrNotParticipant
+	}
+	if _, err := s.convRepo.ToggleReaction(ctx, messageID, userID, emoji); err != nil {
+		return nil, err
+	}
+	return s.convRepo.GetReactionsByMessage(ctx, messageID)
 }
