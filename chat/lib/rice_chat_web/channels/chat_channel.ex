@@ -82,6 +82,22 @@ defmodule RiceChatWeb.ChatChannel do
     {:noreply, socket}
   end
 
+  # Relay: broadcast a message already saved by Go backend (no DB write)
+  @impl true
+  def handle_in("relay", payload, socket) do
+    broadcast_from!(socket, "new_message", %{
+      id: to_string(payload["id"] || ""),
+      conversation_id: to_string(payload["conversation_id"] || socket.assigns.conversation_id),
+      sender_id: to_string(payload["sender_id"] || socket.assigns.user_id),
+      content: to_string(payload["content"] || ""),
+      type: to_string(payload["type"] || "text"),
+      reply_to_id: if(payload["reply_to_id"], do: to_string(payload["reply_to_id"]), else: nil),
+      timestamp: to_string(payload["created_at"] || DateTime.to_iso8601(DateTime.utc_now())),
+      read_at: nil
+    })
+    {:noreply, socket}
+  end
+
   @impl true
   def handle_in("reaction", %{"message_id" => message_id, "emoji" => emoji}, socket) do
     broadcast!(socket, "reaction", %{

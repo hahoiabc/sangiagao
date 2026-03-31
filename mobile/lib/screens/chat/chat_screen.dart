@@ -209,10 +209,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _pollTimer = Timer.periodic(const Duration(seconds: 10), (_) => _pollNewMessages());
   }
 
-  void _stopPolling() {
-    _pollTimer?.cancel();
-    _pollTimer = null;
-  }
 
   Future<void> _pollNewMessages() async {
     if (!mounted) return;
@@ -252,7 +248,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (event == 'phx_reply' && topic == 'chat:${widget.conversationId}') {
       if (payload['status'] == 'ok') {
         _joined = true;
-        _stopPolling(); // Only stop polling after successfully joined
+        // Slow down polling as safety net (WS handles real-time via relay)
+        _pollTimer?.cancel();
+        _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) => _pollNewMessages());
         debugPrint('Joined Phoenix channel chat:${widget.conversationId}');
       }
       return;
@@ -342,12 +340,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Future<void> _sendMessage(String content, String type, {String? replyToId}) async {
     try {
-      // Send via HTTP API — backend handles persistence and WS broadcast
+      // Send via HTTP API — Go backend handles persistence
       final msg = await ref.read(apiServiceProvider).sendMessage(
         widget.conversationId, content, type: type, replyToId: replyToId,
       );
       setState(() => _messages.add(msg));
       _scrollToBottom();
+      // Relay via Phoenix WS so other participant gets it in real-time
+      if (_joined && _channel != null) {
+        _phoenixSend('chat:${widget.conversationId}', 'relay', {
+          'id': msg.id,
+          'conversation_id': msg.conversationId,
+          'sender_id': msg.senderId,
+          'content': msg.content,
+          'type': msg.type,
+          'reply_to_id': msg.replyToId,
+          'created_at': msg.createdAt,
+        });
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
