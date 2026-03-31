@@ -125,7 +125,7 @@ func main() {
 	}
 
 	// --- Worker Pool (bounded async tasks: push notifications, etc.) ---
-	pushPool := workerpool.New(10, 10000)
+	pushPool := workerpool.New(50, 10000)
 	defer pushPool.Stop()
 
 	// --- Repositories ---
