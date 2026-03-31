@@ -35,7 +35,6 @@ class _ChangePhoneScreenState extends ConsumerState<ChangePhoneScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       await ref.read(apiServiceProvider).sendOTP(phone);
-      _otpCtrl.text = '123456';
       setState(() => _otpStep = true);
     } catch (e) {
       String msg = 'Gửi mã OTP thất bại';

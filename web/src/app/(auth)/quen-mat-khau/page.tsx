@@ -25,7 +25,6 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     try {
       await sendOTP(phone);
-      setCode("123456");
       setStep("reset");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gửi mã OTP thất bại");

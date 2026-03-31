@@ -203,7 +203,6 @@ export default function ProfilePage() {
     setPhoneSaving(true);
     try {
       await sendOTP(newPhone);
-      setPhoneOtp("123456");
       setPhoneStep("otp");
       toast.success("Đã gửi mã OTP đến số mới");
     } catch (err) {
