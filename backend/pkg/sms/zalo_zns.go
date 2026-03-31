@@ -2,6 +2,7 @@ package sms
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,6 +11,13 @@ import (
 	"net/url"
 	"sync"
 	"time"
+
+	"github.com/sangiagao/rice-marketplace/pkg/cache"
+)
+
+const (
+	zaloRefreshTokenKey = "zalo:refresh_token"
+	zaloRefreshTokenTTL = 90 * 24 * time.Hour // 90 days
 )
 
 // ZaloZNSSender sends OTP via Zalo Notification Service (ZNS).
@@ -22,6 +30,7 @@ type ZaloZNSSender struct {
 	tokenExpiry  time.Time
 	mu           sync.Mutex
 	client       *http.Client
+	cache        cache.Cache
 }
 
 type znsRequest struct {
@@ -42,6 +51,19 @@ func NewZaloZNSSender(appID, appSecret, templateID, refreshToken string) *ZaloZN
 		templateID:   templateID,
 		refreshToken: refreshToken,
 		client:       &http.Client{Timeout: 10 * time.Second},
+	}
+}
+
+// SetCache enables Redis persistence for refresh tokens.
+// On startup, loads the latest refresh token from Redis (if available).
+func (z *ZaloZNSSender) SetCache(c cache.Cache) {
+	z.cache = c
+	// Load persisted refresh token (newer than env file)
+	if c != nil {
+		if raw, err := c.Get(context.Background(), zaloRefreshTokenKey); err == nil && len(raw) > 0 {
+			z.refreshToken = string(raw)
+			log.Printf("[ZALO ZNS] Loaded refresh token from Redis")
+		}
 	}
 }
 
@@ -140,6 +162,14 @@ func (z *ZaloZNSSender) getAccessToken() (string, error) {
 	z.accessToken = tokenResp.AccessToken
 	if tokenResp.RefreshToken != "" {
 		z.refreshToken = tokenResp.RefreshToken
+		// Persist new refresh token to Redis so it survives container restarts
+		if z.cache != nil {
+			if err := z.cache.Set(context.Background(), zaloRefreshTokenKey, []byte(z.refreshToken), zaloRefreshTokenTTL); err != nil {
+				log.Printf("[ZALO ZNS] Failed to persist refresh token to Redis: %v", err)
+			} else {
+				log.Printf("[ZALO ZNS] Refresh token persisted to Redis")
+			}
+		}
 	}
 	// Refresh 60s trước khi hết hạn
 	expiresIn, _ := tokenResp.ExpiresIn.Int64()

@@ -106,10 +106,16 @@ func main() {
 	switch cfg.SMSProvider {
 	case "zalo":
 		zaloSender := sms.NewZaloZNSSender(cfg.ZaloAppID, cfg.ZaloAppSecret, cfg.ZaloZNSTemplateID, cfg.ZaloRefreshToken)
+		if appCache != nil {
+			zaloSender.SetCache(appCache)
+		}
 		smsSender = zaloSender
 		slog.Info("SMS provider: Zalo ZNS")
 	case "zalo+mock":
 		zaloSender := sms.NewZaloZNSSender(cfg.ZaloAppID, cfg.ZaloAppSecret, cfg.ZaloZNSTemplateID, cfg.ZaloRefreshToken)
+		if appCache != nil {
+			zaloSender.SetCache(appCache)
+		}
 		smsSender = sms.NewFallbackSender(zaloSender, sms.NewMockSender())
 		slog.Info("SMS provider: Zalo ZNS + Mock fallback")
 	default:
