@@ -122,6 +122,29 @@ function ConfigTab() {
 
   return (
     <div className="space-y-6 max-w-2xl">
+      {/* Failure alert */}
+      {(status.consecutive_fails ?? 0) > 0 && (
+        <div className="rounded-lg border border-red-300 bg-red-50 p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <XCircle className="h-5 w-5 text-red-600 shrink-0" />
+            <p className="font-semibold text-red-800">
+              OTP đang gặp lỗi! ({status.consecutive_fails} lần liên tiếp)
+            </p>
+          </div>
+          <p className="text-sm text-red-700">
+            <strong>Lỗi:</strong> {status.last_error}
+          </p>
+          {status.last_fail_time && (
+            <p className="text-xs text-red-600">
+              Lần cuối: {new Date(status.last_fail_time).toLocaleString("vi-VN")}
+            </p>
+          )}
+          <p className="text-xs text-red-600">
+            User đăng ký/quên mật khẩu sẽ <strong>không nhận được OTP</strong>. Kiểm tra Refresh Token ngay!
+          </p>
+        </div>
+      )}
+
       {/* Current status */}
       <div className="rounded-lg border p-4 space-y-3">
         <div className="flex items-center justify-between">
@@ -171,6 +194,16 @@ function ConfigTab() {
               {status.redis_connected
                 ? <span className="text-green-600">Kết nối</span>
                 : <span className="text-red-500">Không kết nối</span>}
+            </span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Đã gửi:</span>
+            <span className="ml-2 text-green-600 font-medium">{status.total_sent ?? 0}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Thất bại:</span>
+            <span className={`ml-2 font-medium ${(status.total_fails ?? 0) > 0 ? "text-red-500" : ""}`}>
+              {status.total_fails ?? 0}
             </span>
           </div>
         </div>

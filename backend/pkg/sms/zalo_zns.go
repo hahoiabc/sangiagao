@@ -31,6 +31,13 @@ type ZaloZNSSender struct {
 	mu           sync.Mutex
 	client       *http.Client
 	cache        cache.Cache
+
+	// Failure tracking
+	consecutiveFails int
+	lastError        string
+	lastFailTime     time.Time
+	totalFails       int
+	totalSent        int
 }
 
 type znsRequest struct {
@@ -95,16 +102,24 @@ func (z *ZaloZNSSender) Status() map[string]interface{} {
 		}
 	}
 
-	return map[string]interface{}{
-		"app_id":          mask(z.appID),
-		"app_secret":      mask(z.appSecret),
-		"template_id":     z.templateID,
-		"refresh_token":   mask(z.refreshToken),
-		"access_token":    tokenStatus,
-		"token_expiry":    z.tokenExpiry.Format(time.RFC3339),
-		"refresh_source":  refreshSource,
-		"redis_connected": z.cache != nil,
+	result := map[string]interface{}{
+		"app_id":            mask(z.appID),
+		"app_secret":        mask(z.appSecret),
+		"template_id":       z.templateID,
+		"refresh_token":     mask(z.refreshToken),
+		"access_token":      tokenStatus,
+		"token_expiry":      z.tokenExpiry.Format(time.RFC3339),
+		"refresh_source":    refreshSource,
+		"redis_connected":   z.cache != nil,
+		"total_sent":        z.totalSent,
+		"total_fails":       z.totalFails,
+		"consecutive_fails": z.consecutiveFails,
 	}
+	if z.lastError != "" {
+		result["last_error"] = z.lastError
+		result["last_fail_time"] = z.lastFailTime.Format(time.RFC3339)
+	}
+	return result
 }
 
 // UpdateRefreshToken sets a new refresh token and persists to Redis.
@@ -127,6 +142,23 @@ func (z *ZaloZNSSender) UpdateRefreshToken(token string) error {
 	return nil
 }
 
+func (z *ZaloZNSSender) recordFail(errMsg string) {
+	z.mu.Lock()
+	defer z.mu.Unlock()
+	z.consecutiveFails++
+	z.totalFails++
+	z.lastError = errMsg
+	z.lastFailTime = time.Now()
+}
+
+func (z *ZaloZNSSender) recordSuccess() {
+	z.mu.Lock()
+	defer z.mu.Unlock()
+	z.consecutiveFails = 0
+	z.lastError = ""
+	z.totalSent++
+}
+
 func (z *ZaloZNSSender) SendOTP(phone, code string) error {
 	// Convert 0xxx → 84xxx
 	if len(phone) > 0 && phone[0] == '0' {
@@ -135,6 +167,7 @@ func (z *ZaloZNSSender) SendOTP(phone, code string) error {
 
 	token, err := z.getAccessToken()
 	if err != nil {
+		z.recordFail("Token error: " + err.Error())
 		return fmt.Errorf("zalo token: %w", err)
 	}
 
@@ -165,9 +198,11 @@ func (z *ZaloZNSSender) SendOTP(phone, code string) error {
 	}
 
 	if znsResp.Error != 0 {
+		z.recordFail(fmt.Sprintf("ZNS error %d: %s", znsResp.Error, znsResp.Message))
 		return fmt.Errorf("zalo ZNS error %d: %s", znsResp.Error, znsResp.Message)
 	}
 
+	z.recordSuccess()
 	log.Printf("[ZALO ZNS] OTP sent to %s", phone)
 	return nil
 }

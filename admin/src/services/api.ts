@@ -764,6 +764,11 @@ export interface ZaloZNSStatus {
   token_expiry?: string;
   refresh_source?: string;
   redis_connected?: boolean;
+  total_sent?: number;
+  total_fails?: number;
+  consecutive_fails?: number;
+  last_error?: string;
+  last_fail_time?: string;
 }
 
 export async function getZaloZNSStatus(): Promise<ZaloZNSStatus> {
