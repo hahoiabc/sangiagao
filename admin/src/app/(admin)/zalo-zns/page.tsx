@@ -57,7 +57,10 @@ function ConfigTab() {
   const [testing, setTesting] = useState(false);
 
   const fetchStatus = useCallback(async () => {
-    if (!token) return;
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const data = await getZaloZNSStatus(token);
@@ -108,7 +111,7 @@ function ConfigTab() {
   }
 
   if (!status) {
-    return <div className="text-sm text-red-500 py-8 text-center">Không lấy được trạng thái</div>;
+    return <div className="text-sm text-red-500 py-8 text-center">{token ? "Không lấy được trạng thái" : "Đang xác thực..."}</div>;
   }
 
   if (!status.enabled) {
