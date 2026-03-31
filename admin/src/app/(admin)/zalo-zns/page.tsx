@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RefreshCw, Save, Send, CheckCircle, XCircle, AlertTriangle, Info, Copy } from "lucide-react";
 import { toast } from "sonner";
-import { useAuth } from "@/lib/auth";
 import { getZaloZNSStatus, updateZaloRefreshToken, testZaloZNS, type ZaloZNSStatus } from "@/services/api";
 
 export default function ZaloZNSPage() {
@@ -48,7 +47,6 @@ function StatusBadge({ value }: { value: string }) {
 }
 
 function ConfigTab() {
-  const { token } = useAuth();
   const [status, setStatus] = useState<ZaloZNSStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [newRefreshToken, setNewRefreshToken] = useState("");
@@ -57,13 +55,9 @@ function ConfigTab() {
   const [testing, setTesting] = useState(false);
 
   const fetchStatus = useCallback(async () => {
-    if (!token) {
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     try {
-      const data = await getZaloZNSStatus(token);
+      const data = await getZaloZNSStatus();
       setStatus(data);
     } catch (err) {
       toast.error("Không lấy được trạng thái ZNS");
@@ -71,17 +65,17 @@ function ConfigTab() {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     fetchStatus();
   }, [fetchStatus]);
 
   async function handleUpdateToken() {
-    if (!token || !newRefreshToken.trim()) return;
+    if (!newRefreshToken.trim()) return;
     setSaving(true);
     try {
-      const res = await updateZaloRefreshToken(token, newRefreshToken.trim());
+      const res = await updateZaloRefreshToken(newRefreshToken.trim());
       toast.success(res.message);
       setNewRefreshToken("");
       fetchStatus();
@@ -93,10 +87,10 @@ function ConfigTab() {
   }
 
   async function handleTest() {
-    if (!token || !testPhone.trim()) return;
+    if (!testPhone.trim()) return;
     setTesting(true);
     try {
-      const res = await testZaloZNS(token, testPhone.trim());
+      const res = await testZaloZNS(testPhone.trim());
       toast.success(res.message);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Gửi test thất bại";
@@ -111,7 +105,7 @@ function ConfigTab() {
   }
 
   if (!status) {
-    return <div className="text-sm text-red-500 py-8 text-center">{token ? "Không lấy được trạng thái" : "Đang xác thực..."}</div>;
+    return <div className="text-sm text-red-500 py-8 text-center">Không lấy được trạng thái</div>;
   }
 
   if (!status.enabled) {

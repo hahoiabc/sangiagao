@@ -766,21 +766,19 @@ export interface ZaloZNSStatus {
   redis_connected?: boolean;
 }
 
-export async function getZaloZNSStatus(token: string): Promise<ZaloZNSStatus> {
-  return request<ZaloZNSStatus>("/admin/zalo-zns/status", { token });
+export async function getZaloZNSStatus(): Promise<ZaloZNSStatus> {
+  return request<ZaloZNSStatus>("/admin/zalo-zns/status");
 }
 
-export async function updateZaloRefreshToken(token: string, refreshToken: string): Promise<{ message: string }> {
+export async function updateZaloRefreshToken(refreshToken: string): Promise<{ message: string }> {
   return request<{ message: string }>("/admin/zalo-zns/refresh-token", {
-    token,
     method: "PUT",
     body: JSON.stringify({ refresh_token: refreshToken }),
   });
 }
 
-export async function testZaloZNS(token: string, phone: string): Promise<{ message: string }> {
+export async function testZaloZNS(phone: string): Promise<{ message: string }> {
   return request<{ message: string }>("/admin/zalo-zns/test", {
-    token,
     method: "POST",
     body: JSON.stringify({ phone }),
   });
