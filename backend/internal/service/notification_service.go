@@ -7,15 +7,21 @@ import (
 
 	"github.com/sangiagao/rice-marketplace/internal/model"
 	"github.com/sangiagao/rice-marketplace/pkg/firebase"
+	"github.com/sangiagao/rice-marketplace/pkg/workerpool"
 )
 
 type NotificationService struct {
 	notifRepo  NotificationRepository
 	pushSender firebase.PushSender
+	pool       *workerpool.Pool
 }
 
 func NewNotificationService(notifRepo NotificationRepository, pushSender firebase.PushSender) *NotificationService {
 	return &NotificationService{notifRepo: notifRepo, pushSender: pushSender}
+}
+
+func (s *NotificationService) SetPool(p *workerpool.Pool) {
+	s.pool = p
 }
 
 func (s *NotificationService) RegisterDevice(ctx context.Context, userID, token, platform string) error {
@@ -42,9 +48,10 @@ func (s *NotificationService) Create(ctx context.Context, userID, nType, title, 
 		return nil, err
 	}
 
-	// Send push notification asynchronously
+	// Send push notification asynchronously via worker pool
 	if s.pushSender != nil {
-		go func() {
+		submit := s.submitTask
+		submit(func() {
 			tokens, err := s.notifRepo.GetDeviceTokens(context.Background(), userID)
 			if err != nil || len(tokens) == 0 {
 				return
@@ -56,7 +63,7 @@ func (s *NotificationService) Create(ctx context.Context, userID, nType, title, 
 			if err := s.pushSender.SendToTokens(context.Background(), tokens, title, body, "", pushData); err != nil {
 				log.Printf("Push notification error for user %s: %v", userID, err)
 			}
-		}()
+		})
 	}
 
 	return notif, nil
@@ -99,9 +106,9 @@ func (s *NotificationService) BroadcastNotification(ctx context.Context, nType, 
 		return 0, err
 	}
 
-	// Send push notifications asynchronously in batches of 500
+	// Send push notifications asynchronously via worker pool in batches of 500
 	if s.pushSender != nil {
-		go func() {
+		s.submitTask(func() {
 			tokens, err := s.notifRepo.GetAllDeviceTokens(context.Background())
 			if err != nil || len(tokens) == 0 {
 				return
@@ -118,8 +125,17 @@ func (s *NotificationService) BroadcastNotification(ctx context.Context, nType, 
 				}
 			}
 			log.Printf("Broadcast push sent to %d devices for %d users", len(tokens), len(userIDs))
-		}()
+		})
 	}
 
 	return len(userIDs), nil
+}
+
+// submitTask submits work to the pool if available, otherwise falls back to a goroutine.
+func (s *NotificationService) submitTask(fn func()) {
+	if s.pool != nil {
+		s.pool.Submit(fn)
+	} else {
+		go fn()
+	}
 }

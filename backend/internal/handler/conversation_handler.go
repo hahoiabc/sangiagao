@@ -9,15 +9,21 @@ import (
 	"github.com/sangiagao/rice-marketplace/internal/model"
 	"github.com/sangiagao/rice-marketplace/internal/repository"
 	"github.com/sangiagao/rice-marketplace/internal/service"
+	"github.com/sangiagao/rice-marketplace/pkg/workerpool"
 )
 
 type ConversationHandler struct {
 	chatService  ChatServiceInterface
 	notifService NotificationServiceInterface
+	pool         *workerpool.Pool
 }
 
 func NewConversationHandler(chatService ChatServiceInterface, notifService NotificationServiceInterface) *ConversationHandler {
 	return &ConversationHandler{chatService: chatService, notifService: notifService}
+}
+
+func (h *ConversationHandler) SetPool(p *workerpool.Pool) {
+	h.pool = p
 }
 
 func (h *ConversationHandler) Create(c *gin.Context) {
@@ -118,7 +124,14 @@ func (h *ConversationHandler) SendMessage(c *gin.Context) {
 
 	// Send push notification (FCM only, no DB record) to the other participant
 	if h.notifService != nil {
-		go func() {
+		submitFn := func(fn func()) {
+			if h.pool != nil {
+				h.pool.Submit(fn)
+			} else {
+				go fn()
+			}
+		}
+		submitFn(func() {
 			ctx := context.Background()
 			conv, err := h.chatService.GetConversation(ctx, conversationID)
 			if err != nil {
@@ -160,7 +173,7 @@ func (h *ConversationHandler) SendMessage(c *gin.Context) {
 			if err := h.notifService.SendPushOnly(ctx, recipientID, senderName, preview, pushData); err != nil {
 				log.Printf("Failed to send chat push: %v", err)
 			}
-		}()
+		})
 	}
 
 	c.JSON(http.StatusCreated, msg)

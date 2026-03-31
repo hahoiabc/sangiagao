@@ -24,6 +24,7 @@ import (
 	jwtpkg "github.com/sangiagao/rice-marketplace/pkg/jwt"
 	"github.com/sangiagao/rice-marketplace/pkg/sms"
 	"github.com/sangiagao/rice-marketplace/pkg/storage"
+	"github.com/sangiagao/rice-marketplace/pkg/workerpool"
 )
 
 func main() {
@@ -116,6 +117,10 @@ func main() {
 		slog.Info("SMS provider: Mock")
 	}
 
+	// --- Worker Pool (bounded async tasks: push notifications, etc.) ---
+	pushPool := workerpool.New(10, 10000)
+	defer pushPool.Stop()
+
 	// --- Repositories ---
 	userRepo := repository.NewUserRepo(pgPool, phoneCrypto)
 	otpRepo := repository.NewOTPRepo(pgPool, phoneCrypto)
@@ -155,6 +160,7 @@ func main() {
 		}
 	}
 	notifService := service.NewNotificationService(notifRepo, pushSender)
+	notifService.SetPool(pushPool)
 	subService.SetNotifier(notifService)
 	subService.SetOnExpiry(func(ctx context.Context) {
 		listingService.InvalidateMarketplaceCache(ctx)
@@ -167,6 +173,7 @@ func main() {
 	sponsorService := service.NewSponsorService(sponsorRepo)
 	feedbackService := service.NewFeedbackService(feedbackRepo)
 	inboxService := service.NewInboxService(inboxRepo, notifService)
+	inboxService.SetPool(pushPool)
 	catalogService := service.NewCatalogService(catalogRepo)
 	permissionService := service.NewPermissionService(permissionRepo, appCache)
 	var uploadService *service.UploadService
@@ -189,6 +196,7 @@ func main() {
 	notifHandler := handler.NewNotificationHandler(notifService)
 	adminHandler := handler.NewAdminHandler(adminService, auditRepo)
 	convHandler := handler.NewConversationHandler(chatService, notifService)
+	convHandler.SetPool(pushPool)
 	sponsorHandler := handler.NewSponsorHandler(sponsorService)
 	permissionHandler := handler.NewPermissionHandler(permissionService)
 	feedbackHandler := handler.NewFeedbackHandler(feedbackService, notifService)

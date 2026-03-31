@@ -5,15 +5,21 @@ import (
 	"log"
 
 	"github.com/sangiagao/rice-marketplace/internal/model"
+	"github.com/sangiagao/rice-marketplace/pkg/workerpool"
 )
 
 type InboxService struct {
 	inboxRepo    InboxRepository
 	notifService *NotificationService
+	pool         *workerpool.Pool
 }
 
 func NewInboxService(inboxRepo InboxRepository, notifService *NotificationService) *InboxService {
 	return &InboxService{inboxRepo: inboxRepo, notifService: notifService}
+}
+
+func (s *InboxService) SetPool(p *workerpool.Pool) {
+	s.pool = p
 }
 
 func (s *InboxService) Create(ctx context.Context, adminID string, req *model.CreateInboxRequest) (*model.InboxMessage, error) {
@@ -24,7 +30,14 @@ func (s *InboxService) Create(ctx context.Context, adminID string, req *model.Cr
 
 	// Async: send light push "Bạn có thông báo mới" to target users
 	if s.notifService != nil {
-		go func() {
+		submitFn := func(fn func()) {
+			if s.pool != nil {
+				s.pool.Submit(fn)
+			} else {
+				go fn()
+			}
+		}
+		submitFn(func() {
 			bgCtx := context.Background()
 			target := req.Target
 			if target == "" {
@@ -41,7 +54,7 @@ func (s *InboxService) Create(ctx context.Context, adminID string, req *model.Cr
 				}
 			}
 			log.Printf("Inbox push sent to %d users for inbox %s", len(userIDs), msg.ID)
-		}()
+		})
 	}
 
 	return msg, nil

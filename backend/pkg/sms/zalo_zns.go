@@ -115,17 +115,26 @@ func (z *ZaloZNSSender) getAccessToken() (string, error) {
 	}
 	defer resp.Body.Close()
 
+	respBody, _ := io.ReadAll(resp.Body)
+	log.Printf("[ZALO ZNS] OAuth response (HTTP %d): %s", resp.StatusCode, string(respBody))
+
 	var tokenResp struct {
-		AccessToken  string `json:"access_token"`
-		RefreshToken string `json:"refresh_token"`
-		ExpiresIn    int    `json:"expires_in"`
+		AccessToken  string      `json:"access_token"`
+		RefreshToken string      `json:"refresh_token"`
+		ExpiresIn    json.Number `json:"expires_in"`
+		Error        json.Number `json:"error"`
+		Message      string      `json:"message"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
+	if err := json.Unmarshal(respBody, &tokenResp); err != nil {
 		return "", fmt.Errorf("zalo oauth parse: %w", err)
 	}
 
+	if errCode, _ := tokenResp.Error.Int64(); errCode != 0 {
+		return "", fmt.Errorf("zalo oauth error %d: %s", errCode, tokenResp.Message)
+	}
+
 	if tokenResp.AccessToken == "" {
-		return "", fmt.Errorf("zalo oauth: empty access token")
+		return "", fmt.Errorf("zalo oauth: empty access token, raw: %s", string(respBody))
 	}
 
 	z.accessToken = tokenResp.AccessToken
@@ -133,8 +142,12 @@ func (z *ZaloZNSSender) getAccessToken() (string, error) {
 		z.refreshToken = tokenResp.RefreshToken
 	}
 	// Refresh 60s trước khi hết hạn
-	z.tokenExpiry = time.Now().Add(time.Duration(tokenResp.ExpiresIn-60) * time.Second)
+	expiresIn, _ := tokenResp.ExpiresIn.Int64()
+	if expiresIn <= 0 {
+		expiresIn = 3600 // default 1h
+	}
+	z.tokenExpiry = time.Now().Add(time.Duration(expiresIn-60) * time.Second)
 
-	log.Printf("[ZALO ZNS] Token refreshed, expires in %ds", tokenResp.ExpiresIn)
+	log.Printf("[ZALO ZNS] Token refreshed, expires in %ds", expiresIn)
 	return z.accessToken, nil
 }
