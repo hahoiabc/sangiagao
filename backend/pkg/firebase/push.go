@@ -215,17 +215,33 @@ func (s *FCMSender) SendToTokens(ctx context.Context, tokens []string, title, bo
 	}, "notification")
 }
 
-// SendDataOnly sends a data-only FCM message without notification field.
-// Critical for incoming calls: ensures onBackgroundMessage fires on Android
-// even when the app is killed, so CallKit can show the incoming call UI.
+// SendDataOnly sends a high-priority FCM message for incoming calls.
+// Uses notification+data hybrid so Android shows notification even when app is killed.
+// The notification field ensures delivery; the data field carries call metadata.
+// On foreground, Flutter intercepts and shows CallKit instead of the system notification.
 func (s *FCMSender) SendDataOnly(ctx context.Context, tokens []string, data map[string]string) error {
+	// Extract caller name for notification display
+	callerName := data["caller_name"]
+	if callerName == "" {
+		callerName = "Cuộc gọi đến"
+	}
+
 	return s.sendFCM(ctx, tokens, func(deviceToken string) fcmV1Request {
 		return fcmV1Request{
 			Message: fcmV1Message{
 				Token: deviceToken,
-				Data:  data,
+				Notification: &fcmNotification{
+					Title: "Cuộc gọi đến",
+					Body:  callerName + " đang gọi cho bạn",
+				},
+				Data: data,
 				Android: &fcmAndroid{
 					Priority: "high",
+					Notification: &fcmAndroidNotification{
+						ChannelID:    "callkit_incoming_channel_id",
+						Sound:        "default",
+						DefaultSound: true,
+					},
 				},
 				APNS: &fcmAPNS{
 					Headers: map[string]string{
@@ -241,7 +257,7 @@ func (s *FCMSender) SendDataOnly(ctx context.Context, tokens []string, data map[
 				},
 			},
 		}
-	}, "data-only")
+	}, "incoming-call")
 }
 
 // MockPushSender logs push notifications instead of sending them.

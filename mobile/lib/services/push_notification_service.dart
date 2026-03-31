@@ -14,12 +14,17 @@ import 'call_service.dart' show isInCall;
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
 
-  // Show incoming call UI even when app is in background
+  print('[BG_CALL] Background handler fired, type=${message.data['type']}, data=${message.data}');
+
+  // Show incoming call UI even when app is in background/killed
   if (message.data['type'] == 'incoming_call') {
     final callerName = message.data['caller_name'] ?? 'Người gọi';
     final callType = message.data['call_type'] ?? 'audio';
     final convId = message.data['conversation_id'] ?? '';
     final callId = message.data['call_id'] ?? convId;
+    final callerId = message.data['caller_id'] ?? '';
+
+    print('[BG_CALL] Showing CallKit: caller=$callerName, callId=$callId, callerId=$callerId');
 
     final params = CallKitParams(
       id: callId,
@@ -29,6 +34,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       duration: 60000,
       android: const AndroidParams(
         isShowLogo: false,
+        isShowFullLockedScreen: true,
         ringtonePath: 'system_ringtone_default',
         backgroundColor: '#1a1a2e',
         actionColor: '#4CAF50',
@@ -40,10 +46,13 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       extra: {
         'conversation_id': convId,
         'call_type': callType,
+        'caller_id': callerId,
+        'caller_name': callerName,
       },
     );
 
-    FlutterCallkitIncoming.showCallkitIncoming(params);
+    await FlutterCallkitIncoming.showCallkitIncoming(params);
+    print('[BG_CALL] CallKit shown successfully');
   }
 }
 
@@ -122,6 +131,15 @@ class PushNotificationService {
     enableVibration: false,
   );
 
+  static const _callChannel = AndroidNotificationChannel(
+    'sangiagao_calls',
+    'Cuộc gọi',
+    description: 'Thông báo cuộc gọi đến',
+    importance: Importance.max,
+    playSound: true,
+    enableVibration: true,
+  );
+
   PushNotificationService(this._api);
 
   Future<void> init() async {
@@ -129,9 +147,10 @@ class PushNotificationService {
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
 
-    // Create both notification channels
+    // Create all notification channels
     await androidPlugin?.createNotificationChannel(_channel);
     await androidPlugin?.createNotificationChannel(_silentChannel);
+    await androidPlugin?.createNotificationChannel(_callChannel);
 
     // Init local notifications with tap callback
     await _localNotifications.initialize(
