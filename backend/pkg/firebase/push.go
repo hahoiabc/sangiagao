@@ -215,33 +215,22 @@ func (s *FCMSender) SendToTokens(ctx context.Context, tokens []string, title, bo
 	}, "notification")
 }
 
-// SendDataOnly sends a high-priority FCM message for incoming calls.
-// Uses notification+data hybrid so Android shows notification even when app is killed.
-// The notification field ensures delivery; the data field carries call metadata.
-// On foreground, Flutter intercepts and shows CallKit instead of the system notification.
+// SendDataOnly sends a data-only high-priority FCM message for incoming calls.
+// MUST NOT have a "notification" field — otherwise Android OS intercepts it and
+// shows a text notification instead of firing onBackgroundMessage/native handler.
+//
+// Delivery chain on Android:
+// 1. Native: CallFirebaseService.onMessageReceived → shows CallKit directly (Kotlin)
+// 2. Dart backup: firebaseMessagingBackgroundHandler → shows CallKit (if native missed)
 func (s *FCMSender) SendDataOnly(ctx context.Context, tokens []string, data map[string]string) error {
-	// Extract caller name for notification display
-	callerName := data["caller_name"]
-	if callerName == "" {
-		callerName = "Cuộc gọi đến"
-	}
-
 	return s.sendFCM(ctx, tokens, func(deviceToken string) fcmV1Request {
 		return fcmV1Request{
 			Message: fcmV1Message{
 				Token: deviceToken,
-				Notification: &fcmNotification{
-					Title: "Cuộc gọi đến",
-					Body:  callerName + " đang gọi cho bạn",
-				},
+				// NO Notification field — data-only ensures native handler fires
 				Data: data,
 				Android: &fcmAndroid{
 					Priority: "high",
-					Notification: &fcmAndroidNotification{
-						ChannelID:    "callkit_incoming_channel_id",
-						Sound:        "default",
-						DefaultSound: true,
-					},
 				},
 				APNS: &fcmAPNS{
 					Headers: map[string]string{

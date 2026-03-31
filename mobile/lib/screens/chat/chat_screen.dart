@@ -22,6 +22,7 @@ import '../../providers/providers.dart';
 import '../../services/push_notification_service.dart';
 import '../../services/call_service.dart';
 import '../call/active_call_screen.dart';
+import '../call/call_history_screen.dart';
 import '../../theme/app_theme.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
@@ -912,9 +913,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   onSelected: (value) {
                     if (value == 'report_user' && _otherUser != null) {
                       _reportUser();
+                    } else if (value == 'call_history') {
+                      Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => CallHistoryScreen(
+                          conversationId: widget.conversationId,
+                          currentUserId: _currentUserId!,
+                        ),
+                      ));
                     }
                   },
                   itemBuilder: (_) => [
+                    const PopupMenuItem(value: 'call_history', child: Text('Lịch sử cuộc gọi')),
                     const PopupMenuItem(value: 'report_user', child: Text('Báo cáo người dùng')),
                   ],
                 ),

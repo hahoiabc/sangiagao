@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/providers.dart';
+import '../services/push_notification_service.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -35,6 +36,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
     if (_navigated || !_minDelayDone || !mounted) return;
     final authState = ref.read(authProvider);
     if (authState.status == AuthStatus.unknown) return;
+
+    // Cold-start call: don't navigate away — main.dart will push ActiveCallScreen
+    // on top of splash, then navigate to marketplace after call ends
+    if (PushNotificationService.hasPendingAccept) return;
 
     _navigated = true;
 

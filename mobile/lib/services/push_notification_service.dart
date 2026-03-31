@@ -93,13 +93,29 @@ class PushNotificationService {
   static VoidCallback? onCallRejected;
   static VoidCallback? onSystemInbox;
 
+  /// Called when callee declines from CallKit UI — need to reject via API
+  static void Function(String callId)? onDeclineCall;
+
   /// Pending CallKit accept data — stored when accept fires before callback is wired
   static Map<String, String>? _pendingAccept;
+
+  /// Pending CallKit decline callId — stored when decline fires before callback is wired
+  static String? _pendingDecline;
+
+  /// Check if there's a pending accept (for cold-start routing — keep splash screen)
+  static bool get hasPendingAccept => _pendingAccept != null;
 
   /// Consume pending accept data (returns and clears). Called from main.dart after auth is ready.
   static Map<String, String>? consumePendingAccept() {
     final data = _pendingAccept;
     _pendingAccept = null;
+    return data;
+  }
+
+  /// Consume pending decline callId (returns and clears). Called from main.dart after auth is ready.
+  static String? consumePendingDecline() {
+    final data = _pendingDecline;
+    _pendingDecline = null;
     return data;
   }
 
@@ -217,6 +233,29 @@ class PushNotificationService {
     // Handle call rejected push (callee rejected/busy) — notify caller to end call
     if (message.data['type'] == 'call_rejected') {
       onCallRejected?.call();
+      return;
+    }
+
+    // Handle missed call push — show local notification
+    if (message.data['type'] == 'missed_call') {
+      final callerName = message.data['caller_name'] ?? 'Người gọi';
+      _localNotifications.show(
+        'missed_call_${message.data['call_id']}'.hashCode,
+        'Cuộc gọi nhỡ',
+        '$callerName đã gọi cho bạn',
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            _channel.id,
+            _channel.name,
+            channelDescription: _channel.description,
+            importance: Importance.high,
+            priority: Priority.high,
+            icon: '@mipmap/ic_launcher',
+          ),
+          iOS: const DarwinNotificationDetails(sound: 'default'),
+        ),
+        payload: jsonEncode(message.data),
+      );
       return;
     }
 
@@ -442,9 +481,19 @@ class PushNotificationService {
           }
           break;
         case Event.actionCallDecline:
+          // B declined from CallKit UI → reject via API so A knows immediately
+          if (callId != null && callId.isNotEmpty) {
+            if (onDeclineCall != null) {
+              onDeclineCall!(callId);
+            } else {
+              // Callback not wired yet (cold start) — buffer for when it's ready
+              _pendingDecline = callId;
+            }
+          }
+          break;
         case Event.actionCallEnded:
         case Event.actionCallTimeout:
-          // Call ended/declined — no navigation needed
+          // Call ended/timed out — no action needed
           break;
         default:
           break;

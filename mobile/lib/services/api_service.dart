@@ -385,6 +385,14 @@ class ApiService {
     await _dio.put('/conversations/calls/$callId/miss');
   }
 
+  Future<Map<String, dynamic>> getCallHistory(String convId, {int page = 1, int limit = 20}) async {
+    final res = await _dio.get('/conversations/$convId/calls', queryParameters: {
+      'page': page,
+      'limit': limit,
+    });
+    return res.data as Map<String, dynamic>;
+  }
+
   // --- Ratings ---
   Future<PaginatedResult<Rating>> getSellerRatings(String sellerId, {int page = 1, int limit = 20}) async {
     final res = await _dio.get('/users/$sellerId/ratings', queryParameters: {'page': page, 'limit': limit});

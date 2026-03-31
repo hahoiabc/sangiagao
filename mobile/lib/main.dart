@@ -46,6 +46,19 @@ class _SanGaoAppState extends ConsumerState<SanGaoApp> {
         callId: pending['callId'] ?? '',
         callerId: pending['callerId'] ?? '',
       );
+      // After pending is consumed, GoRouter redirect will allow splash → marketplace
+      // on next rebuild (when ActiveCallScreen pops, user lands on marketplace)
+      ref.read(routerProvider).go('/marketplace');
+    }
+  }
+
+  /// Flush any pending CallKit decline that was buffered during cold start.
+  void _flushPendingDecline() {
+    final callId = PushNotificationService.consumePendingDecline();
+    if (callId != null && callId.isNotEmpty) {
+      debugPrint('CallKit: flushing pending decline after auth ready');
+      final api = ref.read(apiServiceProvider);
+      api.rejectCall(callId).catchError((_) {});
     }
   }
 
@@ -167,6 +180,10 @@ class _SanGaoAppState extends ConsumerState<SanGaoApp> {
             },
             onReject: () {
               Navigator.of(ctx).pop();
+              // Reject via API so caller (A) gets notified immediately
+              if (callId.isNotEmpty) {
+                ref.read(apiServiceProvider).rejectCall(callId).catchError((_) {});
+              }
             },
           ),
         ),
@@ -194,6 +211,12 @@ class _SanGaoAppState extends ConsumerState<SanGaoApp> {
       activeCallService?.endCall();
     };
 
+    // Wire CallKit decline — B declined from CallKit UI, reject via API
+    PushNotificationService.onDeclineCall = (callId) {
+      final api = ref.read(apiServiceProvider);
+      api.rejectCall(callId).catchError((_) {});
+    };
+
     // Wire system inbox push — increment badge
     PushNotificationService.onSystemInbox = () {
       ref.read(inboxUnreadProvider.notifier).increment();
@@ -207,8 +230,9 @@ class _SanGaoAppState extends ConsumerState<SanGaoApp> {
         PushNotificationService(api).init();
         // initCallKitListeners() already called in main() for cold-start support
 
-        // Flush any pending CallKit accept that arrived during cold start
+        // Flush any pending CallKit accept/decline that arrived during cold start
         _flushPendingAccept();
+        _flushPendingDecline();
       }
     });
 
