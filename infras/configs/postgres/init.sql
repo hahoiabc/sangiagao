@@ -218,6 +218,8 @@ CREATE TABLE IF NOT EXISTS conversations (
     listing_id UUID REFERENCES listings(id) ON DELETE SET NULL,
     last_message_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_by_member BOOLEAN NOT NULL DEFAULT FALSE,
+    deleted_by_seller BOOLEAN NOT NULL DEFAULT FALSE,
     UNIQUE(member_id, seller_id, listing_id)
 );
 

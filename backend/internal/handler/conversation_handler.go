@@ -313,3 +313,39 @@ func (h *ConversationHandler) ToggleReaction(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"reactions": reactions})
 }
+
+func (h *ConversationHandler) DeleteConversation(c *gin.Context) {
+	userID := c.GetString("user_id")
+	conversationID := c.Param("id")
+
+	err := h.chatService.DeleteConversation(c.Request.Context(), userID, conversationID)
+	if err != nil {
+		switch err {
+		case repository.ErrConversationNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": "not_found", "message": "cuộc trò chuyện không tồn tại"})
+		case service.ErrNotParticipant:
+			c.JSON(http.StatusForbidden, gin.H{"error": "forbidden", "message": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal", "message": "xóa cuộc trò chuyện thất bại"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Đã xóa cuộc trò chuyện"})
+}
+
+func (h *ConversationHandler) SearchByPhone(c *gin.Context) {
+	phone := c.Query("phone")
+	if phone == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "message": "phone is required"})
+		return
+	}
+
+	profile, err := h.chatService.SearchUserByPhone(c.Request.Context(), phone)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not_found", "message": "không tìm thấy người dùng"})
+		return
+	}
+
+	c.JSON(http.StatusOK, profile)
+}

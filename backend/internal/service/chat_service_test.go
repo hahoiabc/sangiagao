@@ -85,6 +85,9 @@ func (m *mockConvRepo) GetReactionsByMessage(ctx context.Context, messageID stri
 	}
 	return args.Get(0).([]model.MessageReaction), args.Error(1)
 }
+func (m *mockConvRepo) DeleteConversation(ctx context.Context, conversationID, userID string) error {
+	return m.Called(ctx, conversationID, userID).Error(0)
+}
 
 // --- Tests ---
 

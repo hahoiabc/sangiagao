@@ -74,9 +74,12 @@ func (r *ConversationRepo) GetByID(ctx context.Context, id string) (*model.Conve
 func (r *ConversationRepo) ListByUser(ctx context.Context, userID string, page, limit int) ([]*model.Conversation, int, error) {
 	offset := (page - 1) * limit
 
+	// Filter out conversations soft-deleted by this user
 	var total int
 	err := r.pool.QueryRow(ctx,
-		`SELECT COUNT(*) FROM conversations WHERE member_id = $1 OR seller_id = $1`, userID,
+		`SELECT COUNT(*) FROM conversations
+		 WHERE (member_id = $1 AND deleted_by_member = FALSE)
+		    OR (seller_id = $1 AND deleted_by_seller = FALSE)`, userID,
 	).Scan(&total)
 	if err != nil {
 		return nil, 0, err
@@ -94,7 +97,8 @@ func (r *ConversationRepo) ListByUser(ctx context.Context, userID string, page, 
 		     WHERE sender_id <> $1 AND read_at IS NULL
 		     GROUP BY conversation_id
 		 ) unread ON unread.conversation_id = c.id
-		 WHERE c.member_id = $1 OR c.seller_id = $1
+		 WHERE (c.member_id = $1 AND c.deleted_by_member = FALSE)
+		    OR (c.seller_id = $1 AND c.deleted_by_seller = FALSE)
 		 ORDER BY c.last_message_at DESC LIMIT $2 OFFSET $3`,
 		userID, limit, offset,
 	)
@@ -146,12 +150,29 @@ func (r *ConversationRepo) SendMessage(ctx context.Context, conversationID, send
 		r.loadReplyTo(ctx, &msg)
 	}
 
-	// Update last_message_at
+	// Update last_message_at and auto-restore if soft-deleted
 	_, _ = r.pool.Exec(ctx,
-		`UPDATE conversations SET last_message_at = NOW() WHERE id = $1`, conversationID,
+		`UPDATE conversations SET last_message_at = NOW(), deleted_by_member = FALSE, deleted_by_seller = FALSE WHERE id = $1`, conversationID,
 	)
 
 	return &msg, nil
+}
+
+func (r *ConversationRepo) DeleteConversation(ctx context.Context, conversationID, userID string) error {
+	result, err := r.pool.Exec(ctx,
+		`UPDATE conversations
+		 SET deleted_by_member = CASE WHEN member_id = $2 THEN TRUE ELSE deleted_by_member END,
+		     deleted_by_seller = CASE WHEN seller_id = $2 THEN TRUE ELSE deleted_by_seller END
+		 WHERE id = $1 AND (member_id = $2 OR seller_id = $2)`,
+		conversationID, userID,
+	)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() == 0 {
+		return ErrConversationNotFound
+	}
+	return nil
 }
 
 func (r *ConversationRepo) loadReplyTo(ctx context.Context, msg *model.Message) {

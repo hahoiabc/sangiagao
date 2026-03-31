@@ -328,6 +328,15 @@ class ApiService {
     await _dio.put('/conversations/$convId/read');
   }
 
+  Future<void> deleteConversation(String convId) async {
+    await _dio.delete('/conversations/$convId');
+  }
+
+  Future<PublicProfile> searchUserByPhone(String phone) async {
+    final res = await _dio.get('/conversations/search-user', queryParameters: {'phone': phone});
+    return PublicProfile.fromJson(res.data);
+  }
+
   Future<PaginatedResult<Message>> getMessages(String convId, {int page = 1, int limit = 30}) async {
     final res = await _dio.get('/conversations/$convId/messages', queryParameters: {'page': page, 'limit': limit});
     return PaginatedResult.fromJson(res.data, (j) => Message.fromJson(j));

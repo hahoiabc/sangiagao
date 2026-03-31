@@ -161,4 +161,6 @@ type ChatServiceInterface interface {
 	IsParticipant(ctx context.Context, conversationID, userID string) (bool, error)
 	GetUserName(ctx context.Context, userID string) (string, error)
 	ToggleReaction(ctx context.Context, userID, conversationID, messageID, emoji string) ([]model.MessageReaction, error)
+	DeleteConversation(ctx context.Context, userID, conversationID string) error
+	SearchUserByPhone(ctx context.Context, phone string) (*model.PublicProfile, error)
 }

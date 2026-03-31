@@ -274,3 +274,34 @@ func (s *ChatService) ToggleReaction(ctx context.Context, userID, conversationID
 	}
 	return s.convRepo.GetReactionsByMessage(ctx, messageID)
 }
+
+func (s *ChatService) DeleteConversation(ctx context.Context, userID, conversationID string) error {
+	ok, err := s.convRepo.IsParticipant(ctx, conversationID, userID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return ErrNotParticipant
+	}
+	return s.convRepo.DeleteConversation(ctx, conversationID, userID)
+}
+
+func (s *ChatService) SearchUserByPhone(ctx context.Context, phone string) (*model.PublicProfile, error) {
+	if s.userRepo == nil {
+		return nil, errors.New("user repository not available")
+	}
+	user, err := s.userRepo.GetByPhone(ctx, phone)
+	if err != nil {
+		return nil, err
+	}
+	return &model.PublicProfile{
+		ID:          user.ID,
+		Role:        user.Role,
+		Name:        user.Name,
+		AvatarURL:   user.AvatarURL,
+		Province:    user.Province,
+		Description: user.Description,
+		OrgName:     user.OrgName,
+		CreatedAt:   user.CreatedAt,
+	}, nil
+}

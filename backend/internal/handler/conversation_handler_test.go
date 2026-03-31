@@ -91,6 +91,16 @@ func (m *mockChatService) ToggleReaction(ctx context.Context, userID, conversati
 	}
 	return args.Get(0).([]model.MessageReaction), args.Error(1)
 }
+func (m *mockChatService) DeleteConversation(ctx context.Context, userID, conversationID string) error {
+	return m.Called(ctx, userID, conversationID).Error(0)
+}
+func (m *mockChatService) SearchUserByPhone(ctx context.Context, phone string) (*model.PublicProfile, error) {
+	args := m.Called(ctx, phone)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.PublicProfile), args.Error(1)
+}
 
 func setupConvRouter(h *ConversationHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)

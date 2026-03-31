@@ -350,7 +350,9 @@ func main() {
 			conversations.Use(middleware.RequirePermission(permissionService, "chat.send"))
 			{
 				conversations.GET("", convHandler.List)
+				conversations.GET("/search-user", convHandler.SearchByPhone)
 				conversations.POST("", middleware.UserRateLimit(appCache, "ratelimit:conv", 20, 24*time.Hour), convHandler.Create)
+				conversations.DELETE("/:id", convHandler.DeleteConversation)
 				conversations.PUT("/:id/read", convHandler.MarkRead)
 				conversations.GET("/:id/messages", convHandler.GetMessages)
 				conversations.POST("/:id/messages", middleware.UserRateLimit(appCache, "ratelimit:msg", 30, 1*time.Minute), convHandler.SendMessage)
