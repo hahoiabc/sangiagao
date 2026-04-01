@@ -54,11 +54,14 @@ func (h *ListingHandler) BatchCreate(c *gin.Context) {
 		return
 	}
 
-	var items []model.CreateListingRequest
-	if err := c.ShouldBindJSON(&items); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "expected array of listing objects"})
+	var wrapper struct {
+		Items []model.CreateListingRequest `json:"items"`
+	}
+	if err := c.ShouldBindJSON(&wrapper); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "expected {\"items\": [...]}"})
 		return
 	}
+	items := wrapper.Items
 	if len(items) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "at least one listing is required"})
 		return
@@ -80,7 +83,7 @@ func (h *ListingHandler) BatchCreate(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"created": created, "errors": errs})
+	c.JSON(http.StatusCreated, gin.H{"listings": created, "errors": errs})
 }
 
 func (h *ListingHandler) Get(c *gin.Context) {

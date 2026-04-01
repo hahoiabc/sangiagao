@@ -325,7 +325,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> batchCreateListings(List<Map<String, dynamic>> items) async {
-    final res = await _dio.post('/listings/batch', data: items);
+    final res = await _dio.post('/listings/batch', data: {'items': items});
     return res.data as Map<String, dynamic>;
   }
 

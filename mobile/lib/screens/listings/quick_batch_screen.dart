@@ -321,7 +321,7 @@ class _QuickBatchScreenState extends ConsumerState<QuickBatchScreen> {
     try {
       final api = ref.read(apiServiceProvider);
       final result = await api.batchCreateListings(items);
-      final created = result['created'] as List? ?? [];
+      final created = result['listings'] as List? ?? [];
       final apiErrors = result['errors'] as List? ?? [];
 
       // Attach images to created listings
