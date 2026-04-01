@@ -206,7 +206,7 @@ class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserv
     for (int i = 0; i < navItems.length; i++) {
       final route = navItems[i].route;
       if (location.startsWith(route) ||
-          (route == '/my-listings' && location.startsWith('/create-listing')) ||
+          (route == '/my-listings' && (location.startsWith('/create-listing') || location.startsWith('/quick-batch'))) ||
           (route == '/inbox' && location.startsWith('/chat')) ||
           (route == '/profile' && (location.startsWith('/notifications') || location.startsWith('/subscription') || location.startsWith('/seller')))) {
         selectedIndex = i;

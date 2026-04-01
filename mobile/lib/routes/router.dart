@@ -11,6 +11,7 @@ import '../screens/marketplace/listing_detail_screen.dart';
 import '../screens/listings/my_listings_screen.dart';
 import '../screens/listings/create_listing_screen.dart';
 import '../screens/listings/edit_listing_screen.dart';
+import '../screens/listings/quick_batch_screen.dart';
 import '../screens/chat/inbox_screen.dart';
 import '../screens/chat/chat_screen.dart';
 import '../screens/profile/profile_screen.dart';
@@ -83,6 +84,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(path: '/my-listings', builder: (_, __) => const MyListingsScreen()),
           GoRoute(path: '/create-listing', builder: (_, __) => const CreateListingScreen()),
+          GoRoute(path: '/quick-batch', builder: (_, __) => const QuickBatchScreen()),
           GoRoute(
             path: '/edit-listing/:id',
             redirect: (_, state) => _isValidId(state.pathParameters['id']) ? null : '/my-listings',

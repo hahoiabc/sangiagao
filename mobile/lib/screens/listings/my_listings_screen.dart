@@ -131,19 +131,46 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
                   ),
                 ),
       floatingActionButton: _listings.isNotEmpty
-          ? FilledButton(
-              onPressed: () async {
-                await context.push('/create-listing');
-                _load();
-              },
-              style: FilledButton.styleFrom(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                elevation: 4,
-              ),
-              child: const Text('Đăng tin', style: TextStyle(fontSize: 14)),
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FilledButton.tonal(
+                  onPressed: () async {
+                    await context.push('/quick-batch');
+                    _load();
+                  },
+                  style: FilledButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    elevation: 4,
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.flash_on, size: 16),
+                      SizedBox(width: 4),
+                      Text('Đăng nhanh', style: TextStyle(fontSize: 14)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: () async {
+                    await context.push('/create-listing');
+                    _load();
+                  },
+                  style: FilledButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    elevation: 4,
+                  ),
+                  child: const Text('Đăng tin', style: TextStyle(fontSize: 14)),
+                ),
+              ],
             )
           : null,
     );

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Plus, Package, Edit, Trash2, Eye, Calendar } from "lucide-react";
+import { Plus, Package, Edit, Trash2, Eye, Calendar, Zap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -52,12 +52,20 @@ export default function MyListingsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Tin đăng của tôi</h1>
-        <Link href="/tin-dang/tao-moi">
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            Đăng tin
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/tin-dang/dang-nhieu">
+            <Button variant="outline" className="gap-2">
+              <Zap className="h-4 w-4" />
+              Đăng nhanh
+            </Button>
+          </Link>
+          <Link href="/tin-dang/tao-moi">
+            <Button className="gap-2">
+              <Plus className="h-4 w-4" />
+              Đăng tin
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {loading ? (
