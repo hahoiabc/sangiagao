@@ -58,11 +58,33 @@ class _EditListingScreenState extends ConsumerState<EditListingScreen> {
   Future<void> _submit() async {
     final price = double.tryParse(_priceCtrl.text.trim());
     final qty = double.tryParse(_quantityCtrl.text.trim());
-    if (price == null || qty == null || price <= 0 || qty <= 0) {
+    if (price == null || price <= 5000 || price >= 99000) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Giá và số lượng phải lớn hơn 0')),
+        const SnackBar(content: Text('Giá phải từ 5,001 đến 98,999 đ/kg')),
       );
       return;
+    }
+    if (qty == null || qty <= 500 || qty >= 100000000) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Số lượng phải từ 501 đến 99,999,999 kg')),
+      );
+      return;
+    }
+    final season = _seasonCtrl.text.trim();
+    if (season.isNotEmpty) {
+      final parts = season.split('/');
+      if (parts.length == 3) {
+        final d = int.tryParse(parts[0]) ?? 0;
+        final m = int.tryParse(parts[1]) ?? 0;
+        final y = int.tryParse(parts[2]) ?? 0;
+        final picked = DateTime(y, m, d);
+        if (picked.isAfter(DateTime.now())) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Mùa vụ phải trước ngày hiện tại')),
+          );
+          return;
+        }
+      }
     }
 
     setState(() => _submitting = true);

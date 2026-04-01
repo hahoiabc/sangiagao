@@ -35,7 +35,36 @@ class _ProductForm {
     if (product == null) return false;
     final price = double.tryParse(priceCtrl.text.trim());
     final qty = double.tryParse(quantityCtrl.text.trim());
-    return price != null && qty != null && price > 0 && qty > 0;
+    if (price == null || qty == null) return false;
+    if (price <= 5000 || price >= 99000) return false;
+    if (qty <= 500 || qty >= 100000000) return false;
+    return true;
+  }
+
+  String? get validationError {
+    if (product == null) return 'Chưa chọn sản phẩm';
+    final price = double.tryParse(priceCtrl.text.trim());
+    final qty = double.tryParse(quantityCtrl.text.trim());
+    if (price == null || price <= 5000 || price >= 99000) {
+      return '${product!.label}: Giá phải từ 5,001 đến 98,999 đ/kg';
+    }
+    if (qty == null || qty <= 500 || qty >= 100000000) {
+      return '${product!.label}: Số lượng phải từ 501 đến 99,999,999 kg';
+    }
+    final season = seasonCtrl.text.trim();
+    if (season.isNotEmpty) {
+      final parts = season.split('/');
+      if (parts.length == 3) {
+        final d = int.tryParse(parts[0]) ?? 0;
+        final m = int.tryParse(parts[1]) ?? 0;
+        final y = int.tryParse(parts[2]) ?? 0;
+        final picked = DateTime(y, m, d);
+        if (picked.isAfter(DateTime.now())) {
+          return '${product!.label}: Mùa vụ phải trước ngày hiện tại';
+        }
+      }
+    }
+    return null;
   }
 
   bool get hasData =>
@@ -289,6 +318,11 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
       if (!form.hasData) continue;
       if (form.product == null) {
         errors.add('Sản phẩm ${i + 1}: chưa chọn danh mục');
+        continue;
+      }
+      final vErr = form.validationError;
+      if (vErr != null) {
+        errors.add(vErr);
         continue;
       }
       final payload = form.toPayload();

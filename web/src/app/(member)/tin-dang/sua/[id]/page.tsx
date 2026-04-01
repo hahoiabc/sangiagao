@@ -47,9 +47,23 @@ export default function EditListingPage() {
 
     const price = Number(pricePerKg);
     const qty = Number(quantityKg);
-    if (!price || price <= 0 || !qty || qty <= 0) {
-      toast.error("Giá và số lượng phải lớn hơn 0");
+    if (!price || price <= 5000 || price >= 99000) {
+      toast.error("Giá phải từ 5,001 đến 98,999 đ/kg");
       return;
+    }
+    if (!qty || qty <= 500 || qty >= 100000000) {
+      toast.error("Số lượng phải từ 501 đến 99,999,999 kg");
+      return;
+    }
+    if (harvestSeason.trim()) {
+      const parts = harvestSeason.split("/");
+      if (parts.length === 3) {
+        const picked = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+        if (picked > new Date()) {
+          toast.error("Mùa vụ phải trước ngày hiện tại");
+          return;
+        }
+      }
     }
 
     setSaving(true);
@@ -137,11 +151,50 @@ export default function EditListingPage() {
 
             <div>
               <label className="text-sm font-medium mb-1 block">Vụ mùa</label>
-              <Input
-                type="date"
-                value={harvestSeason}
-                onChange={(e) => setHarvestSeason(e.target.value)}
-              />
+              <div className="flex gap-2">
+                <select
+                  className="flex-1 rounded-md border border-input bg-background px-2 py-2 text-sm"
+                  value={harvestSeason ? harvestSeason.split("/")[0] : ""}
+                  onChange={(e) => {
+                    const parts = harvestSeason ? harvestSeason.split("/") : ["", "", ""];
+                    parts[0] = e.target.value;
+                    setHarvestSeason(parts.join("/"));
+                  }}
+                >
+                  <option value="">Ngày</option>
+                  {Array.from({ length: 31 }, (_, k) => k + 1).map((d) => (
+                    <option key={d} value={String(d).padStart(2, "0")}>{d}</option>
+                  ))}
+                </select>
+                <select
+                  className="flex-1 rounded-md border border-input bg-background px-2 py-2 text-sm"
+                  value={harvestSeason ? harvestSeason.split("/")[1] : ""}
+                  onChange={(e) => {
+                    const parts = harvestSeason ? harvestSeason.split("/") : ["", "", ""];
+                    parts[1] = e.target.value;
+                    setHarvestSeason(parts.join("/"));
+                  }}
+                >
+                  <option value="">Tháng</option>
+                  {Array.from({ length: 12 }, (_, k) => k + 1).map((m) => (
+                    <option key={m} value={String(m).padStart(2, "0")}>{m}</option>
+                  ))}
+                </select>
+                <select
+                  className="flex-1 rounded-md border border-input bg-background px-2 py-2 text-sm"
+                  value={harvestSeason ? harvestSeason.split("/")[2] : ""}
+                  onChange={(e) => {
+                    const parts = harvestSeason ? harvestSeason.split("/") : ["", "", ""];
+                    parts[2] = e.target.value;
+                    setHarvestSeason(parts.join("/"));
+                  }}
+                >
+                  <option value="">Năm</option>
+                  {Array.from({ length: new Date().getFullYear() - 2000 + 6 }, (_, k) => 2000 + k).map((y) => (
+                    <option key={y} value={String(y)}>{y}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div>

@@ -42,7 +42,32 @@ class _ProductEntry {
   bool get isValid {
     final p = double.tryParse(priceCtrl.text.trim());
     final q = double.tryParse(qtyCtrl.text.trim());
-    return selected && p != null && q != null && p > 0 && q > 0;
+    return selected && p != null && q != null && p > 5000 && p < 99000 && q > 500 && q < 100000000;
+  }
+
+  String? get validationError {
+    final p = double.tryParse(priceCtrl.text.trim());
+    final q = double.tryParse(qtyCtrl.text.trim());
+    if (p == null || p <= 5000 || p >= 99000) {
+      return '${product.label}: Giá phải từ 5,001 đến 98,999 đ/kg';
+    }
+    if (q == null || q <= 500 || q >= 100000000) {
+      return '${product.label}: Số lượng phải từ 501 đến 99,999,999 kg';
+    }
+    final s = seasonCtrl.text.trim();
+    if (s.isNotEmpty) {
+      final parts = s.split('/');
+      if (parts.length == 3) {
+        final d = int.tryParse(parts[0]) ?? 0;
+        final m = int.tryParse(parts[1]) ?? 0;
+        final y = int.tryParse(parts[2]) ?? 0;
+        final picked = DateTime(y, m, d);
+        if (picked.isAfter(DateTime.now())) {
+          return '${product.label}: Mùa vụ phải trước ngày hiện tại';
+        }
+      }
+    }
+    return null;
   }
 
   Map<String, dynamic>? toPayload(String categoryKey) {
@@ -265,6 +290,11 @@ class _QuickBatchScreenState extends ConsumerState<QuickBatchScreen> {
     final errors = <String>[];
     final items = <Map<String, dynamic>>[];
     for (final e in selected) {
+      final vErr = e.validationError;
+      if (vErr != null) {
+        errors.add(vErr);
+        continue;
+      }
       final payload = e.toPayload(_selectedCategory!.key);
       if (payload == null) {
         errors.add('${e.product.label}: giá và số lượng phải > 0');

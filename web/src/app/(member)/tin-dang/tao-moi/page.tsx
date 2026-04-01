@@ -116,6 +116,26 @@ export default function CreateListingPage() {
         toast.error(`Sản phẩm ${i + 1}: Vui lòng điền đầy đủ thông tin bắt buộc`);
         return;
       }
+      const price = Number(f.price_per_kg);
+      const qty = Number(f.quantity_kg);
+      if (price <= 5000 || price >= 99000) {
+        toast.error(`Sản phẩm ${i + 1}: Giá phải từ 5,001 đến 98,999 đ/kg`);
+        return;
+      }
+      if (qty <= 500 || qty >= 100000000) {
+        toast.error(`Sản phẩm ${i + 1}: Số lượng phải từ 501 đến 99,999,999 kg`);
+        return;
+      }
+      if (f.harvest_season) {
+        const parts = f.harvest_season.split("/");
+        if (parts.length === 3) {
+          const picked = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+          if (picked > new Date()) {
+            toast.error(`Sản phẩm ${i + 1}: Mùa vụ phải trước ngày hiện tại`);
+            return;
+          }
+        }
+      }
     }
 
     setLoading(true);
@@ -267,11 +287,50 @@ export default function CreateListingPage() {
 
                 <div>
                   <label className="text-sm font-medium mb-1 block">Vụ mùa</label>
-                  <Input
-                    type="date"
-                    value={form.harvest_season}
-                    onChange={(e) => updateForm(fi, "harvest_season", e.target.value)}
-                  />
+                  <div className="flex gap-2">
+                    <select
+                      className="flex-1 rounded-md border border-input bg-background px-2 py-2 text-sm"
+                      value={form.harvest_season ? form.harvest_season.split("/")[0] : ""}
+                      onChange={(e) => {
+                        const parts = form.harvest_season ? form.harvest_season.split("/") : ["", "", ""];
+                        parts[0] = e.target.value;
+                        updateForm(fi, "harvest_season", parts.join("/"));
+                      }}
+                    >
+                      <option value="">Ngày</option>
+                      {Array.from({ length: 31 }, (_, k) => k + 1).map((d) => (
+                        <option key={d} value={String(d).padStart(2, "0")}>{d}</option>
+                      ))}
+                    </select>
+                    <select
+                      className="flex-1 rounded-md border border-input bg-background px-2 py-2 text-sm"
+                      value={form.harvest_season ? form.harvest_season.split("/")[1] : ""}
+                      onChange={(e) => {
+                        const parts = form.harvest_season ? form.harvest_season.split("/") : ["", "", ""];
+                        parts[1] = e.target.value;
+                        updateForm(fi, "harvest_season", parts.join("/"));
+                      }}
+                    >
+                      <option value="">Tháng</option>
+                      {Array.from({ length: 12 }, (_, k) => k + 1).map((m) => (
+                        <option key={m} value={String(m).padStart(2, "0")}>{m}</option>
+                      ))}
+                    </select>
+                    <select
+                      className="flex-1 rounded-md border border-input bg-background px-2 py-2 text-sm"
+                      value={form.harvest_season ? form.harvest_season.split("/")[2] : ""}
+                      onChange={(e) => {
+                        const parts = form.harvest_season ? form.harvest_season.split("/") : ["", "", ""];
+                        parts[2] = e.target.value;
+                        updateForm(fi, "harvest_season", parts.join("/"));
+                      }}
+                    >
+                      <option value="">Năm</option>
+                      {Array.from({ length: new Date().getFullYear() - 2000 + 6 }, (_, k) => 2000 + k).map((y) => (
+                        <option key={y} value={String(y)}>{y}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div>

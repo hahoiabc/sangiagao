@@ -143,19 +143,33 @@ export default function QuickBatchPage() {
     for (const e of selected) {
       const price = Number(e.price);
       const qty = Number(e.quantity);
-      if (!price || price <= 0 || !qty || qty <= 0) {
-        errors.push(`${e.product.label}: giá và số lượng phải > 0`);
-      } else {
-        const item: Record<string, unknown> = {
-          category: selectedCategory!.key,
-          rice_type: e.product.key,
-          price_per_kg: price,
-          quantity_kg: qty,
-        };
-        if (e.season) item.harvest_season = e.season;
-        if (e.description) item.description = e.description;
-        items.push(item);
+      if (!price || price <= 5000 || price >= 99000) {
+        errors.push(`${e.product.label}: Giá phải từ 5,001 đến 98,999 đ/kg`);
+        continue;
       }
+      if (!qty || qty <= 500 || qty >= 100000000) {
+        errors.push(`${e.product.label}: Số lượng phải từ 501 đến 99,999,999 kg`);
+        continue;
+      }
+      if (e.season) {
+        const parts = e.season.split("/");
+        if (parts.length === 3) {
+          const picked = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+          if (picked > new Date()) {
+            errors.push(`${e.product.label}: Mùa vụ phải trước ngày hiện tại`);
+            continue;
+          }
+        }
+      }
+      const item: Record<string, unknown> = {
+        category: selectedCategory!.key,
+        rice_type: e.product.key,
+        price_per_kg: price,
+        quantity_kg: qty,
+      };
+      if (e.season) item.harvest_season = e.season;
+      if (e.description) item.description = e.description;
+      items.push(item);
     }
 
     if (errors.length > 0) {
@@ -337,11 +351,50 @@ export default function QuickBatchPage() {
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1 block">Vụ mùa</label>
-                  <Input
-                    type="date"
-                    value={entry.season}
-                    onChange={(e) => updateEntry(i, "season", e.target.value)}
-                  />
+                  <div className="flex gap-2">
+                    <select
+                      className="flex-1 rounded-md border border-input bg-background px-2 py-2 text-sm"
+                      value={entry.season ? entry.season.split("/")[0] : ""}
+                      onChange={(e) => {
+                        const parts = entry.season ? entry.season.split("/") : ["", "", ""];
+                        parts[0] = e.target.value;
+                        updateEntry(i, "season", parts.join("/"));
+                      }}
+                    >
+                      <option value="">Ngày</option>
+                      {Array.from({ length: 31 }, (_, k) => k + 1).map((d) => (
+                        <option key={d} value={String(d).padStart(2, "0")}>{d}</option>
+                      ))}
+                    </select>
+                    <select
+                      className="flex-1 rounded-md border border-input bg-background px-2 py-2 text-sm"
+                      value={entry.season ? entry.season.split("/")[1] : ""}
+                      onChange={(e) => {
+                        const parts = entry.season ? entry.season.split("/") : ["", "", ""];
+                        parts[1] = e.target.value;
+                        updateEntry(i, "season", parts.join("/"));
+                      }}
+                    >
+                      <option value="">Tháng</option>
+                      {Array.from({ length: 12 }, (_, k) => k + 1).map((m) => (
+                        <option key={m} value={String(m).padStart(2, "0")}>{m}</option>
+                      ))}
+                    </select>
+                    <select
+                      className="flex-1 rounded-md border border-input bg-background px-2 py-2 text-sm"
+                      value={entry.season ? entry.season.split("/")[2] : ""}
+                      onChange={(e) => {
+                        const parts = entry.season ? entry.season.split("/") : ["", "", ""];
+                        parts[2] = e.target.value;
+                        updateEntry(i, "season", parts.join("/"));
+                      }}
+                    >
+                      <option value="">Năm</option>
+                      {Array.from({ length: new Date().getFullYear() - 2000 + 6 }, (_, k) => 2000 + k).map((y) => (
+                        <option key={y} value={String(y)}>{y}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground mb-1 block">Mô tả</label>
