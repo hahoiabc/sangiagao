@@ -10,7 +10,7 @@ defmodule RiceChat.Application do
       {Mongo, [
         name: :mongo,
         url: System.get_env("MONGO_URL", "mongodb://localhost:27017/rice_chat"),
-        pool_size: 10
+        pool_size: 30
       ]},
       # PostgreSQL connection (conversations live in PG)
       {Postgrex, [
