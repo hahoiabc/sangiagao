@@ -31,7 +31,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 1024M
 
   # ========================
   # Redis - Cache & Sessions
@@ -163,7 +163,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
 
   # ========================
   # Chat Service (Phoenix/Elixir)
@@ -267,7 +267,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: 256M
 
   # ========================
   # Certbot - SSL Certificates
