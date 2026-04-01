@@ -1,12 +1,16 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../../models/product_catalog.dart';
 import '../../providers/providers.dart';
 import '../../theme/app_theme.dart';
 
 /// Tracks per-product input when the tile is expanded.
+const _kMaxImages = 2;
+
 class _ProductEntry {
   final RiceProduct product;
   final TextEditingController priceCtrl;
@@ -14,13 +18,19 @@ class _ProductEntry {
   final TextEditingController seasonCtrl;
   final TextEditingController descCtrl;
   bool selected;
+  List<String> imageUrls; // uploaded URLs
+  List<String> localPaths; // local file paths for preview
+  bool uploading;
 
   _ProductEntry(this.product)
       : priceCtrl = TextEditingController(),
         qtyCtrl = TextEditingController(),
         seasonCtrl = TextEditingController(),
         descCtrl = TextEditingController(),
-        selected = false;
+        selected = false,
+        imageUrls = [],
+        localPaths = [],
+        uploading = false;
 
   void dispose() {
     priceCtrl.dispose();
@@ -62,6 +72,7 @@ class _QuickBatchScreenState extends ConsumerState<QuickBatchScreen> {
   bool _loadingCatalog = true;
   bool _submitting = false;
   List<RiceCategory> _catalog = [];
+  final _picker = ImagePicker();
 
   // null = show category grid, non-null = show product list for that category
   RiceCategory? _selectedCategory;
@@ -105,6 +116,143 @@ class _QuickBatchScreenState extends ConsumerState<QuickBatchScreen> {
 
   int get _selectedCount => _entries.where((e) => e.selected).length;
 
+  Future<void> _pickImages(_ProductEntry entry) async {
+    if (entry.imageUrls.length >= _kMaxImages) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tối đa $_kMaxImages hình ảnh')),
+      );
+      return;
+    }
+    final remaining = _kMaxImages - entry.imageUrls.length;
+    final images = await _picker.pickMultiImage(
+      maxWidth: 1920,
+      maxHeight: 1920,
+      imageQuality: 95,
+      limit: remaining,
+    );
+    if (images.isEmpty) return;
+
+    setState(() => entry.uploading = true);
+    try {
+      for (final image in images.take(remaining)) {
+        final url = await ref.read(apiServiceProvider).uploadImage(image.path, 'listings');
+        if (mounted) {
+          setState(() {
+            entry.imageUrls.add(url);
+            entry.localPaths.add(image.path);
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi tải ảnh: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => entry.uploading = false);
+    }
+  }
+
+  void _removeImage(_ProductEntry entry, int index) {
+    setState(() {
+      entry.imageUrls.removeAt(index);
+      entry.localPaths.removeAt(index);
+    });
+  }
+
+  Future<void> _pickDate(_ProductEntry entry) async {
+    final now = DateTime.now();
+    int initialDay = now.day;
+    int initialMonth = now.month;
+    int initialYear = now.year;
+    if (entry.seasonCtrl.text.isNotEmpty) {
+      final parts = entry.seasonCtrl.text.split('/');
+      if (parts.length == 3) {
+        initialDay = int.tryParse(parts[0]) ?? now.day;
+        initialMonth = int.tryParse(parts[1]) ?? now.month;
+        initialYear = int.tryParse(parts[2]) ?? now.year;
+      }
+    }
+
+    int selectedDay = initialDay;
+    int selectedMonth = initialMonth;
+    int selectedYear = initialYear;
+
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          int daysInMonth(int year, int month) => DateTime(year, month + 1, 0).day;
+          final maxDay = daysInMonth(selectedYear, selectedMonth);
+          if (selectedDay > maxDay) selectedDay = maxDay;
+
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      const Text('Chọn ngày gặt', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      const Spacer(),
+                      IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _DateDropdown(
+                          label: 'Ngày',
+                          value: selectedDay,
+                          items: List.generate(maxDay, (i) => i + 1),
+                          onChanged: (v) => setSheetState(() => selectedDay = v!),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _DateDropdown(
+                          label: 'Tháng',
+                          value: selectedMonth,
+                          items: List.generate(12, (i) => i + 1),
+                          onChanged: (v) => setSheetState(() => selectedMonth = v!),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _DateDropdown(
+                          label: 'Năm',
+                          value: selectedYear,
+                          items: List.generate(now.year - 2000 + 6, (i) => 2000 + i),
+                          onChanged: (v) => setSheetState(() => selectedYear = v!),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Xác nhận'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    if (result == true && mounted) {
+      setState(() {
+        entry.seasonCtrl.text = '${selectedDay.toString().padLeft(2, '0')}/${selectedMonth.toString().padLeft(2, '0')}/$selectedYear';
+      });
+    }
+  }
+
   Future<void> _submit() async {
     final selected = _entries.where((e) => e.selected).toList();
     if (selected.isEmpty) {
@@ -141,9 +289,22 @@ class _QuickBatchScreenState extends ConsumerState<QuickBatchScreen> {
 
     setState(() => _submitting = true);
     try {
-      final result = await ref.read(apiServiceProvider).batchCreateListings(items);
+      final api = ref.read(apiServiceProvider);
+      final result = await api.batchCreateListings(items);
       final created = result['created'] as List? ?? [];
       final apiErrors = result['errors'] as List? ?? [];
+
+      // Attach images to created listings
+      for (int i = 0; i < created.length && i < selected.length; i++) {
+        final entry = selected[i];
+        if (entry.imageUrls.isEmpty) continue;
+        final listingId = (created[i] as Map<String, dynamic>)['id'] as String;
+        for (final url in entry.imageUrls) {
+          try {
+            await api.addListingImage(listingId, url);
+          } catch (_) {}
+        }
+      }
 
       if (mounted) {
         String msg = 'Đã đăng ${created.length} tin thành công!';
@@ -385,14 +546,20 @@ class _QuickBatchScreenState extends ConsumerState<QuickBatchScreen> {
                 ],
               ),
               const SizedBox(height: 10),
-              // Season
+              // Season (date picker)
               TextField(
                 controller: entry.seasonCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Vụ mùa',
-                  border: OutlineInputBorder(),
+                readOnly: true,
+                decoration: InputDecoration(
+                  labelText: 'Mùa gặt',
+                  border: const OutlineInputBorder(),
                   isDense: true,
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.calendar_today, size: 18),
+                    onPressed: () => _pickDate(entry),
+                  ),
                 ),
+                onTap: () => _pickDate(entry),
               ),
               const SizedBox(height: 10),
               // Description
@@ -406,7 +573,100 @@ class _QuickBatchScreenState extends ConsumerState<QuickBatchScreen> {
                 maxLines: 2,
                 minLines: 1,
               ),
+              const SizedBox(height: 10),
+              // Images
+              Text('Hình ảnh (tối đa $_kMaxImages)', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ...entry.localPaths.asMap().entries.map((e) {
+                    return Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.file(
+                            File(e.value),
+                            width: 72,
+                            height: 72,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        Positioned(
+                          top: -4,
+                          right: -4,
+                          child: GestureDetector(
+                            onTap: () => _removeImage(entry, e.key),
+                            child: Container(
+                              decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                              padding: const EdgeInsets.all(3),
+                              child: const Icon(Icons.close, size: 14, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+                  if (entry.imageUrls.length < _kMaxImages)
+                    GestureDetector(
+                      onTap: entry.uploading ? null : () => _pickImages(entry),
+                      child: Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid, width: 1.5),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: entry.uploading
+                            ? const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
+                            : Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.add_photo_alternate_outlined, size: 24, color: Colors.grey.shade500),
+                                  Text('Thêm ảnh', style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+                                ],
+                              ),
+                      ),
+                    ),
+                ],
+              ),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DateDropdown extends StatelessWidget {
+  final String label;
+  final int value;
+  final List<int> items;
+  final ValueChanged<int?> onChanged;
+
+  const _DateDropdown({required this.label, required this.value, required this.items, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: DropdownButton<int>(
+            value: items.contains(value) ? value : items.last,
+            isExpanded: true,
+            underline: const SizedBox(),
+            items: items.map((v) => DropdownMenuItem(value: v, child: Text('$v'))).toList(),
+            onChanged: onChanged,
           ),
         ),
       ],

@@ -206,6 +206,8 @@ services:
     container_name: rice_admin
     environment:
       NODE_ENV: production
+    volumes:
+      - admin_static:/app/shared-static
     depends_on:
       - backend
     networks:
@@ -226,6 +228,8 @@ services:
     container_name: rice_web
     environment:
       NODE_ENV: production
+    volumes:
+      - next_static:/app/shared-static
     depends_on:
       - backend
     networks:
@@ -249,6 +253,8 @@ services:
       - ./infras/configs/nginx/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
       - certbot_data:/etc/letsencrypt:ro
       - certbot_www:/var/www/certbot:ro
+      - next_static:/var/www/next-static:ro
+      - admin_static:/var/www/admin-static:ro
     depends_on:
       - backend
       - admin
@@ -341,3 +347,7 @@ volumes:
     name: rice_prod_certbot_data
   certbot_www:
     name: rice_prod_certbot_www
+  next_static:
+    name: rice_prod_next_static
+  admin_static:
+    name: rice_prod_admin_static

@@ -1,16 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Zap, ChevronDown, ChevronRight, Check } from "lucide-react";
+import { ArrowLeft, Zap, ChevronDown, ChevronRight, Check, ImagePlus, X } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { batchCreateListings, getProductCatalog, type RiceCategory, type RiceProduct } from "@/services/api";
+import { batchCreateListings, getProductCatalog, uploadImage, addListingImage, type RiceCategory, type RiceProduct } from "@/services/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+
+const MAX_IMAGES = 2;
+
+interface ImageItem {
+  file: File;
+  preview: string;
+}
 
 interface ProductEntry {
   product: RiceProduct;
@@ -20,10 +27,11 @@ interface ProductEntry {
   season: string;
   description: string;
   expanded: boolean;
+  images: ImageItem[];
 }
 
 function createEntry(product: RiceProduct): ProductEntry {
-  return { product, selected: false, price: "", quantity: "", season: "", description: "", expanded: false };
+  return { product, selected: false, price: "", quantity: "", season: "", description: "", expanded: false, images: [] };
 }
 
 export default function QuickBatchPage() {
@@ -36,6 +44,7 @@ export default function QuickBatchPage() {
   // null = category grid, non-null = product list
   const [selectedCategory, setSelectedCategory] = useState<RiceCategory | null>(null);
   const [entries, setEntries] = useState<ProductEntry[]>([]);
+  const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
     getProductCatalog()
@@ -79,6 +88,36 @@ export default function QuickBatchPage() {
     setEntries((prev) => {
       const next = [...prev];
       next[index] = { ...next[index], selected: !next[index].selected };
+      return next;
+    });
+  }
+
+  function handleImageSelect(entryIndex: number, e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files) return;
+    const entry = entries[entryIndex];
+    const remaining = MAX_IMAGES - entry.images.length;
+    const selected = Array.from(files).slice(0, remaining);
+    const newImages: ImageItem[] = selected.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+    setEntries((prev) => {
+      const next = [...prev];
+      next[entryIndex] = { ...next[entryIndex], images: [...next[entryIndex].images, ...newImages] };
+      return next;
+    });
+    const ref = fileInputRefs.current[entryIndex];
+    if (ref) ref.value = "";
+  }
+
+  function removeImage(entryIndex: number, imgIndex: number) {
+    setEntries((prev) => {
+      const next = [...prev];
+      const imgs = [...next[entryIndex].images];
+      URL.revokeObjectURL(imgs[imgIndex].preview);
+      imgs.splice(imgIndex, 1);
+      next[entryIndex] = { ...next[entryIndex], images: imgs };
       return next;
     });
   }
@@ -132,7 +171,24 @@ export default function QuickBatchPage() {
     setLoading(true);
     try {
       const result = await batchCreateListings("", items);
-      const count = result.listings?.length ?? items.length;
+      const listings = result.listings ?? [];
+      const count = listings.length || items.length;
+
+      // Upload images for each listing
+      for (let i = 0; i < listings.length && i < selected.length; i++) {
+        const listing = listings[i];
+        const entry = selected[i];
+        if (!listing?.id || entry.images.length === 0) continue;
+        for (const img of entry.images) {
+          try {
+            const { url } = await uploadImage("", img.file, "listings");
+            await addListingImage("", listing.id, url);
+          } catch {
+            // continue
+          }
+        }
+      }
+
       toast.success(`Đã đăng ${count} tin thành công!`);
       router.push("/tin-dang");
     } catch (err) {
@@ -294,6 +350,44 @@ export default function QuickBatchPage() {
                     onChange={(e) => updateEntry(i, "description", e.target.value)}
                     placeholder="Mô tả thêm..."
                     className="w-full min-h-16 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                </div>
+                {/* Image upload */}
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-2 block">
+                    Hình ảnh ({entry.images.length}/{MAX_IMAGES})
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {entry.images.map((img, imgIdx) => (
+                      <div key={imgIdx} className="relative w-20 h-20 rounded-lg overflow-hidden border">
+                        <img src={img.preview} alt="Ảnh sản phẩm" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(i, imgIdx)}
+                          className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full p-0.5 hover:bg-black/80"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                    {entry.images.length < MAX_IMAGES && (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRefs.current[i]?.click()}
+                        className="w-20 h-20 rounded-lg border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                      >
+                        <ImagePlus className="h-5 w-5" />
+                        <span className="text-[10px] mt-0.5">Thêm ảnh</span>
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    ref={(el) => { fileInputRefs.current[i] = el; }}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    onChange={(e) => handleImageSelect(i, e)}
+                    className="hidden"
                   />
                 </div>
               </CardContent>
