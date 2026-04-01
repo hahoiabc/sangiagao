@@ -190,7 +190,7 @@ export default function EditListingPage() {
                   }}
                 >
                   <option value="">Năm</option>
-                  {Array.from({ length: new Date().getFullYear() - 2000 + 6 }, (_, k) => 2000 + k).map((y) => (
+                  {Array.from({ length: 6 }, (_, k) => new Date().getFullYear() - 5 + k).map((y) => (
                     <option key={y} value={String(y)}>{y}</option>
                   ))}
                 </select>

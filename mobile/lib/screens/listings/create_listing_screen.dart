@@ -280,7 +280,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
                         child: _DateDropdown(
                           label: 'Năm',
                           value: selectedYear,
-                          items: List.generate(now.year - 2000 + 6, (i) => 2000 + i),
+                          items: List.generate(6, (i) => now.year - 5 + i),
                           onChanged: (v) => setSheetState(() => selectedYear = v!),
                         ),
                       ),
