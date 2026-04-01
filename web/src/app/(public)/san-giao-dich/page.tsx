@@ -332,7 +332,7 @@ function MarketplaceContent() {
             {result.data.map((listing) => (
               <Link key={listing.id} href={`/san-giao-dich/${listing.id}`}>
                 <Card className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer h-full">
-                  <div className="h-40 bg-muted flex items-center justify-center overflow-hidden relative">
+                  <div className="h-44 bg-muted flex items-center justify-center overflow-hidden relative">
                     {listing.images.length > 0 ? (
                       <Image
                         src={listing.images[0]}
@@ -345,26 +345,25 @@ function MarketplaceContent() {
                       <Package className="h-10 w-10 text-muted-foreground/40" />
                     )}
                   </div>
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold text-sm line-clamp-2 mb-2">
+                  <CardContent className="px-3 py-2.5">
+                    <h3 className="font-semibold text-sm line-clamp-1 mb-1">
                       {listing.title}
                     </h3>
-                    <p className="text-lg font-bold text-primary mb-1">
-                      {formatPrice(listing.price_per_kg)}
-                    </p>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-                      <Package className="h-3 w-3" />
-                      {formatQuantity(listing.quantity_kg)}
+                    <div className="flex items-center justify-between">
+                      <p className="text-base font-bold text-primary">
+                        {formatPrice(listing.price_per_kg)}
+                      </p>
+                      <span className="text-xs text-muted-foreground">{formatQuantity(listing.quantity_kg)}</span>
                     </div>
-                    {listing.province && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-                        <MapPin className="h-3 w-3" />
-                        {listing.province}
-                      </div>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {timeAgo(listing.created_at)}
-                    </p>
+                    <div className="flex items-center justify-between mt-1 text-xs text-muted-foreground">
+                      {listing.province ? (
+                        <span className="flex items-center gap-1 truncate">
+                          <MapPin className="h-3 w-3 flex-shrink-0" />
+                          {listing.province}
+                        </span>
+                      ) : <span />}
+                      <span className="flex-shrink-0">{timeAgo(listing.created_at)}</span>
+                    </div>
                   </CardContent>
                 </Card>
               </Link>

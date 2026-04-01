@@ -78,17 +78,23 @@ export default function MyListingsPage() {
             const st = statusLabels[listing.status] || { label: listing.status, color: "secondary" as const };
             return (
               <Card key={listing.id}>
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-4">
-                    {/* Thumbnail */}
-                    <div className="h-20 w-20 rounded-md bg-muted flex items-center justify-center overflow-hidden flex-shrink-0 relative">
-                      {listing.images.length > 0 ? (
-                        <Image src={listing.images[0]} alt={listing.title} fill sizes="80px" className="object-cover" />
-                      ) : (
+                <CardContent className="p-4 space-y-3">
+                  {/* Images row */}
+                  <div className="flex gap-2 overflow-x-auto">
+                    {listing.images.length > 0 ? (
+                      listing.images.slice(0, 4).map((img, i) => (
+                        <div key={i} className="h-20 w-20 rounded-md bg-muted overflow-hidden flex-shrink-0 relative">
+                          <Image src={img} alt={`${listing.title} - ${i + 1}`} fill sizes="80px" className="object-cover" />
+                        </div>
+                      ))
+                    ) : (
+                      <div className="h-20 w-20 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
                         <Package className="h-6 w-6 text-muted-foreground/40" />
-                      )}
-                    </div>
-                    {/* Info */}
+                      </div>
+                    )}
+                  </div>
+                  {/* Info + Actions */}
+                  <div className="flex items-start gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-semibold text-sm truncate">{listing.title}</h3>
@@ -116,16 +122,6 @@ export default function MyListingsPage() {
                         </span>
                         <span>{timeAgo(listing.created_at)}</span>
                       </div>
-                      {/* Image strip - show additional images like mobile */}
-                      {listing.images.length > 1 && (
-                        <div className="flex gap-1.5 mt-2 overflow-x-auto">
-                          {listing.images.slice(0, 3).map((img, i) => (
-                            <div key={i} className="h-14 w-14 rounded-md overflow-hidden bg-muted flex-shrink-0 relative">
-                              <Image src={img} alt={listing.title} fill sizes="56px" className="object-cover" />
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
                     {/* Actions */}
                     <div className="flex items-center gap-1 flex-shrink-0">
