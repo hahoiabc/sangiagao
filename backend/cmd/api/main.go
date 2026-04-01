@@ -337,6 +337,7 @@ func main() {
 				uploadLimit := middleware.UserRateLimit(appCache, "ratelimit:upload", 50, 1*time.Hour)
 				protected.POST("/upload/image", uploadLimit, uploadHandler.UploadImage)
 				protected.POST("/upload/audio", uploadLimit, uploadHandler.UploadAudio)
+				protected.GET("/upload/presign", uploadLimit, uploadHandler.GetPresignedPutURL)
 			}
 
 			// User

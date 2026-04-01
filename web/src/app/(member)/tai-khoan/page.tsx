@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  getMe, updateMe, changePassword, changePhone, sendOTP, uploadImage, updateMyAvatar, deleteAccount,
+  getMe, updateMe, changePassword, changePhone, sendOTP, uploadImagePresigned, updateMyAvatar, deleteAccount,
   type User as UserType,
 } from "@/services/api";
 import { useAuth } from "@/lib/auth";
@@ -107,7 +107,7 @@ export default function ProfilePage() {
 
     setUploadingAvatar(true);
     try {
-      const { url } = await uploadImage("", file, "avatars");
+      const { url } = await uploadImagePresigned("", file, "avatars");
       const updated = await updateMyAvatar("", url);
       setProfile(updated);
       toast.success("Cập nhật ảnh đại diện thành công");

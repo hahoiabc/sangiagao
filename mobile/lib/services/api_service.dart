@@ -208,6 +208,38 @@ class ApiService {
     return res.data['url'] as String;
   }
 
+  /// Presigned direct upload: client → MinIO (bypasses backend)
+  Future<String> uploadImagePresigned(String filePath, String folder) async {
+    final file = File(filePath);
+    if (await file.length() > _maxImageBytes) {
+      throw Exception('Ảnh không được vượt quá 5 MB');
+    }
+    final ext = filePath.contains('.') ? filePath.substring(filePath.lastIndexOf('.')) : '';
+    final mime = ext == '.png' ? 'image/png' : ext == '.webp' ? 'image/webp' : 'image/jpeg';
+    // Step 1: Get presigned URL
+    final presignRes = await _dio.get('/upload/presign', queryParameters: {
+      'folder': folder,
+      'content_type': mime,
+      'ext': ext,
+    });
+    final uploadUrl = presignRes.data['upload_url'] as String;
+    final publicUrl = presignRes.data['public_url'] as String;
+    // Step 2: PUT file directly to MinIO
+    final bytes = await file.readAsBytes();
+    final putDio = Dio();
+    await putDio.put(
+      uploadUrl,
+      data: Stream.fromIterable([bytes]),
+      options: Options(
+        headers: {
+          'Content-Type': mime,
+          'Content-Length': bytes.length,
+        },
+      ),
+    );
+    return publicUrl;
+  }
+
   Future<String> uploadAudio(String filePath) async {
     final file = File(filePath);
     if (await file.length() > _maxAudioBytes) {
@@ -221,7 +253,7 @@ class ApiService {
   }
 
   Future<User> uploadAvatar(String filePath) async {
-    final url = await uploadImage(filePath, 'avatars');
+    final url = await uploadImagePresigned(filePath, 'avatars');
     final res = await _dio.post('/users/me/avatar', data: {'url': url});
     return User.fromJson(res.data);
   }

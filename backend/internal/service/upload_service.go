@@ -12,6 +12,7 @@ import (
 	"log"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/sangiagao/rice-marketplace/pkg/storage"
@@ -53,6 +54,13 @@ var allowedAudioTypes = map[string]bool{
 type ImageUploadResult struct {
 	URL          string `json:"url"`
 	ThumbnailURL string `json:"thumbnail_url"`
+}
+
+// PresignResult holds the presigned upload URL and the final public URL.
+type PresignResult struct {
+	UploadURL string `json:"upload_url"`
+	PublicURL string `json:"public_url"`
+	Key       string `json:"key"`
 }
 
 type UploadService struct {
@@ -160,6 +168,35 @@ func (s *UploadService) generateAndUploadThumbnail(ctx context.Context, folder, 
 	}
 
 	return thumbResult.URL, nil
+}
+
+func (s *UploadService) GetPresignedPutURL(ctx context.Context, folder, contentType, ext string) (*PresignResult, error) {
+	if !allowedImageTypes[contentType] {
+		return nil, ErrInvalidFileType
+	}
+	if folder != "avatars" && folder != "listings" {
+		folder = "images"
+	}
+	if ext == "" {
+		switch contentType {
+		case "image/jpeg":
+			ext = ".jpg"
+		case "image/png":
+			ext = ".png"
+		case "image/webp":
+			ext = ".webp"
+		}
+	}
+	filename := fmt.Sprintf("%s%s", uuid.New().String(), ext)
+	result, err := s.storage.PresignedPutURL(ctx, folder, filename, 10*time.Minute)
+	if err != nil {
+		return nil, fmt.Errorf("presign put url: %w", err)
+	}
+	return &PresignResult{
+		UploadURL: result.UploadURL,
+		PublicURL: result.PublicURL,
+		Key:       result.Key,
+	}, nil
 }
 
 func (s *UploadService) UploadAudio(ctx context.Context, file io.Reader, size int64, contentType, originalFilename string) (string, error) {

@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { createListing, batchCreateListings, uploadImage, addListingImage, getProductCatalog, type RiceCategory } from "@/services/api";
+import { createListing, batchCreateListings, uploadImagePresigned, addListingImage, getProductCatalog, type RiceCategory } from "@/services/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
@@ -154,7 +154,7 @@ export default function CreateListingPage() {
         // Upload images
         for (const img of f.images) {
           try {
-            const { url } = await uploadImage("", img.file, "listings");
+            const { url } = await uploadImagePresigned("", img.file, "listings");
             await addListingImage("", listing.id, url);
           } catch {
             // continue
@@ -177,7 +177,7 @@ export default function CreateListingPage() {
           if (!listing) continue;
           for (const img of forms[i].images) {
             try {
-              const { url } = await uploadImage("", img.file, "listings");
+              const { url } = await uploadImagePresigned("", img.file, "listings");
               await addListingImage("", listing.id, url);
             } catch {
               // continue

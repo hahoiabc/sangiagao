@@ -22,6 +22,7 @@ import {
   batchDeleteMessages,
   batchRecallMessages,
   getListingDetail,
+  uploadImagePresigned,
   type Message,
   type ListingDetail,
 } from "@/services/api";
@@ -416,7 +417,7 @@ export default function ChatRoomPage() {
     setUploadingImages(true);
     try {
       for (const img of selectedImages) {
-        const { url } = await uploadImage("", img.file, "listings");
+        const { url } = await uploadImagePresigned("", img.file, "listings");
         const msg = await apiSendMessage("", convId, url, "image");
         setMessages((prev) => [...prev, msg]);
       }

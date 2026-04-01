@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/minio/minio-go/v7"
@@ -81,6 +82,30 @@ func (m *MinIOClient) GetPresignedURL(ctx context.Context, key string, expiry ti
 		return "", fmt.Errorf("presigned url: %w", err)
 	}
 	return url.String(), nil
+}
+
+func (m *MinIOClient) PresignedPutURL(ctx context.Context, folder, filename string, expiry time.Duration) (*PresignedPutResult, error) {
+	key := folder + "/" + filename
+	presignedURL, err := m.client.PresignedPutObject(ctx, m.bucketName, key, expiry)
+	if err != nil {
+		return nil, fmt.Errorf("presigned put url: %w", err)
+	}
+	// Rewrite internal MinIO URL to public nginx proxy path.
+	// Internal: http://minio:9000/rice-images/listings/uuid.jpg?sig...
+	// Public:   https://sangiagao.vn/storage/rice-images/listings/uuid.jpg?sig...
+	// The nginx /storage/ location proxies PUT to minio:9000 with Host: minio:9000
+	// so the presigned signature remains valid.
+	internalBase := m.client.EndpointURL().String()
+	// m.publicURL = "https://sangiagao.vn/images" → base = "https://sangiagao.vn"
+	publicBase := strings.TrimSuffix(m.publicURL, "/images")
+	publicBase = strings.TrimSuffix(publicBase, "/")
+	uploadURL := strings.Replace(presignedURL.String(), strings.TrimSuffix(internalBase, "/"), publicBase+"/storage", 1)
+	publicFileURL := fmt.Sprintf("%s/%s", m.publicURL, key)
+	return &PresignedPutResult{
+		UploadURL: uploadURL,
+		PublicURL: publicFileURL,
+		Key:       key,
+	}, nil
 }
 
 func (m *MinIOClient) Delete(ctx context.Context, key string) error {

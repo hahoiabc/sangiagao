@@ -412,7 +412,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       setState(() => _uploadingImage = true);
       try {
         for (final image in images) {
-          final url = await ref.read(apiServiceProvider).uploadImage(image.path, 'images');
+          final url = await ref.read(apiServiceProvider).uploadImagePresigned(image.path, 'images');
           await _sendMessage(url, 'image');
         }
       } catch (e) {
@@ -436,7 +436,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
       setState(() => _uploadingImage = true);
       try {
-        final url = await ref.read(apiServiceProvider).uploadImage(image.path, 'images');
+        final url = await ref.read(apiServiceProvider).uploadImagePresigned(image.path, 'images');
         await _sendMessage(url, 'image');
       } catch (e) {
         if (mounted) {

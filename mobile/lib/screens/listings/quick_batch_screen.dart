@@ -160,7 +160,7 @@ class _QuickBatchScreenState extends ConsumerState<QuickBatchScreen> {
     setState(() => entry.uploading = true);
     try {
       for (final image in images.take(remaining)) {
-        final url = await ref.read(apiServiceProvider).uploadImage(image.path, 'listings');
+        final url = await ref.read(apiServiceProvider).uploadImagePresigned(image.path, 'listings');
         if (mounted) {
           setState(() {
             entry.imageUrls.add(url);

@@ -59,6 +59,30 @@ func (h *UploadHandler) UploadImage(c *gin.Context) {
 	})
 }
 
+// GetPresignedPutURL handles GET /upload/presign?folder=listings&content_type=image/jpeg&ext=.jpg
+func (h *UploadHandler) GetPresignedPutURL(c *gin.Context) {
+	folder := c.DefaultQuery("folder", "images")
+	contentType := c.DefaultQuery("content_type", "image/jpeg")
+	ext := c.DefaultQuery("ext", "")
+
+	result, err := h.uploadService.GetPresignedPutURL(c.Request.Context(), folder, contentType, ext)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrInvalidFileType):
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "presign failed"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"upload_url": result.UploadURL,
+		"public_url": result.PublicURL,
+		"key":        result.Key,
+	})
+}
+
 func (h *UploadHandler) UploadAudio(c *gin.Context) {
 	file, header, err := c.Request.FormFile("audio")
 	if err != nil {

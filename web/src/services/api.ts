@@ -480,6 +480,26 @@ export async function uploadImage(token: string, file: File, folder: "avatars" |
   return res.json() as Promise<{ url: string }>;
 }
 
+// Presigned direct upload: client → MinIO (bypasses backend for better performance)
+export async function uploadImagePresigned(token: string, file: File, folder: "avatars" | "listings"): Promise<{ url: string }> {
+  const ext = file.name.includes(".") ? file.name.substring(file.name.lastIndexOf(".")) : "";
+  // Step 1: Get presigned URL from backend
+  const presign = await request<{ upload_url: string; public_url: string; key: string }>(
+    `/upload/presign?folder=${folder}&content_type=${encodeURIComponent(file.type)}&ext=${encodeURIComponent(ext)}`,
+    { token }
+  );
+  // Step 2: PUT file directly to MinIO via nginx proxy
+  const putRes = await fetchWithTimeout(presign.upload_url, {
+    method: "PUT",
+    headers: { "Content-Type": file.type },
+    body: file,
+  }, UPLOAD_TIMEOUT);
+  if (!putRes.ok) {
+    throw new ApiError(putRes.status, "upload_failed", "Upload ảnh thất bại");
+  }
+  return { url: presign.public_url };
+}
+
 export async function uploadAudio(token: string, blob: Blob) {
   const formData = new FormData();
   formData.append("audio", blob, "recording.webm");

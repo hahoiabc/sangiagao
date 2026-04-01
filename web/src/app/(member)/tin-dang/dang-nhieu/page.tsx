@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { batchCreateListings, getProductCatalog, uploadImage, addListingImage, type RiceCategory, type RiceProduct } from "@/services/api";
+import { batchCreateListings, getProductCatalog, uploadImagePresigned, addListingImage, type RiceCategory, type RiceProduct } from "@/services/api";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
@@ -195,7 +195,7 @@ export default function QuickBatchPage() {
         if (!listing?.id || entry.images.length === 0) continue;
         for (const img of entry.images) {
           try {
-            const { url } = await uploadImage("", img.file, "listings");
+            const { url } = await uploadImagePresigned("", img.file, "listings");
             await addListingImage("", listing.id, url);
           } catch {
             // continue
