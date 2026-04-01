@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Search, MapPin, Package, ChevronLeft, ChevronRight, Filter, X, ArrowUpDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -331,13 +332,14 @@ function MarketplaceContent() {
             {result.data.map((listing) => (
               <Link key={listing.id} href={`/san-giao-dich/${listing.id}`}>
                 <Card className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer h-full">
-                  <div className="h-40 bg-muted flex items-center justify-center overflow-hidden">
+                  <div className="h-40 bg-muted flex items-center justify-center overflow-hidden relative">
                     {listing.images.length > 0 ? (
-                      <img
+                      <Image
                         src={listing.images[0]}
                         alt={listing.title}
-                        loading="lazy"
-                        className="w-full h-full object-cover"
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                        className="object-cover"
                       />
                     ) : (
                       <Package className="h-10 w-10 text-muted-foreground/40" />

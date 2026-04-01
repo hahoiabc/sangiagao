@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -156,12 +157,15 @@ export default function ListingsPage() {
                     {listing.images && listing.images.length > 0 ? (
                       <div className="flex gap-1">
                         {listing.images.slice(0, 3).map((img, i) => (
-                          <img
-                            key={i}
-                            src={img}
-                            alt={`${listing.title} - ${i + 1}`}
-                            className="h-8 w-8 rounded object-cover border"
-                          />
+                          <div key={i} className="relative h-8 w-8">
+                            <Image
+                              src={img}
+                              alt={`${listing.title} - ${i + 1}`}
+                              fill
+                              sizes="32px"
+                              className="rounded object-cover border"
+                            />
+                          </div>
                         ))}
                       </div>
                     ) : (

@@ -406,12 +406,15 @@ export default function ListingDetailPage() {
               </button>
             </>
           )}
-          <img
-            src={listing.images[selectedImage]}
-            alt={listing.title}
-            className="max-h-[90vh] max-w-[90vw] object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div className="relative max-h-[90vh] max-w-[90vw] w-[90vw] h-[90vh]" onClick={(e) => e.stopPropagation()}>
+            <Image
+              src={listing.images[selectedImage]}
+              alt={listing.title}
+              fill
+              sizes="90vw"
+              className="object-contain"
+            />
+          </div>
           {listing.images.length > 1 && (
             <div className="absolute bottom-4 text-white/70 text-sm">
               {selectedImage + 1} / {listing.images.length}

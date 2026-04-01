@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -112,12 +113,15 @@ export default function ListingDetailPage() {
               <h2 className="text-sm font-medium text-muted-foreground mb-3">Hình ảnh ({listing.images.length})</h2>
               <div className="flex gap-3 flex-wrap">
                 {listing.images.map((img, i) => (
-                  <img
-                    key={i}
-                    src={img}
-                    alt={`${listing.title} - ${i + 1}`}
-                    className="h-40 w-40 rounded-lg object-cover border"
-                  />
+                  <div key={i} className="relative h-40 w-40">
+                    <Image
+                      src={img}
+                      alt={`${listing.title} - ${i + 1}`}
+                      fill
+                      sizes="160px"
+                      className="rounded-lg object-cover border"
+                    />
+                  </div>
                 ))}
               </div>
             </div>

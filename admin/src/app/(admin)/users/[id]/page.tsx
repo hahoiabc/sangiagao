@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -411,9 +412,11 @@ export default function UserDetailPage() {
                   >
                     <div className="flex items-center gap-3">
                       {listing.images && listing.images.length > 0 ? (
-                        <img
+                        <Image
                           src={listing.images[0]}
                           alt={listing.title}
+                          width={40}
+                          height={40}
                           className="h-10 w-10 rounded object-cover border"
                         />
                       ) : (
