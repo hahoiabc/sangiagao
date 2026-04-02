@@ -47,7 +47,7 @@ export default function PriceBoardPage() {
           <div className="mb-6 overflow-hidden max-w-xl mx-auto">
             <p className="whitespace-nowrap text-lg text-white/90 drop-shadow animate-[marquee_15s_linear_infinite] inline-block">
               {slogan}
-              <span className="mx-16 opacity-40">|</span>
+              <span className="mx-16">&nbsp;</span>
               {slogan}
             </p>
           </div>

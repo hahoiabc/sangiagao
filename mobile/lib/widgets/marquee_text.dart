@@ -56,7 +56,8 @@ class _MarqueeTextState extends State<MarqueeText> {
 
   void _animate() async {
     while (mounted) {
-      final scrollDistance = _singleTextWidth + _gap;
+      // Scroll = leading gap + text width = text enters from right, exits left completely
+      final scrollDistance = _gap + _singleTextWidth;
       if (scrollDistance <= 0) break;
 
       final duration = Duration(
@@ -88,12 +89,9 @@ class _MarqueeTextState extends State<MarqueeText> {
       physics: const NeverScrollableScrollPhysics(),
       child: Row(
         children: [
+          if (_initialized) SizedBox(width: _gap), // leading gap: text starts off-screen right
           Text(widget.text, style: widget.style, maxLines: 1),
-          if (_initialized) ...[
-            SizedBox(width: _gap),
-            Text(widget.text, style: widget.style, maxLines: 1),
-            SizedBox(width: _gap),
-          ],
+          if (_initialized) SizedBox(width: _gap), // trailing gap: text fully exits left
         ],
       ),
     );
