@@ -11,7 +11,7 @@ import { createListing, batchCreateListings, uploadImagePresigned, addListingIma
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
-const MAX_IMAGES = 3;
+const MAX_IMAGES = 1;
 
 interface ListingForm {
   category: string;
@@ -376,7 +376,6 @@ export default function CreateListingPage() {
                     ref={(el) => { fileInputRefs.current[fi] = el; }}
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
-                    multiple
                     onChange={(e) => handleImageSelect(fi, e)}
                     className="hidden"
                   />

@@ -476,11 +476,11 @@ func main() {
 				admin.POST("/notifications/broadcast", middleware.RequirePermission(permissionService, "notifications.broadcast"), notifHandler.Broadcast)
 				admin.POST("/notifications/send", middleware.RequirePermission(permissionService, "notifications.send_individual"), notifHandler.SendToUser)
 
-				// Zalo ZNS management — owner only
+				// Zalo ZNS — status viewable by admin+owner, modify owner only
+				admin.GET("/zalo-zns/status", znsHandler.GetStatus)
 				znsOnly := admin.Group("")
 				znsOnly.Use(middleware.RequireRole("owner"))
 				{
-					znsOnly.GET("/zalo-zns/status", znsHandler.GetStatus)
 					znsOnly.PUT("/zalo-zns/refresh-token", znsHandler.UpdateRefreshToken)
 					znsOnly.POST("/zalo-zns/test", znsHandler.TestSend)
 				}

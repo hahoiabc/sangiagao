@@ -12,7 +12,7 @@ import { batchCreateListings, getProductCatalog, uploadImagePresigned, addListin
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
-const MAX_IMAGES = 2;
+const MAX_IMAGES = 1;
 
 interface ImageItem {
   file: File;
@@ -438,7 +438,6 @@ export default function QuickBatchPage() {
                     ref={(el) => { fileInputRefs.current[i] = el; }}
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
-                    multiple
                     onChange={(e) => handleImageSelect(i, e)}
                     className="hidden"
                   />
