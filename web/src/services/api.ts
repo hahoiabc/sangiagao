@@ -1,5 +1,17 @@
 import { clearAuth } from "@/lib/auth";
 
+/** Convert image URL to thumbnail URL: .../listings/uuid.jpg → .../listings/thumb_uuid.jpg */
+export function toThumbnailUrl(url: string): string {
+  const lastSlash = url.lastIndexOf("/");
+  if (lastSlash < 0) return url;
+  const base = url.substring(0, lastSlash + 1);
+  const filename = url.substring(lastSlash + 1);
+  const dotIdx = filename.lastIndexOf(".");
+  if (dotIdx < 0) return `${base}thumb_${filename}.jpg`;
+  const name = filename.substring(0, dotIdx);
+  return `${base}thumb_${name}.jpg`;
+}
+
 function getCSRFToken(): string {
   if (typeof document === "undefined") return "";
   const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);

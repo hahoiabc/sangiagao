@@ -83,6 +83,26 @@ func (h *UploadHandler) GetPresignedPutURL(c *gin.Context) {
 	})
 }
 
+// ConfirmPresignedUpload handles POST /upload/confirm
+// Generates thumbnail for an image uploaded via presigned URL.
+func (h *UploadHandler) ConfirmPresignedUpload(c *gin.Context) {
+	var req struct {
+		Key string `json:"key" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "key is required"})
+		return
+	}
+
+	thumbURL, err := h.uploadService.ConfirmPresignedUpload(c.Request.Context(), req.Key)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "thumbnail generation failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"thumbnail_url": thumbURL})
+}
+
 func (h *UploadHandler) UploadAudio(c *gin.Context) {
 	file, header, err := c.Request.FormFile("audio")
 	if err != nil {

@@ -24,5 +24,6 @@ type Client interface {
 	Upload(ctx context.Context, folder, filename string, reader io.Reader, size int64, contentType string) (*UploadResult, error)
 	GetPresignedURL(ctx context.Context, key string, expiry time.Duration) (string, error)
 	PresignedPutURL(ctx context.Context, folder, filename string, expiry time.Duration) (*PresignedPutResult, error)
+	GetObject(ctx context.Context, key string) ([]byte, error)
 	Delete(ctx context.Context, key string) error
 }

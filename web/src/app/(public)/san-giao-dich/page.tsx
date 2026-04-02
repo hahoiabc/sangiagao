@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { searchMarketplace, getProductCatalog, type Listing, type PaginatedResponse, type RiceCategory } from "@/services/api";
+import { searchMarketplace, getProductCatalog, toThumbnailUrl, type Listing, type PaginatedResponse, type RiceCategory } from "@/services/api";
 import { formatPrice, formatQuantity, timeAgo } from "@/lib/utils";
 
 interface LocationItem {
@@ -335,7 +335,7 @@ function MarketplaceContent() {
                   <div className="h-56 bg-muted flex items-center justify-center overflow-hidden relative">
                     {listing.images.length > 0 ? (
                       <Image
-                        src={listing.images[0]}
+                        src={toThumbnailUrl(listing.images[0])}
                         alt={listing.title}
                         fill
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"

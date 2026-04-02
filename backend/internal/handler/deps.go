@@ -110,6 +110,7 @@ type UploadServiceInterface interface {
 	UploadImage(ctx context.Context, folder string, file io.Reader, size int64, contentType, originalFilename string) (*service.ImageUploadResult, error)
 	UploadAudio(ctx context.Context, file io.Reader, size int64, contentType, originalFilename string) (string, error)
 	GetPresignedPutURL(ctx context.Context, folder, contentType, ext string) (*service.PresignResult, error)
+	ConfirmPresignedUpload(ctx context.Context, key string) (string, error)
 }
 
 type FeedbackServiceInterface interface {

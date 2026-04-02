@@ -168,7 +168,7 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                                       aspectRatio: 16 / 9,
                                       child: listing.images.isNotEmpty
                                           ? CachedNetworkImage(
-                                              imageUrl: listing.images.first,
+                                              imageUrl: toThumbnailUrl(listing.images.first),
                                               fit: BoxFit.cover,
                                               width: double.infinity,
                                               placeholder: (_, __) => Container(

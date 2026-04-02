@@ -1,5 +1,19 @@
 import 'user.dart';
 
+/// Convert image URL to thumbnail URL by inserting "thumb_" prefix on filename.
+/// e.g. ".../listings/uuid.jpg" → ".../listings/thumb_uuid.jpg"
+/// Falls back to original URL if format is unexpected.
+String toThumbnailUrl(String url) {
+  final lastSlash = url.lastIndexOf('/');
+  if (lastSlash < 0) return url;
+  final base = url.substring(0, lastSlash + 1);
+  final filename = url.substring(lastSlash + 1);
+  final dotIdx = filename.lastIndexOf('.');
+  if (dotIdx < 0) return '${base}thumb_$filename.jpg';
+  final name = filename.substring(0, dotIdx);
+  return '${base}thumb_$name.jpg';
+}
+
 class Listing {
   final String id;
   final String userId;

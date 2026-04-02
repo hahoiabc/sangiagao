@@ -349,6 +349,7 @@ func main() {
 				protected.POST("/upload/image", uploadLimit, uploadHandler.UploadImage)
 				protected.POST("/upload/audio", uploadLimit, uploadHandler.UploadAudio)
 				protected.GET("/upload/presign", uploadLimit, uploadHandler.GetPresignedPutURL)
+				protected.POST("/upload/confirm", uploadHandler.ConfirmPresignedUpload)
 			}
 
 			// User

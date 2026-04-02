@@ -84,6 +84,19 @@ func (m *MinIOClient) GetPresignedURL(ctx context.Context, key string, expiry ti
 	return url.String(), nil
 }
 
+func (m *MinIOClient) GetObject(ctx context.Context, key string) ([]byte, error) {
+	obj, err := m.client.GetObject(ctx, m.bucketName, key, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("get object: %w", err)
+	}
+	defer obj.Close()
+	data, err := io.ReadAll(obj)
+	if err != nil {
+		return nil, fmt.Errorf("read object: %w", err)
+	}
+	return data, nil
+}
+
 func (m *MinIOClient) PresignedPutURL(ctx context.Context, folder, filename string, expiry time.Duration) (*PresignedPutResult, error) {
 	key := folder + "/" + filename
 	presignedURL, err := m.client.PresignedPutObject(ctx, m.bucketName, key, expiry)

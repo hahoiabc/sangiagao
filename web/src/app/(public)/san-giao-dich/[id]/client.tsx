@@ -159,10 +159,10 @@ export default function ListingDetailPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Images + Details */}
-        <div className="lg:col-span-2 space-y-4">
-          {/* Image Gallery */}
+        <div className="lg:col-span-2 flex flex-col">
+          {/* Image Gallery — fills top */}
           <div
-            className="rounded-lg overflow-hidden bg-muted aspect-video flex items-center justify-center relative group cursor-pointer"
+            className="rounded-t-lg overflow-hidden bg-black flex-1 min-h-[50vh] flex items-center justify-center relative group cursor-pointer"
             onClick={() => listing.images.length > 0 && setLightboxOpen(true)}
           >
             {listing.images.length > 0 ? (
@@ -183,7 +183,7 @@ export default function ListingDetailPage() {
             )}
           </div>
           {listing.images.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto">
+            <div className="flex gap-2 overflow-x-auto py-2 bg-muted/30 px-2 rounded-b-lg">
               {listing.images.map((img, i) => (
                 <button
                   key={i}
@@ -198,39 +198,27 @@ export default function ListingDetailPage() {
             </div>
           )}
 
-          {/* Details */}
-          <Card>
+          {/* Details — bottom half */}
+          <Card className="mt-4">
             <CardContent className="p-6">
-              <h1 className="text-xl font-bold mb-2">{listing.title}</h1>
-              <p className="text-2xl font-bold text-primary mb-4">
-                {formatPrice(listing.price_per_kg)}
-              </p>
+              <div className="flex items-baseline justify-between gap-4 mb-3">
+                <h1 className="text-xl font-bold truncate">{listing.title}</h1>
+                <p className="text-2xl font-bold text-primary whitespace-nowrap">
+                  {formatPrice(listing.price_per_kg)}
+                </p>
+              </div>
 
-              <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-                <div>
-                  <span className="text-muted-foreground">Loại gạo:</span>
-                  <p className="font-medium">{listing.rice_type}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Số lượng:</span>
-                  <p className="font-medium">{formatQuantity(listing.quantity_kg)}</p>
-                </div>
-                {listing.province && (
-                  <div>
-                    <span className="text-muted-foreground">Khu vực:</span>
-                    <p className="font-medium flex items-center gap-1">
-                      <MapPin className="h-3.5 w-3.5" />
-                      {listing.province}
-                      {listing.district && `, ${listing.district}`}
-                    </p>
-                  </div>
-                )}
+              <div className="flex items-center gap-6 text-sm mb-4">
                 {listing.harvest_season && (
                   <div>
-                    <span className="text-muted-foreground">Vụ mùa:</span>
-                    <p className="font-medium">{listing.harvest_season}</p>
+                    <span className="text-muted-foreground">Vụ mùa: </span>
+                    <span className="font-medium">{listing.harvest_season}</span>
                   </div>
                 )}
+                <div>
+                  <span className="text-muted-foreground">Số lượng: </span>
+                  <span className="font-medium">{formatQuantity(listing.quantity_kg)}</span>
+                </div>
               </div>
 
               {listing.description && (

@@ -224,6 +224,7 @@ class ApiService {
     });
     final uploadUrl = presignRes.data['upload_url'] as String;
     final publicUrl = presignRes.data['public_url'] as String;
+    final key = presignRes.data['key'] as String;
     // Step 2: PUT file directly to MinIO
     final bytes = await file.readAsBytes();
     final putDio = Dio();
@@ -237,6 +238,12 @@ class ApiService {
         },
       ),
     );
+    // Step 3: Confirm upload → backend generates thumbnail
+    try {
+      await _dio.post('/upload/confirm', data: {'key': key});
+    } catch (_) {
+      // Thumbnail generation failed — original image still works
+    }
     return publicUrl;
   }
 

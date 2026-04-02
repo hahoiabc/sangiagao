@@ -199,6 +199,28 @@ func (s *UploadService) GetPresignedPutURL(ctx context.Context, folder, contentT
 	}, nil
 }
 
+// ConfirmPresignedUpload generates a thumbnail for an image uploaded via presigned URL.
+// key is the object key, e.g. "listings/uuid.jpg"
+func (s *UploadService) ConfirmPresignedUpload(ctx context.Context, key string) (string, error) {
+	// Download original from MinIO
+	imgData, err := s.storage.GetObject(ctx, key)
+	if err != nil {
+		return "", fmt.Errorf("download original: %w", err)
+	}
+
+	parts := strings.SplitN(key, "/", 2)
+	if len(parts) != 2 {
+		return "", fmt.Errorf("invalid key format: %s", key)
+	}
+	folder, filename := parts[0], parts[1]
+
+	thumbURL, err := s.generateAndUploadThumbnail(ctx, folder, filename, imgData)
+	if err != nil {
+		return "", fmt.Errorf("generate thumbnail: %w", err)
+	}
+	return thumbURL, nil
+}
+
 func (s *UploadService) UploadAudio(ctx context.Context, file io.Reader, size int64, contentType, originalFilename string) (string, error) {
 	if size > MaxAudioSize {
 		return "", ErrFileTooLarge
