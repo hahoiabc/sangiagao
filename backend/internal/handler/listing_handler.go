@@ -192,7 +192,7 @@ func (h *ListingHandler) AddImage(c *gin.Context) {
 		case errors.Is(err, service.ErrNotListingOwner):
 			c.JSON(http.StatusForbidden, gin.H{"error": "you don't own this listing"})
 		case errors.Is(err, service.ErrMaxImages):
-			c.JSON(http.StatusConflict, gin.H{"error": "Tối đa 3 ảnh cho mỗi tin đăng"})
+			c.JSON(http.StatusConflict, gin.H{"error": "Tối đa 1 ảnh cho mỗi tin đăng"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to add image"})
 		}

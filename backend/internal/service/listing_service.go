@@ -15,7 +15,7 @@ import (
 
 var (
 	ErrNotListingOwner      = errors.New("you don't own this listing")
-	ErrMaxImages            = errors.New("maximum 3 images per listing")
+	ErrMaxImages            = errors.New("maximum 1 image per listing")
 	ErrListingDeleted       = errors.New("listing has been deleted")
 	ErrSubscriptionRequired = errors.New("bạn cần có gói đăng ký còn hiệu lực để đăng tin")
 )
@@ -264,7 +264,7 @@ func (s *ListingService) AddImage(ctx context.Context, userID, id, imageURL stri
 	if listing.UserID != userID {
 		return nil, ErrNotListingOwner
 	}
-	if len(listing.Images) >= 3 {
+	if len(listing.Images) >= 1 {
 		return nil, ErrMaxImages
 	}
 	return s.listingRepo.AddImage(ctx, id, imageURL)

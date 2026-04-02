@@ -9,7 +9,7 @@ import '../../providers/providers.dart';
 import '../../theme/app_theme.dart';
 
 /// Tracks per-product input when the tile is expanded.
-const _kMaxImages = 2;
+const _kMaxImages = 1;
 
 class _ProductEntry {
   final RiceProduct product;
@@ -148,25 +148,22 @@ class _QuickBatchScreenState extends ConsumerState<QuickBatchScreen> {
       );
       return;
     }
-    final remaining = _kMaxImages - entry.imageUrls.length;
-    final images = await _picker.pickMultiImage(
+    final image = await _picker.pickImage(
+      source: ImageSource.gallery,
       maxWidth: 1920,
       maxHeight: 1920,
       imageQuality: 95,
-      limit: remaining,
     );
-    if (images.isEmpty) return;
+    if (image == null) return;
 
     setState(() => entry.uploading = true);
     try {
-      for (final image in images.take(remaining)) {
-        final url = await ref.read(apiServiceProvider).uploadImagePresigned(image.path, 'listings');
-        if (mounted) {
-          setState(() {
-            entry.imageUrls.add(url);
-            entry.localPaths.add(image.path);
-          });
-        }
+      final url = await ref.read(apiServiceProvider).uploadImagePresigned(image.path, 'listings');
+      if (mounted) {
+        setState(() {
+          entry.imageUrls.add(url);
+          entry.localPaths.add(image.path);
+        });
       }
     } catch (e) {
       if (mounted) {

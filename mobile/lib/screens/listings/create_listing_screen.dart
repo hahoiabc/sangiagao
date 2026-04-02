@@ -166,31 +166,28 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
   }
 
   Future<void> _pickImage(_ProductForm form) async {
-    if (form.imageUrls.length >= 3) {
+    if (form.imageUrls.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tối đa 3 hình ảnh')),
+        const SnackBar(content: Text('Tối đa 1 hình ảnh')),
       );
       return;
     }
-    final remaining = 3 - form.imageUrls.length;
-    final images = await _picker.pickMultiImage(
+    final image = await _picker.pickImage(
+      source: ImageSource.gallery,
       maxWidth: 1920,
       maxHeight: 1920,
       imageQuality: 95,
-      limit: remaining,
     );
-    if (images.isEmpty) return;
+    if (image == null) return;
 
     setState(() => form.uploading = true);
     try {
-      for (final image in images.take(remaining)) {
-        final url = await ref.read(apiServiceProvider).uploadImagePresigned(image.path, 'listings');
-        if (mounted) {
-          setState(() {
-            form.imageUrls.add(url);
-            form.localPaths.add(image.path);
-          });
-        }
+      final url = await ref.read(apiServiceProvider).uploadImagePresigned(image.path, 'listings');
+      if (mounted) {
+        setState(() {
+          form.imageUrls.add(url);
+          form.localPaths.add(image.path);
+        });
       }
       if (mounted) {
         setState(() => form.uploading = false);
@@ -565,7 +562,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
             const SizedBox(height: 14),
 
             // Images
-            Text('Hình ảnh (tối đa 3)', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            Text('Hình ảnh (tối đa 1)', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 10,
@@ -599,7 +596,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
                     ],
                   );
                 }),
-                if (form.imageUrls.length < 3)
+                if (form.imageUrls.isEmpty)
                   GestureDetector(
                     onTap: form.uploading ? null : () => _pickImage(form),
                     child: Container(
@@ -617,7 +614,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
                               children: [
                                 Icon(Icons.add_a_photo_outlined, size: 22, color: AppColors.textHint),
                                 const SizedBox(height: 2),
-                                Text('${form.imageUrls.length}/3', style: TextStyle(fontSize: 11, color: AppColors.textHint)),
+                                Text('${form.imageUrls.length}/1', style: TextStyle(fontSize: 11, color: AppColors.textHint)),
                               ],
                             ),
                     ),
