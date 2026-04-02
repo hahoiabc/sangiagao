@@ -288,6 +288,21 @@ func (r *SubscriptionRepo) GetDailyRevenue(ctx context.Context, from, to string)
 	return report, nil
 }
 
+func (r *SubscriptionRepo) HasUsedTrial(ctx context.Context, phoneHash string) (bool, error) {
+	var exists bool
+	err := r.pool.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM used_trials WHERE phone_hash = $1)`, phoneHash,
+	).Scan(&exists)
+	return exists, err
+}
+
+func (r *SubscriptionRepo) RecordUsedTrial(ctx context.Context, phoneHash string) error {
+	_, err := r.pool.Exec(ctx,
+		`INSERT INTO used_trials (phone_hash) VALUES ($1) ON CONFLICT (phone_hash) DO NOTHING`, phoneHash,
+	)
+	return err
+}
+
 func (r *SubscriptionRepo) RestoreListings(ctx context.Context, userID string) (int, error) {
 	tag, err := r.pool.Exec(ctx,
 		`UPDATE listings SET status = 'active'

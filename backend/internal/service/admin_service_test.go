@@ -258,6 +258,14 @@ func (m *mockAdminSubRepo) GetDailyRevenue(ctx context.Context, from, to string)
 	}
 	return args.Get(0).(*repository.SubDailyRevenueReport), args.Error(1)
 }
+func (m *mockAdminSubRepo) HasUsedTrial(ctx context.Context, phoneHash string) (bool, error) {
+	args := m.Called(ctx, phoneHash)
+	return args.Bool(0), args.Error(1)
+}
+func (m *mockAdminSubRepo) RecordUsedTrial(ctx context.Context, phoneHash string) error {
+	args := m.Called(ctx, phoneHash)
+	return args.Error(0)
+}
 
 func TestAdminGetDashboardStats_Success(t *testing.T) {
 	userRepo := new(mockAdminUserRepo)

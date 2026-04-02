@@ -72,6 +72,8 @@ type SubscriptionRepository interface {
 	GetExpiringSoon(ctx context.Context, withinHours int) ([]*model.Subscription, error)
 	GetRevenueStats(ctx context.Context) (*repository.SubRevenueStats, error)
 	GetDailyRevenue(ctx context.Context, from, to string) (*repository.SubDailyRevenueReport, error)
+	HasUsedTrial(ctx context.Context, phoneHash string) (bool, error)
+	RecordUsedTrial(ctx context.Context, phoneHash string) error
 }
 
 type ListingRepository interface {

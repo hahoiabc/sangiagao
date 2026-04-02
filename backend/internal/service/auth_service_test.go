@@ -251,6 +251,14 @@ func (m *mockSubRepo) GetDailyRevenue(ctx context.Context, from, to string) (*re
 	}
 	return args.Get(0).(*repository.SubDailyRevenueReport), args.Error(1)
 }
+func (m *mockSubRepo) HasUsedTrial(ctx context.Context, phoneHash string) (bool, error) {
+	args := m.Called(ctx, phoneHash)
+	return args.Bool(0), args.Error(1)
+}
+func (m *mockSubRepo) RecordUsedTrial(ctx context.Context, phoneHash string) error {
+	args := m.Called(ctx, phoneHash)
+	return args.Error(0)
+}
 
 type mockSMS struct{ mock.Mock }
 

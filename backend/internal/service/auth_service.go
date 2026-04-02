@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"errors"
 	"fmt"
@@ -284,10 +285,16 @@ func (s *AuthService) CompleteRegister(ctx context.Context, phone, code, name, p
 		return nil, fmt.Errorf("create user: %w", err)
 	}
 
-	// Trial 30 ngày miễn phí cho tài khoản mới
-	_, err = s.subRepo.ActivateByUserID(ctx, user.ID, 30, 1, 0, "free_trial")
-	if err != nil {
-		log.Printf("Failed to create trial subscription for user %s: %v", user.ID, err)
+	// Trial 30 ngày miễn phí — chỉ cấp 1 lần duy nhất per SĐT
+	phoneHash := fmt.Sprintf("%x", sha256.Sum256([]byte(phone)))
+	usedTrial, _ := s.subRepo.HasUsedTrial(ctx, phoneHash)
+	if !usedTrial {
+		_, err = s.subRepo.ActivateByUserID(ctx, user.ID, 30, 1, 0, "free_trial")
+		if err != nil {
+			log.Printf("Failed to create trial subscription for user %s: %v", user.ID, err)
+		} else {
+			_ = s.subRepo.RecordUsedTrial(ctx, phoneHash)
+		}
 	}
 
 	tokens, err := s.jwtManager.GenerateTokenPair(user.ID, user.Role)
