@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -308,7 +307,7 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Price card ──
+                // ── Price + Title card ──
                 Container(
                   width: double.infinity,
                   color: AppColors.surface,
@@ -316,32 +315,71 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Price
+                      // Title + Price — same row
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Text(
-                            '${_priceFormat.format(listing.pricePerKg)}đ',
-                            style: const TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.priceText,
-                              height: 1.1,
+                          Expanded(
+                            child: Text(
+                              listing.title,
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 2),
-                          const Padding(
-                            padding: EdgeInsets.only(bottom: 3),
-                            child: Text('/kg', style: TextStyle(fontSize: 15, color: AppColors.textSecondary)),
+                          const SizedBox(width: 12),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                '${_priceFormat.format(listing.pricePerKg)}đ',
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.priceText,
+                                  height: 1.1,
+                                ),
+                              ),
+                              const Padding(
+                                padding: EdgeInsets.only(bottom: 2),
+                                child: Text('/kg', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      // Title
-                      Text(
-                        listing.title,
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                      const SizedBox(height: 10),
+                      // Season + Quantity — same row
+                      Row(
+                        children: [
+                          if (listing.harvestSeason != null && listing.harvestSeason!.isNotEmpty) ...[
+                            Icon(Icons.calendar_month, size: 15, color: AppColors.textHint),
+                            const SizedBox(width: 4),
+                            Text(listing.harvestSeason!, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                            const SizedBox(width: 16),
+                          ],
+                          Icon(Icons.scale, size: 15, color: AppColors.textHint),
+                          const SizedBox(width: 4),
+                          Text('${_priceFormat.format(listing.quantityKg)} kg', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                        ],
                       ),
+                      const SizedBox(height: 8),
+                      // Location (ward + province)
+                      if (listing.province != null || listing.ward != null)
+                        Row(
+                          children: [
+                            Icon(Icons.location_on_outlined, size: 15, color: AppColors.textHint),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                [listing.ward, listing.province].where((s) => s != null && s.isNotEmpty).join(', '),
+                                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       const SizedBox(height: 8),
                       // Time + views
                       Row(
@@ -355,50 +393,24 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
                           Text('${listing.viewCount}', style: const TextStyle(fontSize: 13, color: AppColors.textHint)),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                // ── Detail info section ──
-                Container(
-                  color: AppColors.surface,
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Thông tin chi tiết',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                      ),
-                      const SizedBox(height: 16),
-                      _DetailRow(icon: Icons.scale, label: 'Số lượng', value: '${_priceFormat.format(listing.quantityKg)} kg'),
-                      if (listing.harvestSeason != null && listing.harvestSeason!.isNotEmpty)
-                        _DetailRow(icon: Icons.calendar_month, label: 'Vụ mùa', value: listing.harvestSeason!),
-                      if (listing.certifications != null && listing.certifications!.isNotEmpty)
-                        _DetailRow(icon: Icons.verified, label: 'Chứng nhận', value: listing.certifications!, valueColor: AppColors.primary),
-                      if (listing.province != null || listing.ward != null)
-                        _DetailRow(
-                          icon: Icons.location_on_outlined,
-                          label: 'Khu vực',
-                          value: [listing.ward, listing.province].where((s) => s != null && s.isNotEmpty).join(', '),
+                      // Certifications
+                      if (listing.certifications != null && listing.certifications!.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Icon(Icons.verified, size: 15, color: AppColors.primary),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                listing.certifications!,
+                                style: const TextStyle(fontSize: 13, color: AppColors.primary),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
-                      if (seller.phone.isNotEmpty)
-                        GestureDetector(
-                          onTap: () {
-                            Clipboard.setData(ClipboardData(text: seller.phone));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Đã sao chép số điện thoại'), duration: Duration(seconds: 2)),
-                            );
-                          },
-                          child: _DetailRow(
-                            icon: Icons.phone,
-                            label: 'Điện thoại',
-                            value: seller.phone,
-                            trailing: const Icon(Icons.copy, size: 16, color: AppColors.textHint),
-                          ),
-                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -640,45 +652,6 @@ class _CircleIconButton extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-// ── Detail row with icon ──
-class _DetailRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color? valueColor;
-  final Widget? trailing;
-  const _DetailRow({required this.icon, required this.label, required this.value, this.valueColor, this.trailing});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: AppColors.textHint),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 80,
-            child: Text(label, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: valueColor ?? AppColors.textPrimary),
-            ),
-          ),
-          if (trailing != null) ...[
-            const SizedBox(width: 8),
-            trailing!,
-          ],
-        ],
       ),
     );
   }
