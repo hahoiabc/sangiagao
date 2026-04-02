@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"log"
@@ -157,7 +158,7 @@ func (s *AuthService) VerifyOTP(ctx context.Context, phone, code string) (*Verif
 		return nil, ErrTooManyAttempts
 	}
 
-	if otp.Code != code {
+	if subtle.ConstantTimeCompare([]byte(otp.Code), []byte(code)) != 1 {
 		_ = s.otpRepo.IncrementAttempts(ctx, otp.ID)
 		return nil, ErrInvalidOTP
 	}
@@ -256,7 +257,7 @@ func (s *AuthService) CompleteRegister(ctx context.Context, phone, code, name, p
 		return nil, ErrTooManyAttempts
 	}
 
-	if otp.Code != code {
+	if subtle.ConstantTimeCompare([]byte(otp.Code), []byte(code)) != 1 {
 		_ = s.otpRepo.IncrementAttempts(ctx, otp.ID)
 		return nil, ErrInvalidOTP
 	}
@@ -362,7 +363,7 @@ func (s *AuthService) ResetPassword(ctx context.Context, phone, code, newPasswor
 		return ErrTooManyAttempts
 	}
 
-	if otp.Code != code {
+	if subtle.ConstantTimeCompare([]byte(otp.Code), []byte(code)) != 1 {
 		_ = s.otpRepo.IncrementAttempts(ctx, otp.ID)
 		return ErrInvalidOTP
 	}

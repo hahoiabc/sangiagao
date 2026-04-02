@@ -32,3 +32,16 @@
 -keep class com.google.firebase.** { *; }
 -dontwarn com.google.firebase.**
 
+# image_picker
+-keep class io.flutter.plugins.imagepicker.** { *; }
+-dontwarn io.flutter.plugins.imagepicker.**
+
+# audioplayers
+-keep class xyz.luan.audioplayers.** { *; }
+-dontwarn xyz.luan.audioplayers.**
+
+# cached_network_image / flutter_cache_manager
+-keep class com.baseflow.** { *; }
+-dontwarn com.baseflow.**
+-keep class io.flutter.plugins.flutter_plugin_android_lifecycle.** { *; }
+
