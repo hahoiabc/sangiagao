@@ -1,7 +1,9 @@
 import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -380,6 +382,31 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
                             ),
                           ],
                         ),
+                      // Phone — tap to call, long press to copy
+                      if (seller.phone.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        GestureDetector(
+                          onTap: () => launchUrl(Uri.parse('tel:${seller.phone}')),
+                          onLongPress: () {
+                            Clipboard.setData(ClipboardData(text: seller.phone));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Đã sao chép số điện thoại'), duration: Duration(seconds: 2)),
+                            );
+                          },
+                          child: Row(
+                            children: [
+                              Icon(Icons.phone, size: 15, color: AppColors.primary),
+                              const SizedBox(width: 4),
+                              Text(
+                                seller.phone,
+                                style: const TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w500),
+                              ),
+                              const SizedBox(width: 6),
+                              Icon(Icons.copy, size: 12, color: AppColors.textHint),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 8),
                       // Time + views
                       Row(
