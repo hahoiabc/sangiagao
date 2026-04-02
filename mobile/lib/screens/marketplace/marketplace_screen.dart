@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -165,19 +166,36 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                                   children: [
                                     // Image section — 3/4 of card
                                     AspectRatio(
-                                      aspectRatio: 16 / 9,
+                                      aspectRatio: 4 / 3,
                                       child: listing.images.isNotEmpty
-                                          ? CachedNetworkImage(
-                                              imageUrl: toThumbnailUrl(listing.images.first),
-                                              fit: BoxFit.cover,
-                                              width: double.infinity,
-                                              placeholder: (_, __) => Container(
-                                                color: AppColors.border,
-                                                child: const Center(child: Icon(Icons.image, size: 40, color: AppColors.textHint)),
-                                              ),
-                                              errorWidget: (_, __, ___) => Container(
-                                                color: AppColors.border,
-                                                child: const Center(child: Icon(Icons.broken_image, size: 40, color: AppColors.textHint)),
+                                          ? ClipRect(
+                                              child: Stack(
+                                                fit: StackFit.expand,
+                                                children: [
+                                                  // Blur background
+                                                  ImageFiltered(
+                                                    imageFilter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                                                    child: CachedNetworkImage(
+                                                      imageUrl: toThumbnailUrl(listing.images.first),
+                                                      fit: BoxFit.cover,
+                                                      color: Colors.black.withValues(alpha: 0.3),
+                                                      colorBlendMode: BlendMode.darken,
+                                                    ),
+                                                  ),
+                                                  // Main image
+                                                  CachedNetworkImage(
+                                                    imageUrl: toThumbnailUrl(listing.images.first),
+                                                    fit: BoxFit.contain,
+                                                    placeholder: (_, __) => Container(
+                                                      color: AppColors.border,
+                                                      child: const Center(child: Icon(Icons.image, size: 40, color: AppColors.textHint)),
+                                                    ),
+                                                    errorWidget: (_, __, ___) => Container(
+                                                      color: AppColors.border,
+                                                      child: const Center(child: Icon(Icons.broken_image, size: 40, color: AppColors.textHint)),
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             )
                                           : Container(

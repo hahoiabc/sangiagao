@@ -162,24 +162,33 @@ export default function ListingDetailPage() {
         <div className="lg:col-span-2 flex flex-col">
           {/* Image Gallery — fills top */}
           <div
-            className="rounded-t-lg overflow-hidden bg-black flex-1 min-h-[50vh] flex items-center justify-center relative group cursor-pointer"
+            className="rounded-t-lg overflow-hidden bg-black flex-1 min-h-[50vh] relative group cursor-pointer"
             onClick={() => listing.images.length > 0 && setLightboxOpen(true)}
           >
             {listing.images.length > 0 ? (
               <>
                 <Image
                   src={listing.images[selectedImage]}
+                  alt=""
+                  fill
+                  sizes="(max-width: 768px) 100vw, 66vw"
+                  className="object-cover scale-110 blur-xl opacity-50"
+                />
+                <Image
+                  src={listing.images[selectedImage]}
                   alt={listing.title}
                   fill
                   sizes="(max-width: 768px) 100vw, 66vw"
-                  className="object-contain"
+                  className="object-contain relative z-10"
                 />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                <div className="absolute inset-0 z-20 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                   <ZoomIn className="h-8 w-8 text-white opacity-0 group-hover:opacity-80 transition-opacity drop-shadow-lg" />
                 </div>
               </>
             ) : (
-              <Package className="h-16 w-16 text-muted-foreground/40" />
+              <div className="flex items-center justify-center h-full">
+                <Package className="h-16 w-16 text-muted-foreground/40" />
+              </div>
             )}
           </div>
           {listing.images.length > 1 && (

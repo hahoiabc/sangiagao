@@ -332,17 +332,28 @@ function MarketplaceContent() {
             {result.data.map((listing) => (
               <Link key={listing.id} href={`/san-giao-dich/${listing.id}`}>
                 <Card className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer h-full">
-                  <div className="h-56 bg-muted flex items-center justify-center overflow-hidden relative">
+                  <div className="h-56 bg-muted overflow-hidden relative">
                     {listing.images.length > 0 ? (
-                      <Image
-                        src={toThumbnailUrl(listing.images[0])}
-                        alt={listing.title}
-                        fill
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                        className="object-cover"
-                      />
+                      <>
+                        <Image
+                          src={toThumbnailUrl(listing.images[0])}
+                          alt=""
+                          fill
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                          className="object-cover scale-110 blur-xl opacity-60"
+                        />
+                        <Image
+                          src={toThumbnailUrl(listing.images[0])}
+                          alt={listing.title}
+                          fill
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                          className="object-contain relative z-10"
+                        />
+                      </>
                     ) : (
-                      <Package className="h-10 w-10 text-muted-foreground/40" />
+                      <div className="flex items-center justify-center h-full">
+                        <Package className="h-10 w-10 text-muted-foreground/40" />
+                      </div>
                     )}
                   </div>
                   <CardContent className="px-3 py-2.5">

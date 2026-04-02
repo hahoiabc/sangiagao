@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -204,16 +205,34 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
                           onPageChanged: (i) => setState(() => _currentImageIndex = i),
                           itemBuilder: (_, i) => GestureDetector(
                             onTap: () => _showImageGallery(context, listing.images, initialIndex: i),
-                            child: CachedNetworkImage(
-                              imageUrl: listing.images[i],
-                              fit: BoxFit.cover,
-                              placeholder: (_, __) => Container(
-                                color: AppColors.surfaceVariant,
-                                child: const Center(child: CircularProgressIndicator()),
-                              ),
-                              errorWidget: (_, __, ___) => Container(
-                                color: AppColors.surfaceVariant,
-                                child: const Icon(Icons.broken_image, size: 48, color: AppColors.textHint),
+                            child: ClipRect(
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  // Blur background
+                                  ImageFiltered(
+                                    imageFilter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                                    child: CachedNetworkImage(
+                                      imageUrl: listing.images[i],
+                                      fit: BoxFit.cover,
+                                      color: Colors.black.withValues(alpha: 0.3),
+                                      colorBlendMode: BlendMode.darken,
+                                    ),
+                                  ),
+                                  // Main image
+                                  CachedNetworkImage(
+                                    imageUrl: listing.images[i],
+                                    fit: BoxFit.contain,
+                                    placeholder: (_, __) => Container(
+                                      color: AppColors.surfaceVariant,
+                                      child: const Center(child: CircularProgressIndicator()),
+                                    ),
+                                    errorWidget: (_, __, ___) => Container(
+                                      color: AppColors.surfaceVariant,
+                                      child: const Icon(Icons.broken_image, size: 48, color: AppColors.textHint),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
