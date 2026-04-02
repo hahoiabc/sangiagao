@@ -160,73 +160,88 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                               margin: EdgeInsets.zero,
                               child: InkWell(
                                 onTap: () => context.push('/marketplace/${listing.id}'),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                  child: Row(
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: SizedBox(
-                                          width: 56,
-                                          height: 56,
-                                          child: listing.images.isNotEmpty
-                                              ? CachedNetworkImage(
-                                                  imageUrl: listing.images.first,
-                                                  fit: BoxFit.cover,
-                                                  placeholder: (_, __) => Container(
-                                                    color: AppColors.border,
-                                                    child: const Icon(Icons.image, size: 24, color: AppColors.textHint),
-                                                  ),
-                                                  errorWidget: (_, __, ___) => Container(
-                                                    color: AppColors.border,
-                                                    child: const Icon(Icons.broken_image, size: 24, color: AppColors.textHint),
-                                                  ),
-                                                )
-                                              : Container(
-                                                  color: AppColors.border,
-                                                  child: const Icon(Icons.inventory_2_outlined, size: 24, color: AppColors.textHint),
-                                                ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              '${_priceFormat.format(listing.pricePerKg)}đ/kg',
-                                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.priceText),
-                                            ),
-                                            const SizedBox(height: 6),
-                                            Text(
-                                              '${_priceFormat.format(listing.quantityKg)} kg',
-                                              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.end,
-                                          children: [
-                                            if (listing.harvestSeason != null && listing.harvestSeason!.isNotEmpty)
-                                              Text(listing.harvestSeason!, style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                                            if (listing.province != null && listing.province!.isNotEmpty) ...[
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                listing.province!,
-                                                style: TextStyle(fontSize: 12, color: AppColors.textHint),
-                                                overflow: TextOverflow.ellipsis,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Image section — 3/4 of card
+                                    AspectRatio(
+                                      aspectRatio: 16 / 9,
+                                      child: listing.images.isNotEmpty
+                                          ? CachedNetworkImage(
+                                              imageUrl: listing.images.first,
+                                              fit: BoxFit.cover,
+                                              width: double.infinity,
+                                              placeholder: (_, __) => Container(
+                                                color: AppColors.border,
+                                                child: const Center(child: Icon(Icons.image, size: 40, color: AppColors.textHint)),
                                               ),
-                                            ],
-                                          ],
-                                        ),
+                                              errorWidget: (_, __, ___) => Container(
+                                                color: AppColors.border,
+                                                child: const Center(child: Icon(Icons.broken_image, size: 40, color: AppColors.textHint)),
+                                              ),
+                                            )
+                                          : Container(
+                                              color: AppColors.border,
+                                              child: const Center(child: Icon(Icons.inventory_2_outlined, size: 40, color: AppColors.textHint)),
+                                            ),
+                                    ),
+                                    // Text section — 1/4 of card
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  listing.title,
+                                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Row(
+                                                  children: [
+                                                    Text(
+                                                      '${_priceFormat.format(listing.pricePerKg)}đ/kg',
+                                                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.priceText),
+                                                    ),
+                                                    const SizedBox(width: 12),
+                                                    Text(
+                                                      '${_priceFormat.format(listing.quantityKg)} kg',
+                                                      style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          if (listing.province != null && listing.province!.isNotEmpty)
+                                            Flexible(
+                                              flex: 0,
+                                              child: Padding(
+                                                padding: const EdgeInsets.only(left: 8),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(Icons.location_on_outlined, size: 14, color: AppColors.textHint),
+                                                    const SizedBox(width: 2),
+                                                    Flexible(
+                                                      child: Text(
+                                                        listing.province!,
+                                                        style: TextStyle(fontSize: 12, color: AppColors.textHint),
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                        ],
                                       ),
-                                      const SizedBox(width: 4),
-                                      Icon(Icons.chevron_right, size: 22, color: AppColors.textHint),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             );

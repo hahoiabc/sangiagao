@@ -144,8 +144,29 @@ echo ""
 
 TARGET="${1:-help}"
 
+# Pre-flight: validate required env vars in backend env file
+check_backend_env() {
+    local required_vars=("DB_HOST" "DB_PORT" "DB_USER" "DB_PASSWORD" "DB_NAME" "DB_SSL_MODE" "REDIS_URL" "JWT_SECRET" "PHONE_ENCRYPT_KEY")
+    local missing=()
+    for var in "${required_vars[@]}"; do
+        if ! grep -q "^${var}=" "$ENV_BACKEND" 2>/dev/null; then
+            missing+=("$var")
+        fi
+    done
+    if [ ${#missing[@]} -gt 0 ]; then
+        fail "Missing required env vars in $ENV_BACKEND:"
+        for v in "${missing[@]}"; do
+            fail "  - $v"
+        done
+        fail "Fix the file and retry. Aborting."
+        exit 1
+    fi
+    ok "Backend env vars validated"
+}
+
 case "$TARGET" in
     backend)
+        check_backend_env
         deploy_service "backend" "sangiagao-backend" "backend" "8080:8080" \
             --env-file "$ENV_BACKEND" \
             -v "$FIREBASE_CRED:/app/firebase-credentials.json:ro"
@@ -177,6 +198,7 @@ case "$TARGET" in
         ok "Migrations done"
         ;;
     all)
+        check_backend_env
         deploy_service "backend" "sangiagao-backend" "backend" "8080:8080" \
             --env-file "$ENV_BACKEND" \
             -v "$FIREBASE_CRED:/app/firebase-credentials.json:ro"

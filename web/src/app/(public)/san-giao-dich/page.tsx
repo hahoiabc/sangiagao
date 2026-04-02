@@ -332,7 +332,7 @@ function MarketplaceContent() {
             {result.data.map((listing) => (
               <Link key={listing.id} href={`/san-giao-dich/${listing.id}`}>
                 <Card className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer h-full">
-                  <div className="h-44 bg-muted flex items-center justify-center overflow-hidden relative">
+                  <div className="h-56 bg-muted flex items-center justify-center overflow-hidden relative">
                     {listing.images.length > 0 ? (
                       <Image
                         src={listing.images[0]}

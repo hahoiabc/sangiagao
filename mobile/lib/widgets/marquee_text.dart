@@ -16,62 +16,61 @@ class MarqueeText extends StatefulWidget {
   State<MarqueeText> createState() => _MarqueeTextState();
 }
 
-class _MarqueeTextState extends State<MarqueeText> with SingleTickerProviderStateMixin {
+class _MarqueeTextState extends State<MarqueeText> {
   late final ScrollController _scrollController;
-  double _textWidth = 0;
-  double _containerWidth = 0;
-  bool _needsScroll = false;
+  bool _initialized = false;
+  double _singleTextWidth = 0;
+  double _gap = 0;
 
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _startScroll());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _init());
   }
 
-  void _startScroll() async {
+  void _init() async {
     if (!mounted) return;
 
-    // Measure text
     final textPainter = TextPainter(
       text: TextSpan(text: widget.text, style: widget.style),
       maxLines: 1,
       textDirection: TextDirection.ltr,
     )..layout();
-    _textWidth = textPainter.width;
+    _singleTextWidth = textPainter.width;
 
     await Future.delayed(const Duration(milliseconds: 100));
     if (!mounted) return;
 
-    _containerWidth = _scrollController.position.viewportDimension;
-    _needsScroll = _textWidth > _containerWidth;
+    final viewportWidth = _scrollController.position.viewportDimension;
+    // Gap = full screen width so text exits completely before next one enters
+    _gap = viewportWidth;
 
-    if (!_needsScroll) return;
+    setState(() => _initialized = true);
+
+    await Future.delayed(const Duration(milliseconds: 50));
+    if (!mounted) return;
 
     _animate();
   }
 
   void _animate() async {
-    while (mounted && _needsScroll) {
-      final maxScroll = _scrollController.position.maxScrollExtent;
-      if (maxScroll <= 0) break;
+    while (mounted) {
+      final scrollDistance = _singleTextWidth + _gap;
+      if (scrollDistance <= 0) break;
 
       final duration = Duration(
-        milliseconds: (maxScroll / widget.velocity * 1000).toInt(),
+        milliseconds: (scrollDistance / widget.velocity * 1000).toInt(),
       );
 
       await _scrollController.animateTo(
-        maxScroll,
+        scrollDistance,
         duration: duration,
         curve: Curves.linear,
       );
 
       if (!mounted) break;
-      await Future.delayed(const Duration(seconds: 1));
-      if (!mounted) break;
-
       _scrollController.jumpTo(0);
-      await Future.delayed(const Duration(seconds: 1));
     }
   }
 
@@ -90,9 +89,10 @@ class _MarqueeTextState extends State<MarqueeText> with SingleTickerProviderStat
       child: Row(
         children: [
           Text(widget.text, style: widget.style, maxLines: 1),
-          if (_needsScroll) ...[
-            SizedBox(width: _containerWidth * 0.5),
+          if (_initialized) ...[
+            SizedBox(width: _gap),
             Text(widget.text, style: widget.style, maxLines: 1),
+            SizedBox(width: _gap),
           ],
         ],
       ),
