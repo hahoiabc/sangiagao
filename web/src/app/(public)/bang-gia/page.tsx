@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getPriceBoard, getSlogan, type PriceBoardResponse } from "@/services/api";
+import { getPriceBoard, getSlogan, getSloganColor, type PriceBoardResponse } from "@/services/api";
 import { useAuth } from "@/lib/auth";
 import { useThemeColor } from "@/lib/theme-color";
 import { formatPrice, timeAgo } from "@/lib/utils";
@@ -19,6 +19,7 @@ export default function PriceBoardPage() {
   const [data, setData] = useState<PriceBoardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [slogan, setSlogan] = useState("Kết nối ngành gạo");
+  const [sloganColor, setSloganColor] = useState("#FFFFFF");
 
   useEffect(() => {
     getPriceBoard()
@@ -26,6 +27,7 @@ export default function PriceBoardPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
     getSlogan().then((s) => setSlogan(s.value)).catch(() => {});
+    getSloganColor().then((s) => setSloganColor(s.value)).catch(() => {});
   }, []);
 
   return (
@@ -45,7 +47,7 @@ export default function PriceBoardPage() {
             Sàn Giá Gạo
           </h1>
           <div className="mb-6 overflow-hidden max-w-xl mx-auto">
-            <p className="whitespace-nowrap text-lg text-white/90 drop-shadow animate-[marquee_15s_linear_infinite] inline-block">
+            <p className="whitespace-nowrap text-lg drop-shadow animate-[marquee_15s_linear_infinite] inline-block" style={{ color: sloganColor }}>
               {slogan}
               <span className="mx-16">&nbsp;</span>
               {slogan}

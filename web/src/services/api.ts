@@ -376,6 +376,10 @@ export async function getSlogan(): Promise<{ key: string; value: string }> {
   return request<{ key: string; value: string }>("/site-settings/slogan");
 }
 
+export async function getSloganColor(): Promise<{ key: string; value: string }> {
+  return request<{ key: string; value: string }>("/site-settings/slogan-color");
+}
+
 export async function getProductCatalog() {
   return request<RiceCategory[]>("/marketplace/product-catalog");
 }

@@ -269,6 +269,11 @@ class ApiService {
     return res.data['value'] as String? ?? 'Kết nối ngành gạo';
   }
 
+  Future<String> getSloganColor() async {
+    final res = await _dio.get('/site-settings/slogan-color');
+    return res.data['value'] as String? ?? '#4F46E5';
+  }
+
   // --- Marketplace ---
   Future<PriceBoardResponse> getPriceBoard() async {
     final res = await _dio.get('/marketplace/price-board');

@@ -7,7 +7,6 @@ import '../../models/price_board.dart';
 import '../../providers/providers.dart';
 import '../../widgets/shimmer_loading.dart';
 import '../../theme/app_theme.dart';
-import '../../providers/theme_provider.dart';
 import '../../widgets/marquee_text.dart';
 
 class PriceBoardScreen extends ConsumerStatefulWidget {
@@ -22,6 +21,7 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
   bool _loading = true;
   String? _error;
   String _slogan = 'Kết nối ngành gạo';
+  Color _sloganColor = const Color(0xFF4F46E5);
 
   final _priceFormat = NumberFormat('#,###', 'vi_VN');
 
@@ -42,8 +42,16 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
 
   Future<void> _loadSlogan() async {
     try {
-      final s = await ref.read(apiServiceProvider).getSlogan();
-      if (mounted) setState(() => _slogan = s);
+      final api = ref.read(apiServiceProvider);
+      final results = await Future.wait([api.getSlogan(), api.getSloganColor()]);
+      if (!mounted) return;
+      setState(() {
+        _slogan = results[0];
+        final hex = results[1].replaceFirst('#', '');
+        if (hex.length == 6) {
+          _sloganColor = Color(int.parse('FF$hex', radix: 16));
+        }
+      });
     } catch (_) {}
   }
 
@@ -84,7 +92,7 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
         title: MarqueeText(
           text: _slogan,
           style: TextStyle(
-            color: ref.watch(themeProvider).primary,
+            color: _sloganColor,
             fontSize: 18,
             fontWeight: FontWeight.w600,
           ),

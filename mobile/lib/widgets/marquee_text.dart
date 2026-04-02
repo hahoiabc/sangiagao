@@ -19,7 +19,6 @@ class MarqueeText extends StatefulWidget {
 class _MarqueeTextState extends State<MarqueeText> {
   late final ScrollController _scrollController;
   bool _initialized = false;
-  double _singleTextWidth = 0;
   double _gap = 0;
 
   @override
@@ -32,23 +31,14 @@ class _MarqueeTextState extends State<MarqueeText> {
   void _init() async {
     if (!mounted) return;
 
-    final textPainter = TextPainter(
-      text: TextSpan(text: widget.text, style: widget.style),
-      maxLines: 1,
-      textDirection: TextDirection.ltr,
-    )..layout();
-    _singleTextWidth = textPainter.width;
-
     await Future.delayed(const Duration(milliseconds: 100));
     if (!mounted) return;
 
-    final viewportWidth = _scrollController.position.viewportDimension;
-    // Gap = full screen width so text exits completely before next one enters
-    _gap = viewportWidth;
-
+    _gap = _scrollController.position.viewportDimension;
     setState(() => _initialized = true);
 
-    await Future.delayed(const Duration(milliseconds: 50));
+    // Wait for layout to settle with new gaps
+    await Future.delayed(const Duration(milliseconds: 100));
     if (!mounted) return;
 
     _animate();
@@ -56,8 +46,8 @@ class _MarqueeTextState extends State<MarqueeText> {
 
   void _animate() async {
     while (mounted) {
-      // Scroll = leading gap + text width = text enters from right, exits left completely
-      final scrollDistance = _gap + _singleTextWidth;
+      // Use actual maxScrollExtent — more accurate than TextPainter measurement
+      final scrollDistance = _scrollController.position.maxScrollExtent;
       if (scrollDistance <= 0) break;
 
       final duration = Duration(

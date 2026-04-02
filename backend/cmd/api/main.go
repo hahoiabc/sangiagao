@@ -330,6 +330,7 @@ func main() {
 
 		// Site settings (public)
 		v1.GET("/site-settings/slogan", siteSettingsHandler.GetSlogan)
+		v1.GET("/site-settings/slogan-color", siteSettingsHandler.GetSloganColor)
 
 		// User (public — permission-controlled)
 		v1.GET("/users/:id/profile", middleware.OptionalJWTAuth(jwtManager), middleware.RequirePermission(permissionService, "marketplace.seller_profile"), userHandler.GetProfile)
@@ -480,6 +481,7 @@ func main() {
 
 				// Site settings management
 				admin.PUT("/site-settings/slogan", siteSettingsHandler.UpdateSlogan)
+				admin.PUT("/site-settings/slogan-color", siteSettingsHandler.UpdateSloganColor)
 
 				// System Inbox management
 				admin.GET("/inbox", inboxHandler.AdminList)

@@ -41,3 +41,30 @@ func (h *SiteSettingsHandler) UpdateSlogan(c *gin.Context) {
 
 	c.JSON(http.StatusOK, setting)
 }
+
+// GetSloganColor — public, no auth required
+func (h *SiteSettingsHandler) GetSloganColor(c *gin.Context) {
+	setting, err := h.service.GetSloganColor(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không thể lấy màu slogan"})
+		return
+	}
+	c.JSON(http.StatusOK, setting)
+}
+
+// UpdateSloganColor — admin only
+func (h *SiteSettingsHandler) UpdateSloganColor(c *gin.Context) {
+	var req model.UpdateSiteSettingRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Mã màu không hợp lệ"})
+		return
+	}
+
+	setting, err := h.service.UpdateSloganColor(c.Request.Context(), req.Value)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cập nhật màu slogan thất bại"})
+		return
+	}
+
+	c.JSON(http.StatusOK, setting)
+}

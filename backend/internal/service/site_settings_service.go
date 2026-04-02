@@ -9,6 +9,7 @@ import (
 )
 
 const sloganCacheKey = "site:slogan"
+const sloganColorCacheKey = "site:slogan_color"
 const sloganCacheTTL = 10 * time.Minute
 
 type SiteSettingsService struct {
@@ -54,6 +55,39 @@ func (s *SiteSettingsService) UpdateSlogan(ctx context.Context, value string) (*
 	// Invalidate cache
 	if s.cache != nil {
 		_ = s.cache.Delete(ctx, sloganCacheKey)
+	}
+
+	return setting, nil
+}
+
+func (s *SiteSettingsService) GetSloganColor(ctx context.Context) (*model.SiteSetting, error) {
+	if s.cache != nil {
+		if cached, err := s.cache.Get(ctx, sloganColorCacheKey); err == nil && cached != nil {
+			return &model.SiteSetting{Key: "slogan_color", Value: string(cached)}, nil
+		}
+	}
+
+	setting, err := s.repo.Get(ctx, "slogan_color")
+	if err != nil {
+		// Default color if not set
+		return &model.SiteSetting{Key: "slogan_color", Value: "#4F46E5"}, nil
+	}
+
+	if s.cache != nil {
+		_ = s.cache.Set(ctx, sloganColorCacheKey, []byte(setting.Value), sloganCacheTTL)
+	}
+
+	return setting, nil
+}
+
+func (s *SiteSettingsService) UpdateSloganColor(ctx context.Context, value string) (*model.SiteSetting, error) {
+	setting, err := s.repo.Set(ctx, "slogan_color", value)
+	if err != nil {
+		return nil, err
+	}
+
+	if s.cache != nil {
+		_ = s.cache.Delete(ctx, sloganColorCacheKey)
 	}
 
 	return setting, nil

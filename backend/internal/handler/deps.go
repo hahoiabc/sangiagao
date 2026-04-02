@@ -152,6 +152,8 @@ type CatalogServiceInterface interface {
 type SiteSettingsServiceInterface interface {
 	GetSlogan(ctx context.Context) (*model.SiteSetting, error)
 	UpdateSlogan(ctx context.Context, value string) (*model.SiteSetting, error)
+	GetSloganColor(ctx context.Context) (*model.SiteSetting, error)
+	UpdateSloganColor(ctx context.Context, value string) (*model.SiteSetting, error)
 }
 
 type ChatServiceInterface interface {

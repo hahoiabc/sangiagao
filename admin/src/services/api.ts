@@ -815,3 +815,14 @@ export async function updateSlogan(value: string): Promise<SiteSetting> {
     body: JSON.stringify({ value }),
   });
 }
+
+export async function getSloganColor(): Promise<SiteSetting> {
+  return request<SiteSetting>("/site-settings/slogan-color");
+}
+
+export async function updateSloganColor(value: string): Promise<SiteSetting> {
+  return request<SiteSetting>("/admin/site-settings/slogan-color", {
+    method: "PUT",
+    body: JSON.stringify({ value }),
+  });
+}
