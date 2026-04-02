@@ -788,3 +788,22 @@ export async function testZaloZNS(phone: string): Promise<{ message: string }> {
     body: JSON.stringify({ phone }),
   });
 }
+
+// --- Site Settings ---
+
+export interface SiteSetting {
+  key: string;
+  value: string;
+  updated_at: string;
+}
+
+export async function getSlogan(): Promise<SiteSetting> {
+  return request<SiteSetting>("/site-settings/slogan");
+}
+
+export async function updateSlogan(value: string): Promise<SiteSetting> {
+  return request<SiteSetting>("/admin/site-settings/slogan", {
+    method: "PUT",
+    body: JSON.stringify({ value }),
+  });
+}

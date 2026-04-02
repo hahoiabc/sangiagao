@@ -263,6 +263,12 @@ class ApiService {
     return PublicProfile.fromJson(res.data);
   }
 
+  // --- Site Settings ---
+  Future<String> getSlogan() async {
+    final res = await _dio.get('/site-settings/slogan');
+    return res.data['value'] as String? ?? 'Kết nối ngành gạo';
+  }
+
   // --- Marketplace ---
   Future<PriceBoardResponse> getPriceBoard() async {
     final res = await _dio.get('/marketplace/price-board');

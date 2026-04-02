@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/providers.dart';
+import '../widgets/marquee_text.dart';
+
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
@@ -14,6 +16,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
   late Animation<double> _fadeIn;
   bool _minDelayDone = false;
   bool _navigated = false;
+  String _slogan = 'Kết nối ngành gạo';
 
   @override
   void initState() {
@@ -21,6 +24,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
     _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
     _fadeIn = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     _controller.forward();
+
+    ref.read(apiServiceProvider).getSlogan().then((s) {
+      if (mounted) setState(() => _slogan = s);
+    }).catchError((_) {});
 
     Future.delayed(const Duration(milliseconds: 2500), () {
       if (mounted) {
@@ -99,14 +106,17 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    'Kết nối ngành gạo',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
-                      color: Colors.white.withValues(alpha: 0.9),
-                      letterSpacing: 0.3,
-                      shadows: [Shadow(blurRadius: 8, color: Colors.black54)],
+                  SizedBox(
+                    width: 280,
+                    child: MarqueeText(
+                      text: _slogan,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.white.withValues(alpha: 0.9),
+                        letterSpacing: 0.3,
+                        shadows: [Shadow(blurRadius: 8, color: Colors.black54)],
+                      ),
                     ),
                   ),
                 ],

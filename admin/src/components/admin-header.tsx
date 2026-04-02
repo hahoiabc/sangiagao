@@ -15,6 +15,7 @@ const pageTitles: Record<string, string> = {
   "/sponsors": "Quản lý tài trợ",
   "/feedbacks": "Góp ý",
   "/profile": "Tài khoản của tôi",
+  "/slogan": "Quản lý Slogan",
   "/monitoring": "Giám sát hệ thống",
 };
 

@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getPriceBoard, type PriceBoardResponse } from "@/services/api";
+import { getPriceBoard, getSlogan, type PriceBoardResponse } from "@/services/api";
 import { useAuth } from "@/lib/auth";
 import { useThemeColor } from "@/lib/theme-color";
 import { formatPrice, timeAgo } from "@/lib/utils";
@@ -18,12 +18,14 @@ export default function PriceBoardPage() {
   const { currentTheme } = useThemeColor();
   const [data, setData] = useState<PriceBoardResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [slogan, setSlogan] = useState("Kết nối ngành gạo");
 
   useEffect(() => {
     getPriceBoard()
       .then(setData)
       .catch(() => {})
       .finally(() => setLoading(false));
+    getSlogan().then((s) => setSlogan(s.value)).catch(() => {});
   }, []);
 
   return (
@@ -42,9 +44,13 @@ export default function PriceBoardPage() {
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3 drop-shadow-lg">
             Sàn Giá Gạo
           </h1>
-          <p className="text-lg text-white/90 mb-6 max-w-xl mx-auto drop-shadow">
-            Bảng giá gạo cập nhật liên tục từ các thành viên trên toàn quốc
-          </p>
+          <div className="mb-6 overflow-hidden max-w-xl mx-auto">
+            <p className="whitespace-nowrap text-lg text-white/90 drop-shadow animate-[marquee_15s_linear_infinite] inline-block">
+              {slogan}
+              <span className="mx-16 opacity-40">|</span>
+              {slogan}
+            </p>
+          </div>
           <div className="flex items-center justify-center gap-3">
             {!user && (
               <Link href="/dang-ky">

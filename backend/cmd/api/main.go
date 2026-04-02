@@ -145,6 +145,7 @@ func main() {
 	permissionRepo := repository.NewPermissionRepo(pgPool)
 	auditRepo := repository.NewAuditRepo(pgPool)
 	spamRepo := repository.NewSpamRepo(pgPool)
+	siteSettingsRepo := repository.NewSiteSettingsRepo(pgPool)
 
 	// --- Services ---
 	spamService := service.NewSpamService(spamRepo)
@@ -184,6 +185,11 @@ func main() {
 	inboxService.SetPool(pushPool)
 	catalogService := service.NewCatalogService(catalogRepo)
 	permissionService := service.NewPermissionService(permissionRepo, appCache)
+	siteSettingsService := service.NewSiteSettingsService(siteSettingsRepo)
+	if appCache != nil {
+		siteSettingsService.SetCache(appCache)
+	}
+
 	var uploadService *service.UploadService
 	if storageClient != nil {
 		uploadService = service.NewUploadService(storageClient)
@@ -211,6 +217,7 @@ func main() {
 	inboxHandler := handler.NewInboxHandler(inboxService)
 	systemHandler := handler.NewSystemHandler(appCache)
 	znsHandler := handler.NewZNSHandler(zaloSenderRef)
+	siteSettingsHandler := handler.NewSiteSettingsHandler(siteSettingsService)
 	wsHandler := handler.NewWSHandler(wsHub, jwtManager, chatService, cfg.CORSOrigins)
 	var uploadHandler *handler.UploadHandler
 	if uploadService != nil {
@@ -320,6 +327,9 @@ func main() {
 
 		// Guest permissions (public)
 		v1.GET("/permissions/guest", permissionHandler.GetGuestPermissions)
+
+		// Site settings (public)
+		v1.GET("/site-settings/slogan", siteSettingsHandler.GetSlogan)
 
 		// User (public — permission-controlled)
 		v1.GET("/users/:id/profile", middleware.OptionalJWTAuth(jwtManager), middleware.RequirePermission(permissionService, "marketplace.seller_profile"), userHandler.GetProfile)
@@ -467,6 +477,9 @@ func main() {
 				admin.GET("/zalo-zns/status", znsHandler.GetStatus)
 				admin.PUT("/zalo-zns/refresh-token", znsHandler.UpdateRefreshToken)
 				admin.POST("/zalo-zns/test", znsHandler.TestSend)
+
+				// Site settings management
+				admin.PUT("/site-settings/slogan", siteSettingsHandler.UpdateSlogan)
 
 				// System Inbox management
 				admin.GET("/inbox", inboxHandler.AdminList)

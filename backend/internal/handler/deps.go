@@ -148,6 +148,11 @@ type CatalogServiceInterface interface {
 	GetCatalogForAPI(ctx context.Context) ([]model.RiceCategory, error)
 }
 
+type SiteSettingsServiceInterface interface {
+	GetSlogan(ctx context.Context) (*model.SiteSetting, error)
+	UpdateSlogan(ctx context.Context, value string) (*model.SiteSetting, error)
+}
+
 type ChatServiceInterface interface {
 	CreateConversation(ctx context.Context, buyerID string, req *model.CreateConversationRequest) (*model.Conversation, error)
 	ListConversations(ctx context.Context, userID string, page, limit int) ([]*model.Conversation, int, error)

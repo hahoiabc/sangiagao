@@ -165,6 +165,11 @@ type SpamRepository interface {
 	Cleanup(ctx context.Context, olderThan time.Time) (int, error)
 }
 
+type SiteSettingsRepository interface {
+	Get(ctx context.Context, key string) (*model.SiteSetting, error)
+	Set(ctx context.Context, key, value string) (*model.SiteSetting, error)
+}
+
 type ConversationRepository interface {
 	FindOrCreate(ctx context.Context, buyerID, sellerID string, listingID *string) (*model.Conversation, error)
 	GetByID(ctx context.Context, id string) (*model.Conversation, error)

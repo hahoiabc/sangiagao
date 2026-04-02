@@ -8,6 +8,7 @@ import '../../providers/providers.dart';
 import '../../widgets/shimmer_loading.dart';
 import '../../theme/app_theme.dart';
 import '../../providers/theme_provider.dart';
+import '../../widgets/marquee_text.dart';
 
 class PriceBoardScreen extends ConsumerStatefulWidget {
   const PriceBoardScreen({super.key});
@@ -20,6 +21,7 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
   PriceBoardResponse? _data;
   bool _loading = true;
   String? _error;
+  String _slogan = 'Kết nối ngành gạo';
 
   final _priceFormat = NumberFormat('#,###', 'vi_VN');
 
@@ -35,6 +37,14 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
   void initState() {
     super.initState();
     _load();
+    _loadSlogan();
+  }
+
+  Future<void> _loadSlogan() async {
+    try {
+      final s = await ref.read(apiServiceProvider).getSlogan();
+      if (mounted) setState(() => _slogan = s);
+    } catch (_) {}
   }
 
   Future<void> _load() async {
@@ -71,9 +81,13 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Kết nối ngành gạo',
-          style: TextStyle(color: ref.watch(themeProvider).primary),
+        title: MarqueeText(
+          text: _slogan,
+          style: TextStyle(
+            color: ref.watch(themeProvider).primary,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         actions: [
           if (isAuth)

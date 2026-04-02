@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
-import { LayoutDashboard, Users, ShoppingBasket, Flag, CreditCard, LogOut, Wheat, Megaphone, MessageSquareText, Menu, Activity, Package, GripVertical, TrendingUp, Bell, Mail, MessageCircle } from "lucide-react";
+import { LayoutDashboard, Users, ShoppingBasket, Flag, CreditCard, LogOut, Wheat, Megaphone, MessageSquareText, Menu, Activity, Package, GripVertical, TrendingUp, Bell, Mail, MessageCircle, Type } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ const defaultNavItems = [
   { href: "/inbox", label: "Hộp thư", icon: Mail, adminOnly: false },
   { href: "/notifications", label: "Thông báo", icon: Bell, adminOnly: true },
   { href: "/zalo-zns", label: "OTP Zalo ZNS", icon: MessageCircle, adminOnly: true },
+  { href: "/slogan", label: "Slogan", icon: Type, adminOnly: false },
   { href: "/monitoring", label: "Giám sát", icon: Activity, adminOnly: false },
 ];
 

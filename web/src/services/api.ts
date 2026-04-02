@@ -372,6 +372,10 @@ export async function getPriceBoard() {
   return request<PriceBoardResponse>("/marketplace/price-board");
 }
 
+export async function getSlogan(): Promise<{ key: string; value: string }> {
+  return request<{ key: string; value: string }>("/site-settings/slogan");
+}
+
 export async function getProductCatalog() {
   return request<RiceCategory[]>("/marketplace/product-catalog");
 }
