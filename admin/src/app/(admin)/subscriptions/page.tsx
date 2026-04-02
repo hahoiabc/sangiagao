@@ -14,7 +14,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import {
-  listUsers, activateSubscription, getSubscriptionPlans,
+  listUsers, activateSubscription, rewardSubscription, getSubscriptionPlans,
   listAllPlans, createPlan, updatePlan, deletePlan,
   type User, type SubscriptionPlan,
 } from "@/services/api";
@@ -46,6 +46,12 @@ export default function SubscriptionsPage() {
   const [selectedMonths, setSelectedMonths] = useState(1);
   const [activateError, setActivateError] = useState("");
   const [activating, setActivating] = useState(false);
+
+  // Reward state (owner only)
+  const [rewardDialog, setRewardDialog] = useState<User | null>(null);
+  const [rewardDays, setRewardDays] = useState(30);
+  const [rewardError, setRewardError] = useState("");
+  const [rewarding, setRewarding] = useState(false);
 
   // Plan CRUD state (owner only)
   const [allPlans, setAllPlans] = useState<SubscriptionPlan[]>([]);
@@ -120,6 +126,23 @@ export default function SubscriptionsPage() {
       setActivateError(err instanceof Error ? err.message : "Không thể kích hoạt gói dịch vụ");
     } finally {
       setActivating(false);
+    }
+  }
+
+  async function handleReward() {
+    if (!currentUser || !rewardDialog) return;
+    setRewardError("");
+    setRewarding(true);
+    try {
+      await rewardSubscription("", rewardDialog.id, rewardDays);
+      toast.success(`Đã thưởng ${rewardDays} ngày cho ${rewardDialog.name || rewardDialog.phone}`);
+      setRewardDialog(null);
+      setRewardDays(30);
+      fetchUsers();
+    } catch (err) {
+      setRewardError(err instanceof Error ? err.message : "Không thể thưởng thời gian sử dụng");
+    } finally {
+      setRewarding(false);
     }
   }
 
@@ -364,9 +387,16 @@ export default function SubscriptionsPage() {
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button size="sm" onClick={() => { setActivateDialog(user); setSelectedMonths(1); }}>
-                      Gia hạn
-                    </Button>
+                    <div className="flex gap-1.5 justify-end">
+                      <Button size="sm" onClick={() => { setActivateDialog(user); setSelectedMonths(1); }}>
+                        Gia hạn
+                      </Button>
+                      {isOwner && (
+                        <Button size="sm" variant="outline" onClick={() => { setRewardDialog(user); setRewardDays(30); }}>
+                          Thưởng
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -519,6 +549,45 @@ export default function SubscriptionsPage() {
             <Button variant="ghost" onClick={() => setPlanDialogOpen(false)}>Hủy</Button>
             <Button onClick={handleSavePlan} disabled={planSaving}>
               {planSaving ? "Đang lưu..." : editingPlan ? "Cập nhật" : "Tạo gói"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reward Dialog (owner only) */}
+      <Dialog open={!!rewardDialog} onOpenChange={() => { setRewardDialog(null); setRewardError(""); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Thưởng thời gian sử dụng</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Thành viên: <strong>{rewardDialog?.name || rewardDialog?.phone}</strong>
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Thời gian thưởng không tính vào doanh thu.
+          </p>
+          <div>
+            <label className="text-sm font-medium mb-1 block">Số ngày thưởng</label>
+            <Input
+              type="number"
+              min={1}
+              max={365}
+              value={rewardDays}
+              onChange={(e) => setRewardDays(parseInt(e.target.value) || 0)}
+            />
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {[7, 15, 30, 90].map((d) => (
+              <Button key={d} size="sm" variant={rewardDays === d ? "default" : "outline"} onClick={() => setRewardDays(d)}>
+                {d} ngày
+              </Button>
+            ))}
+          </div>
+          {rewardError && <p className="text-sm text-destructive">{rewardError}</p>}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRewardDialog(null)}>Hủy</Button>
+            <Button onClick={handleReward} disabled={rewarding || rewardDays < 1 || rewardDays > 365}>
+              {rewarding ? "Đang xử lý..." : `Thưởng ${rewardDays} ngày`}
             </Button>
           </DialogFooter>
         </DialogContent>

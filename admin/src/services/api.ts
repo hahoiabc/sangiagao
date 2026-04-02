@@ -353,6 +353,14 @@ export async function activateSubscription(token: string, userId: string, months
   });
 }
 
+export async function rewardSubscription(token: string, userId: string, days: number) {
+  return request<{ message: string; subscription: Subscription }>(`/admin/subscriptions/${userId}/reward`, {
+    token,
+    method: "POST",
+    body: JSON.stringify({ days }),
+  });
+}
+
 export async function getSubscriptionPlans(token: string) {
   return request<{ plans: SubscriptionPlan[] }>("/subscription/plans", { token });
 }

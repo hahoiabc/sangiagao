@@ -55,6 +55,7 @@ type SponsorServiceInterface interface {
 type SubscriptionServiceInterface interface {
 	GetStatus(ctx context.Context, userID string) (*service.SubscriptionStatus, error)
 	AdminActivate(ctx context.Context, userID string, months int) (*model.Subscription, error)
+	AdminReward(ctx context.Context, userID string, days int) (*model.Subscription, error)
 	GetRevenueStats(ctx context.Context) (*repository.SubRevenueStats, error)
 	GetDailyRevenue(ctx context.Context, from, to string) (*repository.SubDailyRevenueReport, error)
 	GetMyHistory(ctx context.Context, userID string, page, limit int) ([]*model.Subscription, int, error)

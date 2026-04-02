@@ -73,6 +73,38 @@ func (h *SubscriptionHandler) AdminActivate(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "subscription activated", "subscription": sub})
 }
 
+type adminRewardRequest struct {
+	Days int `json:"days" binding:"required,min=1,max=365"`
+}
+
+func (h *SubscriptionHandler) AdminReward(c *gin.Context) {
+	userID := c.Param("user_id")
+
+	var req adminRewardRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_request", "message": "Số ngày thưởng từ 1 đến 365"})
+		return
+	}
+
+	user, err := h.adminService.GetUserByID(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user_not_found", "message": "Không tìm thấy người dùng"})
+		return
+	}
+	if user.Role == "admin" || user.Role == "owner" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "is_admin", "message": "Không thể thưởng cho tài khoản admin/owner"})
+		return
+	}
+
+	sub, err := h.subService.AdminReward(c.Request.Context(), userID, req.Days)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "reward_failed", "message": "Không thể thưởng thời gian sử dụng"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Đã thưởng thời gian sử dụng", "subscription": sub})
+}
+
 func (h *SubscriptionHandler) GetRevenueStats(c *gin.Context) {
 	stats, err := h.subService.GetRevenueStats(c.Request.Context())
 	if err != nil {

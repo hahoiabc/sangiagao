@@ -108,6 +108,37 @@ func (s *SubscriptionService) AdminActivate(ctx context.Context, userID string, 
 	return sub, nil
 }
 
+func (s *SubscriptionService) AdminReward(ctx context.Context, userID string, days int) (*model.Subscription, error) {
+	if days < 1 || days > 365 {
+		return nil, errors.New("số ngày thưởng phải từ 1 đến 365")
+	}
+
+	// Check for existing active subscription — extend it
+	existing, err := s.subRepo.GetActiveByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	var sub *model.Subscription
+	if existing != nil {
+		sub, err = s.subRepo.ExtendSubscription(ctx, existing.ID, days, 0, 0)
+	} else {
+		sub, err = s.subRepo.ActivateByUserID(ctx, userID, days, 0, 0, "reward")
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	restored, err := s.subRepo.RestoreListings(ctx, userID)
+	if err != nil {
+		log.Printf("Failed to restore listings for rewarded user %s: %v", userID, err)
+	} else if restored > 0 {
+		log.Printf("Restored %d listings for rewarded user %s", restored, userID)
+	}
+
+	return sub, nil
+}
+
 func (s *SubscriptionService) GetPlans(ctx context.Context) ([]model.SubscriptionPlan, error) {
 	plans, err := s.planRepo.ListActive(ctx)
 	if err != nil {

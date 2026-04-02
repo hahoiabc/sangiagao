@@ -35,6 +35,13 @@ func (m *mockSubService) AdminActivate(ctx context.Context, userID string, days 
 	}
 	return args.Get(0).(*model.Subscription), args.Error(1)
 }
+func (m *mockSubService) AdminReward(ctx context.Context, userID string, days int) (*model.Subscription, error) {
+	args := m.Called(ctx, userID, days)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Subscription), args.Error(1)
+}
 func (m *mockSubService) GetMyHistory(ctx context.Context, userID string, page, limit int) ([]*model.Subscription, int, error) {
 	args := m.Called(ctx, userID, page, limit)
 	if args.Get(0) == nil {

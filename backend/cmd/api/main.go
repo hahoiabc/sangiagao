@@ -514,6 +514,7 @@ func main() {
 					ownerOnly.POST("/plans", middleware.RequirePermission(permissionService, "sub.plans"), subHandler.CreatePlan)
 					ownerOnly.PUT("/plans/:id", middleware.RequirePermission(permissionService, "sub.plans"), subHandler.UpdatePlan)
 					ownerOnly.DELETE("/plans/:id", middleware.RequirePermission(permissionService, "sub.plans"), subHandler.DeletePlan)
+					ownerOnly.POST("/subscriptions/:user_id/reward", subHandler.AdminReward)
 				}
 			}
 		}
