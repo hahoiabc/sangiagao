@@ -347,6 +347,16 @@ func (h *ConversationHandler) DeleteConversation(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Đã xóa cuộc trò chuyện"})
 }
 
+func (h *ConversationHandler) UnreadTotal(c *gin.Context) {
+	userID := c.GetString("user_id")
+	total, err := h.chatService.TotalUnreadCount(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal", "message": "failed to get unread count"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"total": total})
+}
+
 func (h *ConversationHandler) SearchByPhone(c *gin.Context) {
 	phone := c.Query("phone")
 	if phone == "" {

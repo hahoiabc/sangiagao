@@ -101,6 +101,10 @@ func (m *mockChatService) SearchUserByPhone(ctx context.Context, phone string) (
 	}
 	return args.Get(0).(*model.PublicProfile), args.Error(1)
 }
+func (m *mockChatService) TotalUnreadCount(ctx context.Context, userID string) (int, error) {
+	args := m.Called(ctx, userID)
+	return args.Int(0), args.Error(1)
+}
 
 func setupConvRouter(h *ConversationHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)

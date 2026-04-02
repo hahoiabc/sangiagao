@@ -286,6 +286,10 @@ func (s *ChatService) DeleteConversation(ctx context.Context, userID, conversati
 	return s.convRepo.DeleteConversation(ctx, conversationID, userID)
 }
 
+func (s *ChatService) TotalUnreadCount(ctx context.Context, userID string) (int, error) {
+	return s.convRepo.TotalUnreadCount(ctx, userID)
+}
+
 func (s *ChatService) SearchUserByPhone(ctx context.Context, phone string) (*model.PublicProfile, error) {
 	if s.userRepo == nil {
 		return nil, errors.New("user repository not available")

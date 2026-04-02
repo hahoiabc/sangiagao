@@ -367,6 +367,15 @@ class ApiService {
     return PaginatedResult.fromJson(res.data, (j) => Conversation.fromJson(j));
   }
 
+  Future<int> getUnreadTotal() async {
+    try {
+      final res = await _dio.get('/conversations/unread-total');
+      return res.data['total'] ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
   Future<void> markConversationRead(String convId) async {
     await _dio.put('/conversations/$convId/read');
   }

@@ -379,6 +379,7 @@ func main() {
 			conversations.Use(middleware.RequirePermission(permissionService, "chat.send"))
 			{
 				conversations.GET("", convHandler.List)
+				conversations.GET("/unread-total", convHandler.UnreadTotal)
 				conversations.GET("/search-user", convHandler.SearchByPhone)
 				conversations.POST("", middleware.UserRateLimit(appCache, "ratelimit:conv", 20, 24*time.Hour), convHandler.Create)
 				conversations.DELETE("/:id", convHandler.DeleteConversation)
@@ -474,10 +475,14 @@ func main() {
 				admin.POST("/notifications/broadcast", middleware.RequirePermission(permissionService, "notifications.broadcast"), notifHandler.Broadcast)
 				admin.POST("/notifications/send", middleware.RequirePermission(permissionService, "notifications.send_individual"), notifHandler.SendToUser)
 
-				// Zalo ZNS management
-				admin.GET("/zalo-zns/status", znsHandler.GetStatus)
-				admin.PUT("/zalo-zns/refresh-token", znsHandler.UpdateRefreshToken)
-				admin.POST("/zalo-zns/test", znsHandler.TestSend)
+				// Zalo ZNS management — owner only
+				znsOnly := admin.Group("")
+				znsOnly.Use(middleware.RequireRole("owner"))
+				{
+					znsOnly.GET("/zalo-zns/status", znsHandler.GetStatus)
+					znsOnly.PUT("/zalo-zns/refresh-token", znsHandler.UpdateRefreshToken)
+					znsOnly.POST("/zalo-zns/test", znsHandler.TestSend)
+				}
 
 				// Site settings management
 				admin.PUT("/site-settings/slogan", siteSettingsHandler.UpdateSlogan)

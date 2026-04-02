@@ -186,4 +186,5 @@ type ConversationRepository interface {
 	ToggleReaction(ctx context.Context, messageID, userID, emoji string) (bool, error)
 	GetReactionsByMessage(ctx context.Context, messageID string) ([]model.MessageReaction, error)
 	DeleteConversation(ctx context.Context, conversationID, userID string) error
+	TotalUnreadCount(ctx context.Context, userID string) (int, error)
 }

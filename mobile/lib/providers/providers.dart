@@ -133,12 +133,7 @@ class UnreadCountNotifier extends StateNotifier<int> {
 
   Future<void> refresh() async {
     try {
-      final res = await _api.getConversations(page: 1, limit: 50);
-      int total = 0;
-      for (final conv in res.data) {
-        total += conv.unreadCount;
-      }
-      state = total;
+      state = await _api.getUnreadTotal();
     } catch (_) {
       // ignore
     }

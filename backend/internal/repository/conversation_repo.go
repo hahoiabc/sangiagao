@@ -175,6 +175,43 @@ func (r *ConversationRepo) DeleteConversation(ctx context.Context, conversationI
 	return nil
 }
 
+// loadReplies loads reply_to data for multiple messages in a single query
+func (r *ConversationRepo) loadReplies(ctx context.Context, messages []*model.Message) {
+	// Collect all reply_to_ids
+	idToMsgs := make(map[string][]*model.Message)
+	var replyIDs []string
+	for _, m := range messages {
+		if m.ReplyToID != nil {
+			if _, exists := idToMsgs[*m.ReplyToID]; !exists {
+				replyIDs = append(replyIDs, *m.ReplyToID)
+			}
+			idToMsgs[*m.ReplyToID] = append(idToMsgs[*m.ReplyToID], m)
+		}
+	}
+	if len(replyIDs) == 0 {
+		return
+	}
+
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, sender_id, content, type FROM messages WHERE id = ANY($1)`, replyIDs,
+	)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var reply model.ReplyMessage
+		if err := rows.Scan(&reply.ID, &reply.SenderID, &reply.Content, &reply.Type); err != nil {
+			continue
+		}
+		for _, m := range idToMsgs[reply.ID] {
+			replyCopy := reply
+			m.ReplyTo = &replyCopy
+		}
+	}
+}
+
 func (r *ConversationRepo) loadReplyTo(ctx context.Context, msg *model.Message) {
 	if msg.ReplyToID == nil {
 		return
@@ -234,10 +271,8 @@ func (r *ConversationRepo) GetMessages(ctx context.Context, conversationID, read
 		return nil, 0, err
 	}
 
-	// Load reply_to for messages that have reply_to_id
-	for _, m := range messages {
-		r.loadReplyTo(ctx, m)
-	}
+	// Load reply_to for messages that have reply_to_id (batch query)
+	r.loadReplies(ctx, messages)
 
 	// Load reactions for all messages in batch
 	if len(msgIDs) > 0 {
@@ -400,4 +435,18 @@ func (r *ConversationRepo) GetReactionsByMessage(ctx context.Context, messageID 
 		reactions = []model.MessageReaction{}
 	}
 	return reactions, rows.Err()
+}
+
+func (r *ConversationRepo) TotalUnreadCount(ctx context.Context, userID string) (int, error) {
+	var total int
+	err := r.pool.QueryRow(ctx,
+		`SELECT COUNT(*)
+		 FROM messages m
+		 JOIN conversations c ON c.id = m.conversation_id
+		 WHERE m.sender_id <> $1 AND m.read_at IS NULL
+		   AND ((c.member_id = $1 AND c.deleted_by_member = FALSE)
+		     OR (c.seller_id = $1 AND c.deleted_by_seller = FALSE))`,
+		userID,
+	).Scan(&total)
+	return total, err
 }

@@ -88,6 +88,10 @@ func (m *mockConvRepo) GetReactionsByMessage(ctx context.Context, messageID stri
 func (m *mockConvRepo) DeleteConversation(ctx context.Context, conversationID, userID string) error {
 	return m.Called(ctx, conversationID, userID).Error(0)
 }
+func (m *mockConvRepo) TotalUnreadCount(ctx context.Context, userID string) (int, error) {
+	args := m.Called(ctx, userID)
+	return args.Int(0), args.Error(1)
+}
 
 // --- Tests ---
 

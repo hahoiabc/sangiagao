@@ -172,4 +172,5 @@ type ChatServiceInterface interface {
 	ToggleReaction(ctx context.Context, userID, conversationID, messageID, emoji string) ([]model.MessageReaction, error)
 	DeleteConversation(ctx context.Context, userID, conversationID string) error
 	SearchUserByPhone(ctx context.Context, phone string) (*model.PublicProfile, error)
+	TotalUnreadCount(ctx context.Context, userID string) (int, error)
 }
