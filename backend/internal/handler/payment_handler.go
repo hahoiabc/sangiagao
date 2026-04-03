@@ -82,6 +82,18 @@ func (h *PaymentHandler) GetStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, order)
 }
 
+// AdminListOrders handles GET /admin/payments
+func (h *PaymentHandler) AdminListOrders(c *gin.Context) {
+	page, limit := parsePagination(c, 20)
+	orders, total, err := h.paymentService.ListAll(c.Request.Context(), page, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list orders"})
+		return
+	}
+	totalPages := (total + limit - 1) / limit
+	c.JSON(http.StatusOK, gin.H{"data": orders, "total": total, "page": page, "limit": limit, "total_pages": totalPages})
+}
+
 // SepayWebhook handles POST /webhooks/sepay
 func (h *PaymentHandler) SepayWebhook(c *gin.Context) {
 	// Verify SePay API key

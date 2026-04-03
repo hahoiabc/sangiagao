@@ -156,6 +156,11 @@ func (s *PaymentService) GetOrderStatus(ctx context.Context, orderID, userID str
 	return order, nil
 }
 
+// ListAll returns all payment orders for admin.
+func (s *PaymentService) ListAll(ctx context.Context, page, limit int) ([]*model.PaymentOrder, int, error) {
+	return s.paymentRepo.ListAll(ctx, page, limit)
+}
+
 // ExpireOverdueOrders marks expired pending orders.
 func (s *PaymentService) ExpireOverdueOrders(ctx context.Context) (int, error) {
 	return s.paymentRepo.ExpireOverdue(ctx)

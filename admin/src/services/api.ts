@@ -826,3 +826,23 @@ export async function updateSloganColor(value: string): Promise<SiteSetting> {
     body: JSON.stringify({ value }),
   });
 }
+
+// --- Payments ---
+export interface PaymentOrder {
+  id: string;
+  user_id: string;
+  plan_months: number;
+  amount: number;
+  order_code: string;
+  status: string;
+  sepay_transaction_id?: number;
+  paid_at?: string;
+  expires_at: string;
+  created_at: string;
+  user_name?: string;
+  user_phone?: string;
+}
+
+export async function getPaymentOrders(page = 1, limit = 20): Promise<PaginatedResponse<PaymentOrder>> {
+  return request<PaginatedResponse<PaymentOrder>>(`/admin/payments?page=${page}&limit=${limit}`);
+}

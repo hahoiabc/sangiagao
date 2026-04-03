@@ -451,6 +451,9 @@ func main() {
 				admin.GET("/dashboard/stats", middleware.RequirePermission(permissionService, "dashboard.view"), adminHandler.GetDashboardStats)
 				admin.GET("/dashboard/charts", middleware.RequirePermission(permissionService, "dashboard.charts"), adminHandler.GetDashboardCharts)
 
+				// Payments — admin + editor
+				admin.GET("/payments", paymentHandler.AdminListOrders)
+
 				// Listings — admin + editor
 				admin.DELETE("/listings/:id", middleware.RequirePermission(permissionService, "listings.delete_any"), adminHandler.DeleteListing)
 				admin.POST("/listings/batch-delete", middleware.RequirePermission(permissionService, "listings.batch_delete"), adminHandler.BatchDeleteListings)

@@ -13,6 +13,8 @@ type PaymentOrder struct {
 	PaidAt            *time.Time `json:"paid_at,omitempty"`
 	ExpiresAt         time.Time  `json:"expires_at"`
 	CreatedAt         time.Time  `json:"created_at"`
+	UserName          *string    `json:"user_name,omitempty"`
+	UserPhone         *string    `json:"user_phone,omitempty"`
 }
 
 // QR info returned to client

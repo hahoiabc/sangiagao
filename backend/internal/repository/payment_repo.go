@@ -93,6 +93,45 @@ func (r *PaymentRepo) HasPendingByUser(ctx context.Context, userID string) (bool
 	return count > 0, err
 }
 
+func (r *PaymentRepo) ListAll(ctx context.Context, page, limit int) ([]*model.PaymentOrder, int, error) {
+	offset := (page - 1) * limit
+	var total int
+	err := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM payment_orders`).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+	rows, err := r.pool.Query(ctx,
+		`SELECT p.id, p.user_id, p.plan_months, p.amount, p.order_code, p.status,
+		        p.sepay_transaction_id, p.paid_at, p.expires_at, p.created_at,
+		        u.name, u.phone
+		 FROM payment_orders p
+		 JOIN users u ON u.id = p.user_id
+		 ORDER BY p.created_at DESC LIMIT $1 OFFSET $2`, limit, offset,
+	)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var orders []*model.PaymentOrder
+	for rows.Next() {
+		var o model.PaymentOrder
+		var userName, userPhone *string
+		if err := rows.Scan(&o.ID, &o.UserID, &o.PlanMonths, &o.Amount, &o.OrderCode,
+			&o.Status, &o.SepayTransactionID, &o.PaidAt, &o.ExpiresAt, &o.CreatedAt,
+			&userName, &userPhone); err != nil {
+			return nil, 0, err
+		}
+		o.UserName = userName
+		o.UserPhone = userPhone
+		orders = append(orders, &o)
+	}
+	if orders == nil {
+		orders = []*model.PaymentOrder{}
+	}
+	return orders, total, rows.Err()
+}
+
 func (r *PaymentRepo) HasSepayTxID(ctx context.Context, txID int64) (bool, error) {
 	var count int
 	err := r.pool.QueryRow(ctx,

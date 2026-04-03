@@ -25,6 +25,7 @@ const defaultNavItems = [
   { href: "/listings", label: "Tin đăng", icon: ShoppingBasket, adminOnly: false },
   { href: "/reports", label: "Báo cáo", icon: Flag, adminOnly: false },
   { href: "/subscriptions", label: "Gói dịch vụ", icon: CreditCard, adminOnly: false },
+  { href: "/payments", label: "Đơn thanh toán", icon: CreditCard, adminOnly: false },
   { href: "/catalog", label: "Danh mục SP", icon: Package, adminOnly: false },
   { href: "/sponsors", label: "Tài trợ", icon: Megaphone, adminOnly: false },
   { href: "/feedbacks", label: "Góp ý", icon: MessageSquareText, adminOnly: false },
