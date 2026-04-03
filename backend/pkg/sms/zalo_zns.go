@@ -203,7 +203,7 @@ func (z *ZaloZNSSender) SendOTP(phone, code string) error {
 	}
 
 	z.recordSuccess()
-	log.Printf("[ZALO ZNS] OTP sent to %s", phone)
+	log.Printf("[ZALO ZNS] OTP sent successfully")
 	return nil
 }
 

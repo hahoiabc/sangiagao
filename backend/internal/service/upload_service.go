@@ -63,6 +63,26 @@ type PresignResult struct {
 	Key       string `json:"key"`
 }
 
+// validMagicBytes checks the first bytes of file match JPEG, PNG, or WebP signature.
+func validMagicBytes(data []byte) bool {
+	if len(data) < 4 {
+		return false
+	}
+	// JPEG: FF D8 FF
+	if data[0] == 0xFF && data[1] == 0xD8 && data[2] == 0xFF {
+		return true
+	}
+	// PNG: 89 50 4E 47
+	if data[0] == 0x89 && data[1] == 0x50 && data[2] == 0x4E && data[3] == 0x47 {
+		return true
+	}
+	// WebP: RIFF....WEBP
+	if len(data) >= 12 && string(data[0:4]) == "RIFF" && string(data[8:12]) == "WEBP" {
+		return true
+	}
+	return false
+}
+
 type UploadService struct {
 	storage storage.Client
 }
@@ -96,6 +116,11 @@ func (s *UploadService) UploadImage(ctx context.Context, folder string, file io.
 	fileBytes, err := io.ReadAll(file)
 	if err != nil {
 		return nil, fmt.Errorf("reading file: %w", err)
+	}
+
+	// Validate file magic bytes match claimed content type
+	if !validMagicBytes(fileBytes) {
+		return nil, ErrInvalidFileType
 	}
 
 	uniqueName := fmt.Sprintf("%s%s", uuid.New().String(), ext)

@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"net/http"
 	"strings"
 	"time"
@@ -11,8 +13,16 @@ import (
 	jwtpkg "github.com/sangiagao/rice-marketplace/pkg/jwt"
 )
 
-// extractToken gets the access token from Authorization header or cookie fallback.
-func extractToken(c *gin.Context) string {
+const blacklistPrefix = "blacklist:"
+
+// TokenHash returns a short hash of a token for blacklist key.
+func TokenHash(token string) string {
+	h := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(h[:16])
+}
+
+// ExtractToken gets the access token from Authorization header or cookie fallback.
+func ExtractToken(c *gin.Context) string {
 	header := c.GetHeader("Authorization")
 	if header != "" {
 		token := strings.TrimPrefix(header, "Bearer ")
@@ -27,9 +37,13 @@ func extractToken(c *gin.Context) string {
 	return ""
 }
 
-func JWTAuth(jwtManager *jwtpkg.Manager) gin.HandlerFunc {
+func JWTAuth(jwtManager *jwtpkg.Manager, caches ...cache.Cache) gin.HandlerFunc {
+	var tokenCache cache.Cache
+	if len(caches) > 0 {
+		tokenCache = caches[0]
+	}
 	return func(c *gin.Context) {
-		token := extractToken(c)
+		token := ExtractToken(c)
 		if token == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing authorization"})
 			return
@@ -41,10 +55,27 @@ func JWTAuth(jwtManager *jwtpkg.Manager) gin.HandlerFunc {
 			return
 		}
 
+		// Check token blacklist (Redis fail → skip, safe fallback)
+		if tokenCache != nil {
+			if revoked, _ := tokenCache.Exists(c.Request.Context(), blacklistPrefix+TokenHash(token)); revoked {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token has been revoked"})
+				return
+			}
+		}
+
 		c.Set("user_id", claims.UserID)
 		c.Set("user_role", claims.Role)
 		c.Next()
 	}
+}
+
+// BlacklistToken adds a token to the Redis blacklist with TTL = remaining token lifetime.
+func BlacklistToken(c cache.Cache, token string, expiry time.Duration) {
+	if c == nil || token == "" {
+		return
+	}
+	key := blacklistPrefix + TokenHash(token)
+	_ = c.Set(context.Background(), key, []byte("1"), expiry)
 }
 
 // TrackOnline updates Redis key to mark user as online (5-min TTL).
@@ -73,7 +104,7 @@ func TrackOnline(c cache.Cache) gin.HandlerFunc {
 // If valid, sets user_id and user_role. If absent or invalid, sets user_role to "guest".
 func OptionalJWTAuth(jwtManager *jwtpkg.Manager) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token := extractToken(c)
+		token := ExtractToken(c)
 		if token == "" {
 			c.Set("user_role", "guest")
 			c.Next()

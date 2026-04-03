@@ -120,7 +120,7 @@ func (s *AuthService) SendOTP(ctx context.Context, phone string) error {
 	// Send OTP async — don't block HTTP response waiting for Zalo API
 	sendFn := func() {
 		if err := s.smsSender.SendOTP(phone, code); err != nil {
-			log.Printf("[OTP] Failed to send OTP to %s: %v", phone, err)
+			log.Printf("[OTP] Failed to send OTP: %v", err)
 		}
 	}
 	if s.pool != nil {

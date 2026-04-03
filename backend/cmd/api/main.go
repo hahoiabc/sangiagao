@@ -200,6 +200,9 @@ func main() {
 
 	// --- Handlers ---
 	authHandler := handler.NewAuthHandler(authService, spamService, cfg.CookieDomain, cfg.CookieSecure)
+	if appCache != nil {
+		authHandler.SetCache(appCache)
+	}
 	userHandler := handler.NewUserHandler(userService)
 	listingHandler := handler.NewListingHandler(listingService)
 	catalogHandler := handler.NewCatalogHandler(catalogService)
@@ -339,7 +342,7 @@ func main() {
 
 		// Protected routes
 		protected := v1.Group("")
-		protected.Use(middleware.JWTAuth(jwtManager))
+		protected.Use(middleware.JWTAuth(jwtManager, appCache))
 		protected.Use(middleware.CSRFProtection())
 		protected.Use(middleware.TrackOnline(appCache))
 		{

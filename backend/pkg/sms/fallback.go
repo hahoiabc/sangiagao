@@ -19,6 +19,6 @@ func (f *FallbackSender) SendOTP(phone, code string) error {
 		return nil
 	}
 
-	log.Printf("[FALLBACK] Primary failed: %v, trying secondary for %s", err, phone)
+	log.Printf("[FALLBACK] Primary failed: %v, trying secondary", err)
 	return f.secondary.SendOTP(phone, code)
 }

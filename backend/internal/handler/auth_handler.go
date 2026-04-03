@@ -3,16 +3,19 @@ package handler
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sangiagao/rice-marketplace/internal/middleware"
 	"github.com/sangiagao/rice-marketplace/internal/service"
+	"github.com/sangiagao/rice-marketplace/pkg/cache"
 	jwtpkg "github.com/sangiagao/rice-marketplace/pkg/jwt"
 )
 
 type AuthHandler struct {
 	authService  AuthServiceInterface
 	spamService  *service.SpamService
+	cache        cache.Cache
 	cookieDomain string
 	cookieSecure bool
 }
@@ -25,6 +28,8 @@ func NewAuthHandler(authService AuthServiceInterface, spamService *service.SpamS
 		cookieSecure: cookieSecure,
 	}
 }
+
+func (h *AuthHandler) SetCache(c cache.Cache) { h.cache = c }
 
 // setAuthCookies sets httpOnly cookies for web clients + CSRF token.
 func (h *AuthHandler) setAuthCookies(c *gin.Context, accessToken, refreshToken string) {
@@ -332,6 +337,15 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
+	// Check if refresh token was blacklisted (logout)
+	if h.cache != nil {
+		if revoked, _ := h.cache.Exists(c.Request.Context(), "blacklist:"+middleware.TokenHash(refreshToken)); revoked {
+			h.clearAuthCookies(c)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "token has been revoked"})
+			return
+		}
+	}
+
 	tokens, err := h.authService.RefreshToken(c.Request.Context(), refreshToken)
 	if err != nil {
 		switch {
@@ -352,6 +366,15 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
+	// Blacklist current tokens so they can't be reused
+	if h.cache != nil {
+		if at := middleware.ExtractToken(c); at != "" {
+			middleware.BlacklistToken(h.cache, at, 15*time.Minute)
+		}
+		if rt, err := c.Cookie("refresh_token"); err == nil && rt != "" {
+			middleware.BlacklistToken(h.cache, rt, 30*24*time.Hour)
+		}
+	}
 	h.clearAuthCookies(c)
 	c.JSON(http.StatusOK, gin.H{"message": "logged out"})
 }

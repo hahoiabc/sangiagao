@@ -13,6 +13,6 @@ func NewMockSender() *MockSender {
 }
 
 func (m *MockSender) SendOTP(phone, code string) error {
-	log.Printf("[MOCK SMS] OTP cho %s: %s", phone, code)
+	log.Printf("[MOCK SMS] OTP sent (code: %s)", code)
 	return nil
 }
