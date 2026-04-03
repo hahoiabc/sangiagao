@@ -318,7 +318,50 @@ func (s *ListingService) Search(ctx context.Context, filter *model.ListingFilter
 	if filter.Limit < 1 || filter.Limit > 50 {
 		filter.Limit = 20
 	}
+
+	// Try cache
+	if s.cache != nil {
+		cacheKey := s.searchCacheKey(filter)
+		if data, err := s.cache.Get(ctx, cacheKey); err == nil && data != nil {
+			var result struct {
+				Data  []*model.Listing `json:"data"`
+				Total int              `json:"total"`
+			}
+			if json.Unmarshal(data, &result) == nil {
+				return result.Data, result.Total, nil
+			}
+		}
+
+		listings, total, err := s.listingRepo.Search(ctx, filter)
+		if err != nil {
+			return nil, 0, err
+		}
+		payload := struct {
+			Data  []*model.Listing `json:"data"`
+			Total int              `json:"total"`
+		}{Data: listings, Total: total}
+		if encoded, e := json.Marshal(payload); e == nil {
+			_ = s.cache.Set(ctx, cacheKey, encoded, 2*time.Minute)
+		}
+		return listings, total, nil
+	}
+
 	return s.listingRepo.Search(ctx, filter)
+}
+
+func (s *ListingService) searchCacheKey(f *model.ListingFilter) string {
+	key := fmt.Sprintf("%ssearch:q=%s:cat=%s:rt=%s:prov=%s:ward=%s:sort=%s:p=%d:l=%d",
+		marketplaceCachePrefix, f.Query, f.Category, f.RiceType, f.Province, f.Ward, f.Sort, f.Page, f.Limit)
+	if f.MinPrice != nil {
+		key += fmt.Sprintf(":minP=%.0f", *f.MinPrice)
+	}
+	if f.MaxPrice != nil {
+		key += fmt.Sprintf(":maxP=%.0f", *f.MaxPrice)
+	}
+	if f.MinQty != nil {
+		key += fmt.Sprintf(":minQ=%.0f", *f.MinQty)
+	}
+	return key
 }
 
 func (s *ListingService) GetDetail(ctx context.Context, id string) (*model.ListingDetail, error) {

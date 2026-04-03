@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Plus, Package, Edit, Trash2, Eye, Calendar, Zap } from "lucide-react";
+import { Plus, Package, Edit, Trash2, Eye, Calendar, Zap, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,27 +21,31 @@ const statusLabels: Record<string, { label: string; color: "default" | "secondar
   deleted: { label: "Đã xóa", color: "destructive" },
 };
 
+const PAGE_SIZE = 20;
+
 export default function MyListingsPage() {
   const { user } = useAuth();
   const [result, setResult] = useState<PaginatedResponse<Listing> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+
+  const fetchPage = useCallback((p: number) => {
+    setLoading(true);
+    getMyListings("", p, PAGE_SIZE)
+      .then((r) => { setResult(r); setPage(p); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
   useEffect(() => {
-    if (user) {
-      getMyListings("", 1, 50)
-        .then(setResult)
-        .catch(() => {})
-        .finally(() => setLoading(false));
-    }
-  }, [user]);
+    if (user) fetchPage(1);
+  }, [user, fetchPage]);
 
   async function handleDelete(id: string) {
     if (!confirm("Bạn có chắc muốn xóa tin đăng này?")) return;
     try {
       await deleteListing("", id);
-      setResult((prev) =>
-        prev ? { ...prev, data: prev.data.filter((l) => l.id !== id), total: prev.total - 1 } : prev
-      );
+      fetchPage(page);
       toast.success("Đã xóa tin đăng");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Xóa thất bại");
@@ -144,6 +148,19 @@ export default function MyListingsPage() {
               </Card>
             );
           })}
+          {result.total > PAGE_SIZE && (
+            <div className="flex items-center justify-center gap-3 mt-4">
+              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => fetchPage(page - 1)}>
+                <ChevronLeft className="h-4 w-4 mr-1" /> Trước
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Trang {page} / {Math.ceil(result.total / PAGE_SIZE)}
+              </span>
+              <Button variant="outline" size="sm" disabled={page >= Math.ceil(result.total / PAGE_SIZE)} onClick={() => fetchPage(page + 1)}>
+                Sau <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="text-center py-12">

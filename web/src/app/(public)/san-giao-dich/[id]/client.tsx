@@ -173,6 +173,7 @@ export default function ListingDetailPage() {
                   fill
                   sizes="(max-width: 768px) 100vw, 66vw"
                   className="object-cover scale-110 blur-xl opacity-50"
+                  priority
                 />
                 <Image
                   src={listing.images[selectedImage]}
@@ -180,6 +181,7 @@ export default function ListingDetailPage() {
                   fill
                   sizes="(max-width: 768px) 100vw, 66vw"
                   className="object-contain relative z-10"
+                  priority
                 />
                 <div className="absolute inset-0 z-20 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                   <ZoomIn className="h-8 w-8 text-white opacity-0 group-hover:opacity-80 transition-opacity drop-shadow-lg" />

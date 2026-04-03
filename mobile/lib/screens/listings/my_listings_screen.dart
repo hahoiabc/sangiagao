@@ -18,6 +18,9 @@ class MyListingsScreen extends ConsumerStatefulWidget {
 class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
   List<Listing> _listings = [];
   bool _loading = true;
+  int _page = 1;
+  int _total = 0;
+  static const _pageSize = 20;
 
   @override
   void initState() {
@@ -25,10 +28,11 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
     _load();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({int page = 1}) async {
+    setState(() => _loading = true);
     try {
-      final result = await ref.read(apiServiceProvider).getMyListings();
-      if (mounted) setState(() => _listings = result.data);
+      final result = await ref.read(apiServiceProvider).getMyListings(page: page, limit: _pageSize);
+      if (mounted) setState(() { _listings = result.data; _total = result.total; _page = page; });
     } catch (e) {
       debugPrint('My listings error: $e');
     } finally {
@@ -122,12 +126,33 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
                   ),
                 )
               : RefreshIndicator(
-                  onRefresh: _load,
+                  onRefresh: () => _load(page: _page),
                   child: ListView.separated(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                    itemCount: _listings.length,
+                    itemCount: _listings.length + (_total > _pageSize ? 1 : 0),
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (_, i) => _buildListingCard(_listings[i]),
+                    itemBuilder: (_, i) {
+                      if (i < _listings.length) return _buildListingCard(_listings[i]);
+                      // Pagination row
+                      final totalPages = (_total + _pageSize - 1) ~/ _pageSize;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            IconButton(
+                              onPressed: _page > 1 ? () => _load(page: _page - 1) : null,
+                              icon: const Icon(Icons.chevron_left),
+                            ),
+                            Text('Trang $_page / $totalPages', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                            IconButton(
+                              onPressed: _page < totalPages ? () => _load(page: _page + 1) : null,
+                              icon: const Icon(Icons.chevron_right),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ),
       floatingActionButton: _listings.isNotEmpty

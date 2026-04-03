@@ -329,7 +329,7 @@ function MarketplaceContent() {
             {result.total} tin đăng
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {result.data.map((listing) => (
+            {result.data.map((listing, li) => (
               <Link key={listing.id} href={`/san-giao-dich/${listing.id}`}>
                 <Card className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer h-full">
                   <div className="h-56 bg-muted overflow-hidden relative">
@@ -341,6 +341,7 @@ function MarketplaceContent() {
                           fill
                           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                           className="object-cover scale-110 blur-xl opacity-60"
+                          priority={li < 4}
                         />
                         <Image
                           src={toThumbnailUrl(listing.images[0])}
@@ -348,6 +349,7 @@ function MarketplaceContent() {
                           fill
                           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                           className="object-contain relative z-10"
+                          priority={li < 4}
                         />
                       </>
                     ) : (
