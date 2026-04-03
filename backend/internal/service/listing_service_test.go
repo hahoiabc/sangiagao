@@ -19,6 +19,10 @@ func (m *mockListingRepo) CountTodayByUser(ctx context.Context, userID string) (
 	args := m.Called(ctx, userID)
 	return args.Int(0), args.Error(1)
 }
+func (m *mockListingRepo) CountTodayByUserAndType(ctx context.Context, userID, riceType string) (int, error) {
+	args := m.Called(ctx, userID, riceType)
+	return args.Int(0), args.Error(1)
+}
 
 func (m *mockListingRepo) Create(ctx context.Context, userID string, req *model.CreateListingRequest) (*model.Listing, error) {
 	args := m.Called(ctx, userID, req)
@@ -208,7 +212,7 @@ func TestListingCreate_Success(t *testing.T) {
 
 	req := &model.CreateListingRequest{Title: "Gạo ST25", Category: "gao_deo_thom", RiceType: "st_25", QuantityKG: 500, PricePerKG: 28000}
 	expected := sampleListing("user-1")
-	repo.On("CountTodayByUser", mock.Anything, "user-1").Return(0, nil)
+	repo.On("CountTodayByUserAndType", mock.Anything, "user-1", "st_25").Return(0, nil)
 	catRepo.On("GetCatalogForAPI", mock.Anything).Return(testCatalog(), nil)
 	repo.On("Create", mock.Anything, "user-1", req).Return(expected, nil)
 
@@ -222,7 +226,7 @@ func TestListingCreate_DailyLimitReached(t *testing.T) {
 	svc := NewListingService(repo, nil, nil, nil)
 
 	req := &model.CreateListingRequest{Title: "Test", Category: "gao_deo_thom", RiceType: "st_25", QuantityKG: 1, PricePerKG: 1}
-	repo.On("CountTodayByUser", mock.Anything, "user-1").Return(50, nil)
+	repo.On("CountTodayByUserAndType", mock.Anything, "user-1", "st_25").Return(3, nil)
 
 	_, err := svc.Create(context.Background(), "user-1", req)
 	assert.ErrorIs(t, err, ErrDailyLimitReached)
@@ -234,7 +238,7 @@ func TestListingCreate_RepoError(t *testing.T) {
 	svc := NewListingService(repo, nil, nil, catRepo)
 
 	req := &model.CreateListingRequest{Title: "Test", Category: "gao_deo_thom", RiceType: "st_25", QuantityKG: 1, PricePerKG: 1}
-	repo.On("CountTodayByUser", mock.Anything, "user-1").Return(0, nil)
+	repo.On("CountTodayByUserAndType", mock.Anything, "user-1", "st_25").Return(0, nil)
 	catRepo.On("GetCatalogForAPI", mock.Anything).Return(testCatalog(), nil)
 	repo.On("Create", mock.Anything, "user-1", req).Return(nil, assert.AnError)
 

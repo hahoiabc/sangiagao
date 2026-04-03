@@ -27,9 +27,9 @@ const (
 
 var ErrInvalidCategory = errors.New("phân loại gạo không hợp lệ")
 var ErrInvalidProduct = errors.New("loại gạo không hợp lệ hoặc không thuộc phân loại đã chọn")
-var ErrDailyLimitReached = errors.New("bạn đã đạt giới hạn 50 tin đăng/ngày. Vui lòng thử lại vào ngày mai")
+var ErrDailyLimitReached = errors.New("loại gạo này đã đăng tối đa 3 lần hôm nay")
 
-const maxListingsPerDay = 50
+const maxPerProductPerDay = 3
 
 // catalogCache holds in-memory catalog data to avoid DB queries on every listing create.
 type catalogCache struct {
@@ -143,12 +143,12 @@ func (s *ListingService) Create(ctx context.Context, userID string, req *model.C
 		}
 	}
 
-	// Check daily listing limit
-	todayCount, err := s.listingRepo.CountTodayByUser(ctx, userID)
+	// Check per-product daily limit (3 per rice_type per day)
+	typeCount, err := s.listingRepo.CountTodayByUserAndType(ctx, userID, req.RiceType)
 	if err != nil {
 		return nil, fmt.Errorf("check daily limit: %w", err)
 	}
-	if todayCount >= maxListingsPerDay {
+	if typeCount >= maxPerProductPerDay {
 		return nil, ErrDailyLimitReached
 	}
 

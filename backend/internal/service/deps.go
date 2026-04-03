@@ -78,6 +78,7 @@ type SubscriptionRepository interface {
 
 type ListingRepository interface {
 	CountTodayByUser(ctx context.Context, userID string) (int, error)
+	CountTodayByUserAndType(ctx context.Context, userID, riceType string) (int, error)
 	Create(ctx context.Context, userID string, req *model.CreateListingRequest) (*model.Listing, error)
 	GetByID(ctx context.Context, id string) (*model.Listing, error)
 	Update(ctx context.Context, id string, req *model.UpdateListingRequest) (*model.Listing, error)

@@ -139,6 +139,10 @@ func (m *mockAdminListingRepo) CountTodayByUser(ctx context.Context, userID stri
 	args := m.Called(ctx, userID)
 	return args.Int(0), args.Error(1)
 }
+func (m *mockAdminListingRepo) CountTodayByUserAndType(ctx context.Context, userID, riceType string) (int, error) {
+	args := m.Called(ctx, userID, riceType)
+	return args.Int(0), args.Error(1)
+}
 func (m *mockAdminListingRepo) Create(ctx context.Context, userID string, req *model.CreateListingRequest) (*model.Listing, error) {
 	args := m.Called(ctx, userID, req)
 	return args.Get(0).(*model.Listing), args.Error(1)

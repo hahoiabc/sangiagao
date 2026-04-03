@@ -47,14 +47,14 @@ class UserGuideScreen extends StatelessWidget {
     (
       '2. Xem sàn giao dịch',
       'Duyệt tin đăng: Vào "Sàn giao dịch" để xem tất cả tin đăng bán gạo. Sử dụng bộ lọc để tìm theo phân loại, loại gạo, khu vực, giá.\n\n'
-      'Bảng giá: Vào "Bảng giá" để xem giá trung bình theo từng loại gạo. Bấm vào tên loại gạo để xem tất cả tin đăng loại đó.'
+      'Bảng giá: Vào "Bảng giá" để xem giá thấp nhất theo từng loại gạo. Bấm vào tên loại gạo để xem tất cả tin đăng loại đó.'
     ),
     (
       '3. Đăng tin bán gạo',
       'Cần có gói thành viên còn hiệu lực để đăng tin.\n\n'
       'Đăng 1 tin: Vào "Tin đăng của tôi" → "Đăng tin" → chọn loại gạo, nhập giá, số lượng, thêm 1 hình ảnh → bấm "Đăng tin".\n\n'
       'Đăng nhanh: Vào "Đăng nhanh" → chọn danh mục → tick chọn các loại gạo → nhập giá, số lượng → bấm "Đăng X tin".\n\n'
-      'Giới hạn: tối đa 50 tin/ngày, mỗi tin 1 hình ảnh.'
+      'Giới hạn: mỗi loại gạo tối đa 3 lần/ngày, mỗi tin 1 hình ảnh.'
     ),
     (
       '4. Nhắn tin (Chat)',
@@ -89,7 +89,7 @@ class UserGuideScreen extends StatelessWidget {
       '9. Câu hỏi thường gặp',
       'Không nhận được OTP? Kiểm tra SĐT đúng chưa. Mã gửi qua Zalo (cần có Zalo). Đợi 2 phút rồi thử lại.\n\n'
       'Tin đăng bị ẩn? Gói thành viên hết hạn. Gia hạn để tin tự động hiển thị lại.\n\n'
-      'Đăng được bao nhiêu tin? Tối đa 50 tin/ngày, mỗi tin 1 hình.\n\n'
+      'Đăng được bao nhiêu tin? Mỗi loại gạo tối đa 3 lần/ngày, mỗi tin 1 hình.\n\n'
       'Liên hệ quản trị viên? Vào "Góp ý" trong trang tài khoản.\n\n'
       'Thông tin có an toàn? SĐT mã hóa AES-256, mật khẩu hash bcrypt, toàn bộ kết nối HTTPS.'
     ),

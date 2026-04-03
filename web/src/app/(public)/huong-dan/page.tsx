@@ -60,7 +60,7 @@ export default function UserGuidePage() {
             <div>
               <h3 className="font-medium mb-1">Bảng giá gạo</h3>
               <ul className="list-disc pl-6 space-y-1">
-                <li>Vào <strong>&quot;Bảng giá&quot;</strong> để xem giá trung bình theo từng loại gạo</li>
+                <li>Vào <strong>&quot;Bảng giá&quot;</strong> để xem giá thấp nhất theo từng loại gạo</li>
                 <li>Bấm vào tên loại gạo (VD: ST 25) để xem tất cả tin đăng loại đó</li>
               </ul>
             </div>
@@ -100,7 +100,7 @@ export default function UserGuidePage() {
               <ul className="list-disc pl-6 space-y-1">
                 <li><strong>Sửa:</strong> Bấm icon bút chì trên tin đăng để chỉnh sửa giá, số lượng</li>
                 <li><strong>Xóa:</strong> Bấm icon thùng rác để xóa tin</li>
-                <li>Giới hạn: tối đa <strong>50 tin/ngày</strong>, mỗi tin <strong>1 hình ảnh</strong></li>
+                <li>Giới hạn: mỗi loại gạo tối đa <strong>3 lần/ngày</strong>, mỗi tin <strong>1 hình ảnh</strong></li>
               </ul>
             </div>
           </div>
@@ -217,7 +217,7 @@ export default function UserGuidePage() {
             </div>
             <div>
               <p className="font-medium">Tôi có thể đăng bao nhiêu tin?</p>
-              <p className="text-muted-foreground">Tối đa 50 tin/ngày. Mỗi tin 1 hình ảnh.</p>
+              <p className="text-muted-foreground">Mỗi loại gạo tối đa 3 lần/ngày. Mỗi tin 1 hình ảnh.</p>
             </div>
             <div>
               <p className="font-medium">Làm sao liên hệ quản trị viên?</p>

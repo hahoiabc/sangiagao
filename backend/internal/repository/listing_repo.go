@@ -79,6 +79,15 @@ func (r *ListingRepo) CountTodayByUser(ctx context.Context, userID string) (int,
 	return count, err
 }
 
+func (r *ListingRepo) CountTodayByUserAndType(ctx context.Context, userID, riceType string) (int, error) {
+	var count int
+	err := r.pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM listings WHERE user_id = $1 AND rice_type = $2 AND created_at >= CURRENT_DATE AND status != 'deleted'`,
+		userID, riceType,
+	).Scan(&count)
+	return count, err
+}
+
 func (r *ListingRepo) Create(ctx context.Context, userID string, req *model.CreateListingRequest) (*model.Listing, error) {
 	row := r.pool.QueryRow(ctx,
 		`INSERT INTO listings (user_id, title, category, rice_type, province, district,
