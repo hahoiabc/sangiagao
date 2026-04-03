@@ -298,13 +298,13 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
               children: [
                 Icon(Icons.info_outline, color: AppColors.info, size: 20),
                 const SizedBox(width: 8),
-                Text('Hướng dẫn gia hạn',
+                Text('Gia hạn gói dịch vụ',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.info)),
               ],
             ),
             const SizedBox(height: 8),
             Text(
-              'Để gia hạn gói dịch vụ, vui lòng chuyển khoản theo số tiền gói đã chọn và liên hệ quản trị viên để xác nhận kích hoạt.',
+              'Để gia hạn hoặc đăng ký gói dịch vụ, vui lòng liên hệ bộ phận hỗ trợ qua mục "Góp ý" trong trang tài khoản.',
               style: TextStyle(color: AppColors.info, fontSize: 13, height: 1.4),
             ),
           ],

@@ -162,9 +162,9 @@ export default function SubscriptionPage() {
           <div className="rounded-lg border bg-blue-50 border-blue-200 p-4 mt-4 flex items-start gap-3">
             <Info className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-medium text-blue-800">Hướng dẫn gia hạn</p>
+              <p className="font-medium text-blue-800">Gia hạn gói dịch vụ</p>
               <p className="text-sm text-blue-700 mt-1">
-                Để gia hạn gói dịch vụ, vui lòng chuyển khoản theo số tiền gói đã chọn và liên hệ quản trị viên để xác nhận kích hoạt.
+                Để gia hạn hoặc đăng ký gói dịch vụ, vui lòng liên hệ bộ phận hỗ trợ qua mục &quot;Góp ý&quot; trong trang tài khoản.
               </p>
             </div>
           </div>
