@@ -37,6 +37,8 @@ mobile/ios/Pods/
 mobile/ios/.symlinks/
 mobile/android/.gradle/
 mobile/android/app/build/
+mobile/android/key.properties
+mobile/android/app/upload-keystore.jks
 
 # Admin (Next.js)
 admin/node_modules/
