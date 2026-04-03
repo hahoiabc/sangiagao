@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/providers.dart';
 import '../../theme/app_theme.dart';
 
@@ -304,8 +305,21 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Để gia hạn hoặc đăng ký gói dịch vụ, vui lòng liên hệ bộ phận hỗ trợ qua mục "Góp ý" trong trang tài khoản.',
+              'Để gia hạn hoặc đăng ký gói dịch vụ, vui lòng liên hệ bộ phận hỗ trợ.',
               style: TextStyle(color: AppColors.info, fontSize: 13, height: 1.4),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () => launchUrl(Uri.parse('https://zalo.me/4320771833770042968'), mode: LaunchMode.externalApplication),
+                icon: const Icon(Icons.chat, size: 18),
+                label: const Text('Liên hệ tư vấn qua Zalo ngay'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF0068FF),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
             ),
           ],
         ),

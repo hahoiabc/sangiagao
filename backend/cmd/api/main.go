@@ -146,6 +146,7 @@ func main() {
 	auditRepo := repository.NewAuditRepo(pgPool)
 	spamRepo := repository.NewSpamRepo(pgPool)
 	siteSettingsRepo := repository.NewSiteSettingsRepo(pgPool)
+	paymentRepo := repository.NewPaymentRepo(pgPool)
 
 	// --- Services ---
 	spamService := service.NewSpamService(spamRepo)
@@ -157,6 +158,7 @@ func main() {
 		listingService.SetCache(appCache)
 	}
 	subService := service.NewSubscriptionService(subRepo, planRepo)
+	paymentService := service.NewPaymentService(paymentRepo, subService)
 	ratingService := service.NewRatingService(ratingRepo)
 	reportService := service.NewReportService(reportRepo)
 	pushSender := firebase.NewFCMSender(cfg.FirebaseCredPath)
@@ -227,6 +229,7 @@ func main() {
 		uploadHandler = handler.NewUploadHandler(uploadService)
 		uploadHandler.SetPool(pushPool)
 	}
+	paymentHandler := handler.NewPaymentHandler(paymentService, subService, cfg.SepayAPIKey)
 
 	// --- Subscription expiry cron (every hour) ---
 	go func() {
@@ -234,8 +237,10 @@ func main() {
 		defer ticker.Stop()
 		// Run once on startup
 		subService.RunExpiryCron(context.Background())
+		paymentService.ExpireOverdueOrders(context.Background())
 		for range ticker.C {
 			subService.RunExpiryCron(context.Background())
+			paymentService.ExpireOverdueOrders(context.Background())
 		}
 	}()
 
@@ -336,6 +341,9 @@ func main() {
 		v1.GET("/site-settings/slogan", siteSettingsHandler.GetSlogan)
 		v1.GET("/site-settings/slogan-color", siteSettingsHandler.GetSloganColor)
 
+		// SePay webhook (public — verified by API key in handler)
+		v1.POST("/webhooks/sepay", paymentHandler.SepayWebhook)
+
 		// User (public — permission-controlled)
 		v1.GET("/users/:id/profile", middleware.OptionalJWTAuth(jwtManager), middleware.RequirePermission(permissionService, "marketplace.seller_profile"), userHandler.GetProfile)
 		v1.GET("/users/:id/ratings", middleware.OptionalJWTAuth(jwtManager), middleware.RequirePermission(permissionService, "marketplace.seller_profile"), ratingHandler.ListBySeller)
@@ -355,6 +363,10 @@ func main() {
 				protected.GET("/upload/presign", uploadLimit, uploadHandler.GetPresignedPutURL)
 				protected.POST("/upload/confirm", uploadHandler.ConfirmPresignedUpload)
 			}
+
+			// Payments
+			protected.POST("/payments/create", paymentHandler.CreateOrder)
+			protected.GET("/payments/:id/status", paymentHandler.GetStatus)
 
 			// User
 			protected.GET("/users/me", userHandler.GetMe)

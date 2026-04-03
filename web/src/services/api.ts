@@ -737,3 +737,34 @@ export async function getMyPermissions(token?: string): Promise<{ role: string; 
 export async function getGuestPermissions(): Promise<{ role: string; permissions: PermissionMap }> {
   return request<{ role: string; permissions: PermissionMap }>("/permissions/guest", {});
 }
+
+// --- Payments ---
+export interface PaymentQRInfo {
+  order_id: string;
+  order_code: string;
+  amount: number;
+  bank_name: string;
+  bank_bin: string;
+  account_no: string;
+  account_name: string;
+  qr_url: string;
+  expires_at: string;
+}
+
+export interface PaymentOrder {
+  id: string;
+  status: "pending" | "paid" | "expired" | "cancelled";
+  paid_at?: string;
+}
+
+export async function createPaymentOrder(token: string, months: number): Promise<PaymentQRInfo> {
+  return request<PaymentQRInfo>("/payments/create", {
+    method: "POST",
+    token,
+    body: JSON.stringify({ months }),
+  });
+}
+
+export async function getPaymentStatus(token: string, orderId: string): Promise<PaymentOrder> {
+  return request<PaymentOrder>(`/payments/${orderId}/status`, { token });
+}

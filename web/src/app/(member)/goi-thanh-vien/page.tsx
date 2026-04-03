@@ -1,20 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Crown, Check, Clock, CalendarDays, AlertTriangle, Info, CheckCircle, XCircle } from "lucide-react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { Crown, Check, Clock, CalendarDays, AlertTriangle, Info, CheckCircle, XCircle, QrCode, X, Loader2 } from "lucide-react";
+import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   getSubscriptionStatus,
   getSubscriptionPlans,
   getSubscriptionHistory,
+  createPaymentOrder,
+  getPaymentStatus,
   type SubscriptionStatus,
   type SubscriptionPlan,
   type SubscriptionHistory,
+  type PaymentQRInfo,
 } from "@/services/api";
 import { useAuth } from "@/lib/auth";
 import { formatDate } from "@/lib/utils";
+import { toast } from "sonner";
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("vi-VN").format(amount) + "đ";
@@ -26,21 +32,63 @@ export default function SubscriptionPage() {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [history, setHistory] = useState<SubscriptionHistory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [paymentQR, setPaymentQR] = useState<PaymentQRInfo | null>(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<string>("pending");
+  const pollRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      Promise.all([
-        getSubscriptionStatus("").catch(() => null),
-        getSubscriptionPlans("").then((r) => r.plans).catch(() => []),
-        getSubscriptionHistory("", 1, 20).then((r) => r.data).catch(() => []),
-      ]).then(([s, p, h]) => {
-        setStatus(s);
-        setPlans(p);
-        setHistory(h);
-        setLoading(false);
-      });
-    }
+  const loadData = useCallback(() => {
+    if (!user) return;
+    Promise.all([
+      getSubscriptionStatus("").catch(() => null),
+      getSubscriptionPlans("").then((r) => r.plans).catch(() => []),
+      getSubscriptionHistory("", 1, 20).then((r) => r.data).catch(() => []),
+    ]).then(([s, p, h]) => {
+      setStatus(s);
+      setPlans(p);
+      setHistory(h);
+      setLoading(false);
+    });
   }, [user]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  // Cleanup poll on unmount
+  useEffect(() => { return () => { if (pollRef.current) clearInterval(pollRef.current); }; }, []);
+
+  async function handlePayment(months: number) {
+    setPaymentLoading(true);
+    try {
+      const qr = await createPaymentOrder("", months);
+      setPaymentQR(qr);
+      setPaymentStatus("pending");
+      // Start polling every 5 seconds
+      if (pollRef.current) clearInterval(pollRef.current);
+      pollRef.current = setInterval(async () => {
+        try {
+          const order = await getPaymentStatus("", qr.order_id);
+          if (order.status === "paid") {
+            setPaymentStatus("paid");
+            if (pollRef.current) clearInterval(pollRef.current);
+            loadData(); // Refresh subscription status
+          } else if (order.status === "expired") {
+            setPaymentStatus("expired");
+            if (pollRef.current) clearInterval(pollRef.current);
+          }
+        } catch { /* ignore */ }
+      }, 5000);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Tạo đơn thất bại");
+    } finally {
+      setPaymentLoading(false);
+    }
+  }
+
+  function closePayment() {
+    if (pollRef.current) clearInterval(pollRef.current);
+    setPaymentQR(null);
+    setPaymentStatus("pending");
+  }
 
   if (loading) {
     return (
@@ -139,35 +187,22 @@ export default function SubscriptionPage() {
                       ~ {formatCurrency(pricePerMonth)}/tháng
                     </p>
                   )}
-                  <ul className="text-sm text-muted-foreground space-y-1 text-left mt-3">
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                      Đăng tin không giới hạn
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                      Chat trực tiếp
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                      Hiển thị trên bảng giá
-                    </li>
-                  </ul>
+                  <Button
+                    className="w-full mt-3 gap-2"
+                    onClick={() => handlePayment(plan.months)}
+                    disabled={paymentLoading}
+                  >
+                    {paymentLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <QrCode className="h-4 w-4" />}
+                    Thanh toán
+                  </Button>
                 </div>
               );
             })}
           </div>
 
-          {/* Renewal info card - like mobile */}
-          <div className="rounded-lg border bg-blue-50 border-blue-200 p-4 mt-4 flex items-start gap-3">
-            <Info className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-blue-800">Gia hạn gói dịch vụ</p>
-              <p className="text-sm text-blue-700 mt-1">
-                Để gia hạn hoặc đăng ký gói dịch vụ, vui lòng liên hệ bộ phận hỗ trợ qua mục &quot;Góp ý&quot; trong trang tài khoản.
-              </p>
-            </div>
-          </div>
+          <p className="text-xs text-muted-foreground text-center mt-4">
+            Chọn gói và thanh toán bằng QR chuyển khoản ngân hàng. Gói kích hoạt tự động sau khi thanh toán.
+          </p>
         </CardContent>
       </Card>
 
@@ -215,6 +250,77 @@ export default function SubscriptionPage() {
           )}
         </CardContent>
       </Card>
+      {/* Payment QR Modal */}
+      {paymentQR && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={closePayment}>
+          <div className="bg-background rounded-xl max-w-md w-full p-6 relative" onClick={(e) => e.stopPropagation()}>
+            <button onClick={closePayment} className="absolute top-3 right-3 text-muted-foreground hover:text-foreground">
+              <X className="h-5 w-5" />
+            </button>
+
+            {paymentStatus === "paid" ? (
+              <div className="text-center py-8">
+                <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+                <h3 className="text-xl font-bold mb-2">Thanh toán thành công!</h3>
+                <p className="text-muted-foreground">Gói dịch vụ đã được kích hoạt tự động.</p>
+                <Button className="mt-4" onClick={closePayment}>Đóng</Button>
+              </div>
+            ) : paymentStatus === "expired" ? (
+              <div className="text-center py-8">
+                <XCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+                <h3 className="text-xl font-bold mb-2">Đơn đã hết hạn</h3>
+                <p className="text-muted-foreground">Vui lòng tạo đơn mới để thanh toán.</p>
+                <Button className="mt-4" onClick={closePayment}>Đóng</Button>
+              </div>
+            ) : (
+              <>
+                <h3 className="text-lg font-bold mb-4 text-center">Thanh toán chuyển khoản</h3>
+                <div className="flex justify-center mb-4">
+                  <Image
+                    src={paymentQR.qr_url}
+                    alt="QR Thanh toán"
+                    width={250}
+                    height={250}
+                    className="rounded-lg"
+                    unoptimized
+                  />
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Ngân hàng</span>
+                    <span className="font-medium">{paymentQR.bank_name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Số tài khoản</span>
+                    <span className="font-mono font-medium">{paymentQR.account_no}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Chủ tài khoản</span>
+                    <span className="font-medium">{paymentQR.account_name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Số tiền</span>
+                    <span className="font-bold text-primary">{formatCurrency(paymentQR.amount)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Nội dung CK</span>
+                    <span className="font-mono font-bold text-primary">{paymentQR.order_code}</span>
+                  </div>
+                </div>
+                <div className="mt-4 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                  <p className="text-xs text-amber-800">
+                    <strong>Lưu ý:</strong> Vui lòng chuyển khoản <strong>đúng số tiền</strong> và <strong>đúng nội dung</strong> để hệ thống tự động kích hoạt gói.
+                  </p>
+                </div>
+                <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Đang chờ thanh toán...
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

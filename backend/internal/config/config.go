@@ -42,6 +42,7 @@ type Config struct {
 	PhoneEncryptKey    string
 	CookieDomain       string
 	CookieSecure       bool
+	SepayAPIKey        string
 }
 
 func Load() *Config {
@@ -79,6 +80,7 @@ func Load() *Config {
 		PhoneEncryptKey:    getEnv("PHONE_ENCRYPT_KEY", ""),
 		CookieDomain:       getEnv("COOKIE_DOMAIN", ""),
 		CookieSecure:       getEnv("COOKIE_SECURE", "false") == "true",
+		SepayAPIKey:        getEnv("SEPAY_API_KEY", ""),
 	}
 }
 

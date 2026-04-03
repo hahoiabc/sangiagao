@@ -15,6 +15,11 @@ const nextConfig: NextConfig = {
         port: "9000",
         pathname: "/rice-images/**",
       },
+      {
+        protocol: "https",
+        hostname: "img.vietqr.io",
+        pathname: "/image/**",
+      },
     ],
   },
   async headers() {
