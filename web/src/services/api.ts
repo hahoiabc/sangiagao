@@ -734,6 +734,10 @@ export async function getMyPermissions(token?: string): Promise<{ role: string; 
   return request<{ role: string; permissions: PermissionMap }>("/permissions/me", { token });
 }
 
+export async function getGuideVideo(): Promise<{ key: string; value: string }> {
+  return request<{ key: string; value: string }>("/site-settings/guide-video");
+}
+
 export async function getGuestPermissions(): Promise<{ role: string; permissions: PermissionMap }> {
   return request<{ role: string; permissions: PermissionMap }>("/permissions/guest", {});
 }

@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
-import { getSlogan, updateSlogan, getSloganColor, updateSloganColor } from "@/services/api";
+import { getSlogan, updateSlogan, getSloganColor, updateSloganColor, getGuideVideo, updateGuideVideo } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Save, Eye, Palette } from "lucide-react";
+import { Save, Eye, Palette, Video } from "lucide-react";
 
 const PRESET_COLORS = [
   { label: "Indigo", value: "#4F46E5" },
@@ -27,16 +27,21 @@ export default function SloganPage() {
   const [savedSlogan, setSavedSlogan] = useState("");
   const [color, setColor] = useState("#4F46E5");
   const [savedColor, setSavedColor] = useState("#4F46E5");
+  const [videoUrl, setVideoUrl] = useState("");
+  const [savedVideoUrl, setSavedVideoUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingVideo, setSavingVideo] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
-      const [sloganData, colorData] = await Promise.all([getSlogan(), getSloganColor()]);
+      const [sloganData, colorData, videoData] = await Promise.all([getSlogan(), getSloganColor(), getGuideVideo()]);
       setSlogan(sloganData.value);
       setSavedSlogan(sloganData.value);
       setColor(colorData.value);
       setSavedColor(colorData.value);
+      setVideoUrl(videoData.value || "");
+      setSavedVideoUrl(videoData.value || "");
     } catch {
       toast.error("Không thể tải slogan");
     } finally {
@@ -170,6 +175,44 @@ export default function SloganPage() {
               animation: marquee 15s linear infinite;
             }
           `}</style>
+        </CardContent>
+      </Card>
+
+      {/* Guide Video */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Video className="h-4 w-4" />
+            Video hướng dẫn
+          </CardTitle>
+          <CardDescription>
+            Link YouTube hiển thị ở đầu trang hướng dẫn sử dụng. Để trống nếu không muốn hiện video.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Input
+            value={videoUrl}
+            onChange={(e) => setVideoUrl(e.target.value)}
+            placeholder="https://www.youtube.com/watch?v=..."
+            className="text-sm"
+          />
+          <Button
+            onClick={async () => {
+              setSavingVideo(true);
+              try {
+                const r = await updateGuideVideo(videoUrl.trim());
+                setSavedVideoUrl(r.value);
+                setVideoUrl(r.value);
+                toast.success("Cập nhật video thành công");
+              } catch { toast.error("Cập nhật thất bại"); }
+              finally { setSavingVideo(false); }
+            }}
+            disabled={savingVideo || videoUrl === savedVideoUrl}
+            className="gap-2"
+          >
+            <Save className="h-4 w-4" />
+            {savingVideo ? "Đang lưu..." : "Lưu video"}
+          </Button>
         </CardContent>
       </Card>
     </div>

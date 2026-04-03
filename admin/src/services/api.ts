@@ -827,6 +827,17 @@ export async function updateSloganColor(value: string): Promise<SiteSetting> {
   });
 }
 
+export async function getGuideVideo(): Promise<SiteSetting> {
+  return request<SiteSetting>("/site-settings/guide-video");
+}
+
+export async function updateGuideVideo(value: string): Promise<SiteSetting> {
+  return request<SiteSetting>("/admin/site-settings/guide-video", {
+    method: "PUT",
+    body: JSON.stringify({ value }),
+  });
+}
+
 // --- Payments ---
 export interface PaymentOrder {
   id: string;

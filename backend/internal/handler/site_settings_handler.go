@@ -52,6 +52,31 @@ func (h *SiteSettingsHandler) GetSloganColor(c *gin.Context) {
 	c.JSON(http.StatusOK, setting)
 }
 
+// GetGuideVideo — public
+func (h *SiteSettingsHandler) GetGuideVideo(c *gin.Context) {
+	setting, err := h.service.GetGuideVideo(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không thể lấy video"})
+		return
+	}
+	c.JSON(http.StatusOK, setting)
+}
+
+// UpdateGuideVideo — admin only
+func (h *SiteSettingsHandler) UpdateGuideVideo(c *gin.Context) {
+	var req model.UpdateSiteSettingRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "URL video không hợp lệ"})
+		return
+	}
+	setting, err := h.service.UpdateGuideVideo(c.Request.Context(), req.Value)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cập nhật video thất bại"})
+		return
+	}
+	c.JSON(http.StatusOK, setting)
+}
+
 // UpdateSloganColor — admin only
 func (h *SiteSettingsHandler) UpdateSloganColor(c *gin.Context) {
 	var req model.UpdateSiteSettingRequest

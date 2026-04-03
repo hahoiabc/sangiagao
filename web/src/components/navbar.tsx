@@ -12,6 +12,7 @@ import { getConversations } from "@/services/api";
 
 const publicLinks = [
   { href: "/bang-gia", label: "Sàn gạo", perm: "marketplace.priceboard" },
+  { href: "/huong-dan", label: "Hướng dẫn", perm: null },
 ];
 
 const memberLinks = [

@@ -155,6 +155,8 @@ type SiteSettingsServiceInterface interface {
 	UpdateSlogan(ctx context.Context, value string) (*model.SiteSetting, error)
 	GetSloganColor(ctx context.Context) (*model.SiteSetting, error)
 	UpdateSloganColor(ctx context.Context, value string) (*model.SiteSetting, error)
+	GetGuideVideo(ctx context.Context) (*model.SiteSetting, error)
+	UpdateGuideVideo(ctx context.Context, value string) (*model.SiteSetting, error)
 }
 
 type ChatServiceInterface interface {

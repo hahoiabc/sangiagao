@@ -10,6 +10,7 @@ import (
 
 const sloganCacheKey = "site:slogan"
 const sloganColorCacheKey = "site:slogan_color"
+const guideVideoCacheKey = "site:guide_video"
 const sloganCacheTTL = 10 * time.Minute
 
 type SiteSettingsService struct {
@@ -90,5 +91,32 @@ func (s *SiteSettingsService) UpdateSloganColor(ctx context.Context, value strin
 		_ = s.cache.Delete(ctx, sloganColorCacheKey)
 	}
 
+	return setting, nil
+}
+
+func (s *SiteSettingsService) GetGuideVideo(ctx context.Context) (*model.SiteSetting, error) {
+	if s.cache != nil {
+		if data, err := s.cache.Get(ctx, guideVideoCacheKey); err == nil && data != nil {
+			return &model.SiteSetting{Key: "guide_video", Value: string(data)}, nil
+		}
+	}
+	setting, err := s.repo.Get(ctx, "guide_video")
+	if err != nil {
+		return &model.SiteSetting{Key: "guide_video", Value: ""}, nil
+	}
+	if s.cache != nil {
+		_ = s.cache.Set(ctx, guideVideoCacheKey, []byte(setting.Value), sloganCacheTTL)
+	}
+	return setting, nil
+}
+
+func (s *SiteSettingsService) UpdateGuideVideo(ctx context.Context, value string) (*model.SiteSetting, error) {
+	setting, err := s.repo.Set(ctx, "guide_video", value)
+	if err != nil {
+		return nil, err
+	}
+	if s.cache != nil {
+		_ = s.cache.Delete(ctx, guideVideoCacheKey)
+	}
 	return setting, nil
 }
