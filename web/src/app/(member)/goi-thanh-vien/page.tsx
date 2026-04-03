@@ -22,6 +22,30 @@ import { useAuth } from "@/lib/auth";
 import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 
+function PollTimeout() {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setShow(true), 5 * 60 * 1000);
+    return () => clearTimeout(t);
+  }, []);
+  if (!show) return null;
+  return (
+    <div className="text-center mt-2 p-3 rounded-lg bg-blue-50 border border-blue-200">
+      <p className="text-xs text-blue-800 mb-2">
+        Đã chuyển khoản nhưng chưa nhận được xác nhận?
+      </p>
+      <a
+        href="https://zalo.me/4320771833770042968"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-white bg-[#0068FF] px-3 py-1.5 rounded-full hover:opacity-90"
+      >
+        💬 Liên hệ hỗ trợ qua Zalo
+      </a>
+    </div>
+  );
+}
+
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("vi-VN").format(amount) + "đ";
 }
@@ -312,9 +336,12 @@ export default function SubscriptionPage() {
                     <strong>Lưu ý:</strong> Vui lòng chuyển khoản <strong>đúng số tiền</strong> và <strong>đúng nội dung</strong> để hệ thống tự động kích hoạt gói.
                   </p>
                 </div>
-                <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Đang chờ thanh toán...
+                <div className="mt-4 flex flex-col items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Đang chờ thanh toán...
+                  </div>
+                  <PollTimeout />
                 </div>
               </>
             )}

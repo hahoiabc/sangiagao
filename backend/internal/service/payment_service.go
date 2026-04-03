@@ -51,7 +51,7 @@ func (s *PaymentService) CreateOrder(ctx context.Context, userID string, planMon
 	}
 
 	// Generate unique order code: SGG + 6 random digits
-	orderCode := fmt.Sprintf("%s%06d", orderPrefix, rand.Intn(1000000))
+	orderCode := fmt.Sprintf("%s%010d", orderPrefix, rand.Intn(10000000000))
 	expiresAt := time.Now().Add(paymentOrderTTL)
 
 	order, err := s.paymentRepo.Create(ctx, userID, planMonths, amount, orderCode, expiresAt)
@@ -170,10 +170,10 @@ func extractOrderCode(content string) string {
 	}
 	rest := upper[idx:]
 	// SGG + 6 digits = 9 chars
-	if len(rest) < len(orderPrefix)+6 {
+	if len(rest) < len(orderPrefix)+10 {
 		return ""
 	}
-	code := rest[:len(orderPrefix)+6]
+	code := rest[:len(orderPrefix)+10]
 	// Verify last 6 chars are digits
 	for _, c := range code[len(orderPrefix):] {
 		if c < '0' || c > '9' {
