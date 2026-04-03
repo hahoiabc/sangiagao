@@ -150,8 +150,29 @@ export default function ListingDetailPage() {
     );
   }
 
+  const jsonLd = listing ? {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: listing.title,
+    description: listing.description || listing.rice_type,
+    image: listing.images?.[0],
+    offers: {
+      "@type": "Offer",
+      price: listing.price_per_kg,
+      priceCurrency: "VND",
+      availability: "https://schema.org/InStock",
+      unitCode: "KGM",
+    },
+  } : null;
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-6">
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
       <Link href="/san-giao-dich" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
         <ArrowLeft className="h-4 w-4" />
         Quay lại

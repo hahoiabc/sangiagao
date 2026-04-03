@@ -1,19 +1,27 @@
 package handler
 
 import (
+	"context"
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sangiagao/rice-marketplace/internal/service"
+	"github.com/sangiagao/rice-marketplace/pkg/workerpool"
 )
 
 type UploadHandler struct {
 	uploadService UploadServiceInterface
+	pool          *workerpool.Pool
 }
 
 func NewUploadHandler(uploadService UploadServiceInterface) *UploadHandler {
 	return &UploadHandler{uploadService: uploadService}
+}
+
+func (h *UploadHandler) SetPool(p *workerpool.Pool) {
+	h.pool = p
 }
 
 // UploadImage handles POST /upload/image (multipart form).
@@ -84,7 +92,7 @@ func (h *UploadHandler) GetPresignedPutURL(c *gin.Context) {
 }
 
 // ConfirmPresignedUpload handles POST /upload/confirm
-// Generates thumbnail for an image uploaded via presigned URL.
+// Submits thumbnail generation to worker pool and returns immediately.
 func (h *UploadHandler) ConfirmPresignedUpload(c *gin.Context) {
 	var req struct {
 		Key string `json:"key" binding:"required"`
@@ -94,13 +102,21 @@ func (h *UploadHandler) ConfirmPresignedUpload(c *gin.Context) {
 		return
 	}
 
-	thumbURL, err := h.uploadService.ConfirmPresignedUpload(c.Request.Context(), req.Key)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "thumbnail generation failed"})
-		return
+	key := req.Key
+	submitFn := func(fn func()) {
+		if h.pool != nil {
+			h.pool.Submit(fn)
+		} else {
+			go fn()
+		}
 	}
+	submitFn(func() {
+		if _, err := h.uploadService.ConfirmPresignedUpload(context.Background(), key); err != nil {
+			log.Printf("[THUMB] Failed to generate thumbnail for %s: %v", key, err)
+		}
+	})
 
-	c.JSON(http.StatusOK, gin.H{"thumbnail_url": thumbURL})
+	c.JSON(http.StatusOK, gin.H{"status": "processing"})
 }
 
 func (h *UploadHandler) UploadAudio(c *gin.Context) {

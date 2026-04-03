@@ -168,30 +168,41 @@ final inboxUnreadProvider = StateNotifierProvider<InboxUnreadNotifier, int>(
 // Permission state
 class PermissionNotifier extends StateNotifier<Map<String, bool>> {
   final ApiService _api;
+  DateTime? _lastLoad;
+  static const _cacheTTL = Duration(minutes: 10);
 
   PermissionNotifier(this._api) : super({});
 
-  Future<void> load() async {
+  Future<void> load({bool force = false}) async {
+    if (!force && _lastLoad != null && DateTime.now().difference(_lastLoad!) < _cacheTTL) {
+      return; // Cache still valid
+    }
     try {
       final perms = await _api.getMyPermissions();
       state = perms;
+      _lastLoad = DateTime.now();
     } catch (_) {
-      state = {};
+      // Keep existing state on error
     }
   }
 
-  Future<void> loadGuest() async {
+  Future<void> loadGuest({bool force = false}) async {
+    if (!force && _lastLoad != null && DateTime.now().difference(_lastLoad!) < _cacheTTL) {
+      return;
+    }
     try {
       final perms = await _api.getGuestPermissions();
       state = perms;
-    } catch (_) {
-      state = {};
-    }
+      _lastLoad = DateTime.now();
+    } catch (_) {}
   }
 
   bool hasPermission(String key) => state[key] == true;
 
-  void clear() => state = {};
+  void clear() {
+    state = {};
+    _lastLoad = null;
+  }
 }
 
 final permissionProvider = StateNotifierProvider<PermissionNotifier, Map<String, bool>>(

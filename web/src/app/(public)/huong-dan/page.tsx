@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Hướng dẫn sử dụng | SanGiaGao.Vn",
   description: "Hướng dẫn chi tiết cách sử dụng Sàn Giá Gạo - nền tảng giao dịch gạo Việt Nam",
+  alternates: { canonical: "https://sangiagao.vn/huong-dan" },
 };
 
 export default function UserGuidePage() {

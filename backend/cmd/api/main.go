@@ -225,6 +225,7 @@ func main() {
 	var uploadHandler *handler.UploadHandler
 	if uploadService != nil {
 		uploadHandler = handler.NewUploadHandler(uploadService)
+		uploadHandler.SetPool(pushPool)
 	}
 
 	// --- Subscription expiry cron (every hour) ---

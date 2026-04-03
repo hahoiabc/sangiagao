@@ -1,3 +1,11 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Điều Khoản Sử Dụng | SanGiaGao.Vn",
+  description: "Điều khoản sử dụng dịch vụ Sàn Giá Gạo - SanGiaGao.Vn",
+  alternates: { canonical: "https://sangiagao.vn/dieu-khoan-su-dung" },
+};
+
 export default function TermsOfServicePage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">

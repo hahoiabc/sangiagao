@@ -1,3 +1,11 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Chính Sách Bảo Mật | SanGiaGao.Vn",
+  description: "Chính sách bảo mật và quyền riêng tư của Sàn Giá Gạo - SanGiaGao.Vn",
+  alternates: { canonical: "https://sangiagao.vn/chinh-sach-bao-mat" },
+};
+
 export default function PrivacyPolicyPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">

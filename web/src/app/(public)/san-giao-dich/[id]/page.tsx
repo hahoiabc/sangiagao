@@ -9,13 +9,26 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     const res = await fetch(`${API_BASE}/marketplace/${id}`, { next: { revalidate: 60 } });
     if (res.ok) {
       const listing = await res.json();
+      const desc = listing.description || `${listing.rice_type} - Xem chi tiết trên Sàn Giá Gạo`;
       return {
         title: `${listing.title || "Chi tiết tin đăng"} | SanGiaGao.Vn`,
-        description: listing.description || `${listing.rice_type} - Xem chi tiết trên Sàn Giá Gạo`,
+        description: desc,
         openGraph: {
           title: listing.title,
-          description: listing.description || listing.rice_type,
+          description: desc,
+          url: `https://sangiagao.vn/san-giao-dich/${id}`,
+          siteName: "SanGiaGao.Vn",
           images: listing.images?.length > 0 ? [listing.images[0]] : [],
+          type: "article",
+        },
+        twitter: {
+          card: "summary_large_image",
+          title: listing.title,
+          description: desc,
+          images: listing.images?.length > 0 ? [listing.images[0]] : [],
+        },
+        alternates: {
+          canonical: `https://sangiagao.vn/san-giao-dich/${id}`,
         },
       };
     }
