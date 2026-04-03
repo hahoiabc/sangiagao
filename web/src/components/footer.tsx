@@ -17,6 +17,9 @@ export function Footer() {
             <Link href="/chinh-sach-bao-mat" className="hover:text-foreground transition-colors">
               Chính sách bảo mật
             </Link>
+            <Link href="/huong-dan" className="hover:text-foreground transition-colors">
+              Hướng dẫn sử dụng
+            </Link>
           </div>
         </div>
         <div className="mt-4 pt-4 border-t border-muted text-center text-xs text-muted-foreground leading-relaxed">

@@ -20,6 +20,7 @@ import '../screens/profile/subscription_screen.dart';
 import '../screens/profile/change_password_screen.dart';
 import '../screens/profile/change_phone_screen.dart';
 import '../screens/profile/privacy_policy_screen.dart';
+import '../screens/profile/user_guide_screen.dart';
 import '../screens/profile/terms_of_service_screen.dart';
 import '../screens/inbox/system_inbox_screen.dart';
 import '../screens/inbox/inbox_detail_screen.dart';
@@ -48,7 +49,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           loc.startsWith('/marketplace') ||
           loc.startsWith('/seller') ||
           loc == '/privacy-policy' ||
-          loc == '/terms-of-service';
+          loc == '/terms-of-service' ||
+          loc == '/user-guide';
       if (!isAuth && !isPublic) {
         return '/marketplace';
       }
@@ -118,6 +120,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/feedback-history', builder: (_, __) => const FeedbackHistoryScreen()),
           GoRoute(path: '/privacy-policy', builder: (_, __) => const PrivacyPolicyScreen()),
           GoRoute(path: '/terms-of-service', builder: (_, __) => const TermsOfServiceScreen()),
+          GoRoute(path: '/user-guide', builder: (_, __) => const UserGuideScreen()),
         ],
       ),
     ],
