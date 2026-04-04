@@ -334,9 +334,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ],
               ),
             ] else ...[
-              _infoTile(Icons.phone, 'Số điện thoại', user.phone),
-              if (user.orgName != null) _infoTile(Icons.business, 'Tổ chức', user.orgName!),
-              if (user.description != null) _infoTile(Icons.info_outline, 'Giới thiệu', user.description!),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(user.phone, style: const TextStyle(fontSize: 14)),
+                    if (user.province != null || user.ward != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          [user.ward, user.province].where((s) => s != null && s.isNotEmpty).join(', '),
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ),
+                    if (user.address != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(user.address!, style: const TextStyle(fontSize: 14)),
+                      ),
+                    if (user.orgName != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(user.orgName!, style: const TextStyle(fontSize: 14)),
+                      ),
+                    if (user.description != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(user.description!, style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+                      ),
+                  ],
+                ),
+              ),
               const Divider(height: 28),
               if (!['editor', 'admin', 'owner'].contains(user.role))
                 ListTile(
@@ -420,25 +449,4 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _infoTile(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Icon(icon, size: 22, color: AppColors.textSecondary),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: TextStyle(fontSize: 12, color: AppColors.textHint, height: 1.4)),
-                const SizedBox(height: 2),
-                Text(value, style: const TextStyle(fontSize: 15, height: 1.4)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

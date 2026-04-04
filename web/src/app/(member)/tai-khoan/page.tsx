@@ -385,14 +385,14 @@ export default function ProfilePage() {
           <>
             {/* Profile info */}
             <Card>
-              <CardContent className="p-4 space-y-3">
-                <InfoRow icon={<Phone className="h-4 w-4" />} label="Số điện thoại" value={profile.phone} />
-                {profile.org_name && (
-                  <InfoRow icon={<User className="h-4 w-4" />} label="Tổ chức" value={profile.org_name} />
+              <CardContent className="p-4 space-y-1.5">
+                <p className="text-sm">{profile.phone}</p>
+                {profile.province && (
+                  <p className="text-sm">{[profile.ward, profile.province].filter(Boolean).join(", ")}</p>
                 )}
-                {profile.description && (
-                  <InfoRow icon={<User className="h-4 w-4" />} label="Giới thiệu" value={profile.description} />
-                )}
+                {profile.address && <p className="text-sm">{profile.address}</p>}
+                {profile.org_name && <p className="text-sm">{profile.org_name}</p>}
+                {profile.description && <p className="text-sm text-muted-foreground">{profile.description}</p>}
               </CardContent>
             </Card>
 
