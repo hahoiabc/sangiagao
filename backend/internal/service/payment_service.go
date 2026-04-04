@@ -113,8 +113,9 @@ func (s *PaymentService) HandleSepayWebhook(ctx context.Context, txID int64, con
 		return nil
 	}
 
-	// Check expiry
-	if time.Now().After(order.ExpiresAt) {
+	// Check expiry (allow 5 min buffer for bank processing delay)
+	if time.Now().After(order.ExpiresAt.Add(5 * time.Minute)) {
+		log.Printf("[PAYMENT] Order %s expired, webhook too late", orderCode)
 		return ErrPaymentExpired
 	}
 
@@ -124,16 +125,18 @@ func (s *PaymentService) HandleSepayWebhook(ctx context.Context, txID int64, con
 		return ErrAmountMismatch
 	}
 
-	// Mark paid
-	if err := s.paymentRepo.MarkPaid(ctx, orderCode, txID); err != nil {
-		return fmt.Errorf("mark paid: %w", err)
-	}
-
-	// Activate subscription
+	// Activate subscription FIRST (before marking paid)
+	// If activation fails, payment stays pending → SePay retries → try again
 	_, err = s.subService.AdminActivate(ctx, order.UserID, order.PlanMonths)
 	if err != nil {
-		log.Printf("[PAYMENT] Subscription activation failed for user %s: %v", order.UserID, err)
+		log.Printf("[PAYMENT] CRITICAL: Activation failed for order %s: %v", orderCode, err)
 		return fmt.Errorf("activate subscription: %w", err)
+	}
+
+	// THEN mark paid (subscription already active, safe to mark)
+	if err := s.paymentRepo.MarkPaid(ctx, orderCode, txID); err != nil {
+		// Subscription activated but markPaid failed — not critical, admin can see in SePay dashboard
+		log.Printf("[PAYMENT] Warning: markPaid failed for %s (subscription already activated): %v", orderCode, err)
 	}
 
 	log.Printf("[PAYMENT] Order %s paid, subscription activated for user %s (%d months)", orderCode, order.UserID, order.PlanMonths)
