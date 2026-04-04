@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../providers/providers.dart';
@@ -442,6 +443,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 title: const Text('Xóa tài khoản', style: TextStyle(color: AppColors.error)),
                 onTap: _deleteAccount,
               ),
+              const SizedBox(height: 16),
+              FutureBuilder<PackageInfo>(
+                future: PackageInfo.fromPlatform(),
+                builder: (_, snap) {
+                  if (!snap.hasData) return const SizedBox.shrink();
+                  return Center(
+                    child: Text(
+                      'Phiên bản ${snap.data!.version} (${snap.data!.buildNumber})',
+                      style: TextStyle(fontSize: 12, color: AppColors.textHint),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
             ],
           ],
         ),
