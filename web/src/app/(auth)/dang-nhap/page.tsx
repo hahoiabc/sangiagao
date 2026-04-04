@@ -26,7 +26,7 @@ export default function LoginPage() {
     try {
       const result = await loginPassword(phone, password);
       login(result.user, result.tokens.access_token, result.tokens.refresh_token);
-      router.push("/san-giao-dich");
+      router.push("/bang-gia");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Đăng nhập thất bại");
     } finally {

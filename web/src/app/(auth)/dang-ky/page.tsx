@@ -115,7 +115,7 @@ export default function RegisterPage() {
         address: trimmedAddress || undefined,
       });
       login(result.user, result.tokens.access_token, result.tokens.refresh_token);
-      router.push("/san-giao-dich");
+      router.push("/bang-gia");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Đăng ký thất bại");
     } finally {
