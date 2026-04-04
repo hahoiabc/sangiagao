@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../widgets/thumbnail_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -275,16 +275,16 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
                     padding: const EdgeInsets.only(right: 8),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(10),
-                      child: CachedNetworkImage(
-                        imageUrl: l.images[i],
+                      child: SizedBox(
                         width: 88,
                         height: 88,
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => Container(
-                          width: 88,
-                          height: 88,
-                          color: AppColors.divider,
-                          child: Icon(Icons.broken_image, color: AppColors.textHint),
+                        child: ThumbnailImage(
+                          imageUrl: l.images[i],
+                          fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) => Container(
+                            color: AppColors.divider,
+                            child: Icon(Icons.broken_image, color: AppColors.textHint),
+                          ),
                         ),
                       ),
                     ),

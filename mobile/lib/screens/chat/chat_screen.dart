@@ -13,6 +13,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import '../../widgets/thumbnail_image.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -1254,22 +1255,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       bottomLeft: Radius.circular(isMe ? 16 : 4),
                       bottomRight: Radius.circular(isMe ? 4 : 16),
                     ),
-                    child: CachedNetworkImage(
-                      imageUrl: msg.content,
+                    child: SizedBox(
                       width: 200,
                       height: 200,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
-                        width: 200,
-                        height: 200,
-                        color: AppColors.chatBubbleOther,
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                      ),
-                      errorWidget: (_, __, ___) => Container(
-                        width: 200,
-                        height: 200,
-                        color: AppColors.chatBubbleOther,
-                        child: const Icon(Icons.broken_image, size: 48, color: AppColors.textHint),
+                      child: ThumbnailImage(
+                        imageUrl: msg.content,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => Container(
+                          color: AppColors.chatBubbleOther,
+                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        ),
+                        errorWidget: (_, __, ___) => Container(
+                          color: AppColors.chatBubbleOther,
+                          child: const Icon(Icons.broken_image, size: 48, color: AppColors.textHint),
+                        ),
                       ),
                     ),
                   ),

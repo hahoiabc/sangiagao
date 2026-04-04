@@ -30,6 +30,7 @@ import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { timeAgo, formatPrice, formatQuantity } from "@/lib/utils";
 import { toast } from "sonner";
+import { toThumbnailUrl } from "@/services/api";
 
 const MAX_CHAT_IMAGES = 10;
 const RECALL_LIMIT_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -628,7 +629,7 @@ export default function ChatRoomPage() {
                         {msg.type === "recalled" ? (
                           <p className="italic text-xs opacity-70">{msg.content}</p>
                         ) : msg.type === "image" ? (
-                          <img src={msg.content} alt="Hình ảnh tin nhắn" className="max-w-[300px] max-h-[200px] rounded-lg cursor-pointer object-contain" onClick={() => window.open(msg.content, "_blank")} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                          <img src={toThumbnailUrl(msg.content)} alt="Hình ảnh tin nhắn" className="max-w-[300px] max-h-[200px] rounded-lg cursor-pointer object-contain" onClick={() => window.open(msg.content, "_blank")} onError={(e) => { const el = e.target as HTMLImageElement; if (el.src !== msg.content) { el.src = msg.content; } else { el.style.display = "none"; } }} />
                         ) : msg.type === "audio" ? (
                           <audio controls src={msg.content} className="max-w-[250px]" />
                         ) : msg.type === "listing_link" ? (
