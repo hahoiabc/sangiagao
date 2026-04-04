@@ -344,7 +344,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(
-                          [user.ward, user.province].where((s) => s != null && s.isNotEmpty).join(', '),
+                          [user.province, user.ward].where((s) => s != null && s.isNotEmpty).join(', '),
                           style: const TextStyle(fontSize: 14),
                         ),
                       ),

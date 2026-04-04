@@ -388,7 +388,7 @@ export default function ProfilePage() {
               <CardContent className="p-4 space-y-1.5">
                 <p className="text-sm">{profile.phone}</p>
                 {profile.province && (
-                  <p className="text-sm">{[profile.ward, profile.province].filter(Boolean).join(", ")}</p>
+                  <p className="text-sm">{[profile.province, profile.ward].filter(Boolean).join(", ")}</p>
                 )}
                 {profile.address && <p className="text-sm">{profile.address}</p>}
                 {profile.org_name && <p className="text-sm">{profile.org_name}</p>}
