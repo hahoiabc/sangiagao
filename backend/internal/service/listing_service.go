@@ -237,6 +237,27 @@ func (s *ListingService) Delete(ctx context.Context, userID, id string) error {
 	return nil
 }
 
+func (s *ListingService) BatchDeleteOwn(ctx context.Context, userID string, ids []string) (int, error) {
+	// Verify all listings belong to user
+	for _, id := range ids {
+		listing, err := s.listingRepo.GetByID(ctx, id)
+		if err != nil {
+			return 0, err
+		}
+		if listing.UserID != userID {
+			return 0, ErrNotListingOwner
+		}
+	}
+	deleted, err := s.listingRepo.BatchSoftDelete(ctx, ids)
+	if err != nil {
+		return 0, err
+	}
+	if deleted > 0 {
+		s.InvalidateMarketplaceCache(ctx)
+	}
+	return deleted, nil
+}
+
 func (s *ListingService) InvalidateMarketplaceCache(ctx context.Context) {
 	if s.cache != nil {
 		// Only invalidate priceboard (aggregate data changes).

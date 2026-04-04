@@ -94,6 +94,10 @@ func (m *mockListingService) GetPriceBoard(ctx context.Context) (*model.PriceBoa
 	}
 	return args.Get(0).(*model.PriceBoardResponse), args.Error(1)
 }
+func (m *mockListingService) BatchDeleteOwn(ctx context.Context, userID string, ids []string) (int, error) {
+	args := m.Called(ctx, userID, ids)
+	return args.Int(0), args.Error(1)
+}
 
 // --- Helpers ---
 

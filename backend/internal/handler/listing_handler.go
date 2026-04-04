@@ -154,6 +154,35 @@ func (h *ListingHandler) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "listing deleted"})
 }
 
+func (h *ListingHandler) BatchDeleteOwn(c *gin.Context) {
+	userID := requireUserID(c)
+	if c.IsAborted() {
+		return
+	}
+	var req struct {
+		IDs []string `json:"ids" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ids là bắt buộc"})
+		return
+	}
+	if len(req.IDs) > 50 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "tối đa 50 tin mỗi lần"})
+		return
+	}
+	deleted, err := h.listingService.BatchDeleteOwn(c.Request.Context(), userID, req.IDs)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrNotListingOwner):
+			c.JSON(http.StatusForbidden, gin.H{"error": "bạn không sở hữu một hoặc nhiều tin đăng này"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "xóa hàng loạt thất bại"})
+		}
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"deleted": deleted})
+}
+
 func (h *ListingHandler) ListMy(c *gin.Context) {
 	userID := c.GetString("user_id")
 	page, limit := parsePagination(c, 20)

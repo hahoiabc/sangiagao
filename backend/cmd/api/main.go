@@ -389,6 +389,7 @@ func main() {
 				listings.GET("/:id", listingHandler.Get)
 				listings.PUT("/:id", middleware.RequirePermission(permissionService, "listings.edit_own"), listingHandler.Update)
 				listings.DELETE("/:id", listingHandler.Delete)
+				listings.POST("/batch-delete", listingHandler.BatchDeleteOwn)
 				listings.POST("/:id/images", middleware.RequirePermission(permissionService, "listings.edit_own"), listingHandler.AddImage)
 			}
 

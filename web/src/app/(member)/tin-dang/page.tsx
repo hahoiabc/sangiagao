@@ -3,12 +3,12 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Plus, Package, Edit, Trash2, Eye, Calendar, Zap, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Package, Edit, Trash2, Eye, Calendar, Zap, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getMyListings, deleteListing, toThumbnailUrl, type Listing, type PaginatedResponse } from "@/services/api";
+import { getMyListings, deleteListing, batchDeleteOwnListings, toThumbnailUrl, type Listing, type PaginatedResponse } from "@/services/api";
 import { formatPrice, formatQuantity, timeAgo } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -28,6 +28,8 @@ export default function MyListingsPage() {
   const [result, setResult] = useState<PaginatedResponse<Listing> | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [batchDeleting, setBatchDeleting] = useState(false);
 
   const fetchPage = useCallback((p: number) => {
     setLoading(true);
@@ -54,11 +56,50 @@ export default function MyListingsPage() {
     }
   }
 
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (!result) return;
+    if (selected.size === result.data.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(result.data.map((l) => l.id)));
+    }
+  }
+
+  async function handleBatchDelete() {
+    if (selected.size === 0) return;
+    if (!confirm(`Bạn có chắc muốn xóa ${selected.size} tin đăng?`)) return;
+    setBatchDeleting(true);
+    try {
+      await batchDeleteOwnListings("", Array.from(selected));
+      setSelected(new Set());
+      toast.success(`Đã xóa ${selected.size} tin đăng`);
+      fetchPage(page);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Xóa hàng loạt thất bại");
+    } finally {
+      setBatchDeleting(false);
+    }
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Tin đăng của tôi</h1>
         <div className="flex gap-2">
+          {selected.size > 0 && (
+            <Button variant="destructive" className="gap-2" onClick={handleBatchDelete} disabled={batchDeleting}>
+              <Trash2 className="h-4 w-4" />
+              Xóa {selected.size} tin
+            </Button>
+          )}
           <Link href="/tin-dang/dang-nhieu">
             <Button variant="outline" className="gap-2">
               <Zap className="h-4 w-4" />
@@ -80,13 +121,29 @@ export default function MyListingsPage() {
         </div>
       ) : result && result.data.length > 0 ? (
         <div className="space-y-3">
+          {result.data.length > 1 && (
+            <button onClick={toggleSelectAll} className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-2">
+              <div className={`w-4 h-4 rounded border flex items-center justify-center ${selected.size === result.data.length ? "bg-primary border-primary text-white" : "border-muted-foreground/40"}`}>
+                {selected.size === result.data.length && <Check className="h-3 w-3" />}
+              </div>
+              {selected.size === result.data.length ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+            </button>
+          )}
           {result.data.map((listing) => {
             const st = statusLabels[listing.status] || { label: listing.status, color: "secondary" as const };
+            const isSelected = selected.has(listing.id);
             return (
-              <Card key={listing.id}>
+              <Card key={listing.id} className={isSelected ? "border-primary/50" : ""}>
                 <CardContent className="p-4 space-y-3">
-                  {/* Images row */}
-                  <div className="flex gap-2 overflow-x-auto">
+                  <div className="flex gap-3">
+                    {/* Checkbox */}
+                    <button onClick={() => toggleSelect(listing.id)} className="flex-shrink-0 mt-1">
+                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${isSelected ? "bg-primary border-primary text-white" : "border-muted-foreground/40"}`}>
+                        {isSelected && <Check className="h-3 w-3" />}
+                      </div>
+                    </button>
+                    {/* Images row */}
+                    <div className="flex gap-2 overflow-x-auto flex-1">
                     {listing.images.length > 0 ? (
                       listing.images.slice(0, 4).map((img, i) => (
                         <div key={i} className="h-20 w-20 rounded-md bg-muted overflow-hidden flex-shrink-0 relative">
@@ -98,6 +155,7 @@ export default function MyListingsPage() {
                         <Package className="h-6 w-6 text-muted-foreground/40" />
                       </div>
                     )}
+                    </div>
                   </div>
                   {/* Info + Actions */}
                   <div className="flex items-start gap-3">

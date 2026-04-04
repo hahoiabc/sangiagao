@@ -591,6 +591,14 @@ export async function deleteListing(token: string, id: string) {
   return request<void>(`/listings/${id}`, { token, method: "DELETE" });
 }
 
+export async function batchDeleteOwnListings(token: string, ids: string[]): Promise<{ deleted: number }> {
+  return request<{ deleted: number }>("/listings/batch-delete", {
+    token,
+    method: "POST",
+    body: JSON.stringify({ ids }),
+  });
+}
+
 export async function addListingImage(token: string, listingId: string, url: string) {
   return request<Listing>(`/listings/${listingId}/images`, {
     token,
