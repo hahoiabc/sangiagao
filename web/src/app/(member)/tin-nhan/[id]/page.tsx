@@ -628,7 +628,7 @@ export default function ChatRoomPage() {
                         {msg.type === "recalled" ? (
                           <p className="italic text-xs opacity-70">{msg.content}</p>
                         ) : msg.type === "image" ? (
-                          <Image src={msg.content} alt="Hình ảnh tin nhắn" width={300} height={200} className="max-w-full rounded-lg cursor-pointer object-contain" onClick={() => window.open(msg.content, "_blank")} />
+                          <img src={msg.content} alt="Hình ảnh tin nhắn" className="max-w-[300px] max-h-[200px] rounded-lg cursor-pointer object-contain" onClick={() => window.open(msg.content, "_blank")} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
                         ) : msg.type === "audio" ? (
                           <audio controls src={msg.content} className="max-w-[250px]" />
                         ) : msg.type === "listing_link" ? (
