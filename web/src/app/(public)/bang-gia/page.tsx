@@ -121,13 +121,6 @@ export default function PriceBoardPage() {
                                 <span className="text-muted-foreground">Chưa có giá</span>
                               )}
                             </td>
-                            <td className="py-3 px-4 text-center">
-                              {p.listing_count > 0 ? (
-                                <Badge variant="secondary">{p.listing_count}</Badge>
-                              ) : (
-                                <span className="text-muted-foreground">0</span>
-                              )}
-                            </td>
                             <td className="py-3 pl-4 pr-5 text-center">
                               {p.listing_count > 0 && (
                                 <Link
