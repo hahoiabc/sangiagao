@@ -45,8 +45,10 @@ export default function MyListingsPage() {
     if (!confirm("Bạn có chắc muốn xóa tin đăng này?")) return;
     try {
       await deleteListing("", id);
-      fetchPage(page);
+      // Remove from UI immediately, then refresh
+      setResult((prev) => prev ? { ...prev, data: prev.data.filter((l) => l.id !== id), total: prev.total - 1 } : prev);
       toast.success("Đã xóa tin đăng");
+      fetchPage(page);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Xóa thất bại");
     }
