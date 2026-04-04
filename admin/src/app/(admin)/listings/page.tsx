@@ -71,11 +71,12 @@ export default function ListingsPage() {
 
   async function handleDelete() {
     if (!user || !deleteDialog) return;
+    const id = deleteDialog.id;
     try {
-      await deleteListing("", deleteDialog.id);
+      await deleteListing("", id);
+      setListings((prev) => prev.filter((l) => l.id !== id));
       toast.success("Đã xóa tin đăng");
       setDeleteDialog(null);
-      fetchListings();
     } catch {
       toast.error("Xóa tin đăng thất bại");
     }
