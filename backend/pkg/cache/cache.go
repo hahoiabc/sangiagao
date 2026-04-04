@@ -16,6 +16,8 @@ type Cache interface {
 	Exists(ctx context.Context, key string) (bool, error)
 	CountByPrefix(ctx context.Context, prefix string) (int, error)
 	KeysByPrefix(ctx context.Context, prefix string) ([]string, error)
+	// MGet returns values for multiple keys. Missing keys return nil.
+	MGet(ctx context.Context, keys []string) ([][]byte, error)
 	// Incr atomically increments a key by 1 and returns the new value.
 	// If the key does not exist, it is created with value 1 and the given TTL.
 	Incr(ctx context.Context, key string, ttl time.Duration) (int64, error)
@@ -45,6 +47,25 @@ func (c *RedisCache) Set(ctx context.Context, key string, value []byte, ttl time
 
 func (c *RedisCache) Delete(ctx context.Context, key string) error {
 	return c.client.Del(ctx, key).Err()
+}
+
+func (c *RedisCache) MGet(ctx context.Context, keys []string) ([][]byte, error) {
+	if len(keys) == 0 {
+		return nil, nil
+	}
+	vals, err := c.client.MGet(ctx, keys...).Result()
+	if err != nil {
+		return nil, err
+	}
+	result := make([][]byte, len(vals))
+	for i, v := range vals {
+		if v != nil {
+			if s, ok := v.(string); ok {
+				result[i] = []byte(s)
+			}
+		}
+	}
+	return result, nil
 }
 
 func (c *RedisCache) Exists(ctx context.Context, key string) (bool, error) {

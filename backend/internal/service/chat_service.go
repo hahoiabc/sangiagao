@@ -54,19 +54,26 @@ func (s *ChatService) ListConversations(ctx context.Context, userID string, page
 	if err != nil {
 		return nil, 0, err
 	}
-	// Check online status + last seen for other users
-	if s.cache != nil {
-		for _, conv := range convs {
+	// Batch check online status + last seen (2 Redis calls instead of N*2)
+	if s.cache != nil && len(convs) > 0 {
+		var onlineKeys, lastseenKeys []string
+		var userIndexes []int // track which convs have OtherUser
+		for i, conv := range convs {
 			if conv.OtherUser != nil {
-				online, cErr := s.cache.Exists(ctx, "online:"+conv.OtherUser.ID)
-				if cErr == nil {
-					conv.OtherUser.IsOnline = &online
-				}
-				if !online {
-					if raw, err := s.cache.Get(ctx, "lastseen:"+conv.OtherUser.ID); err == nil && raw != nil {
-						if t, tErr := time.Parse(time.RFC3339, string(raw)); tErr == nil {
-							conv.OtherUser.LastSeenAt = &t
-						}
+				onlineKeys = append(onlineKeys, "online:"+conv.OtherUser.ID)
+				lastseenKeys = append(lastseenKeys, "lastseen:"+conv.OtherUser.ID)
+				userIndexes = append(userIndexes, i)
+			}
+		}
+		if len(onlineKeys) > 0 {
+			onlineVals, _ := s.cache.MGet(ctx, onlineKeys)
+			lastseenVals, _ := s.cache.MGet(ctx, lastseenKeys)
+			for j, ci := range userIndexes {
+				online := onlineVals != nil && j < len(onlineVals) && onlineVals[j] != nil
+				convs[ci].OtherUser.IsOnline = &online
+				if !online && lastseenVals != nil && j < len(lastseenVals) && lastseenVals[j] != nil {
+					if t, err := time.Parse(time.RFC3339, string(lastseenVals[j])); err == nil {
+						convs[ci].OtherUser.LastSeenAt = &t
 					}
 				}
 			}
