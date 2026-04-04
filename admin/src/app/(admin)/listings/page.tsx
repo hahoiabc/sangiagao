@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+import { ListingImage } from "@/components/listing-image";
 import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -159,7 +159,7 @@ export default function ListingsPage() {
                       <div className="flex gap-1">
                         {listing.images.slice(0, 3).map((img, i) => (
                           <div key={i} className="relative h-8 w-8">
-                            <Image
+                            <ListingImage
                               src={img}
                               alt={`${listing.title} - ${i + 1}`}
                               fill

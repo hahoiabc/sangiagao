@@ -1,5 +1,5 @@
 import 'dart:ui';
-import 'package:cached_network_image/cached_network_image.dart';
+import '../../widgets/thumbnail_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -175,7 +175,7 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                                                   // Blur background
                                                   ImageFiltered(
                                                     imageFilter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                                                    child: CachedNetworkImage(
+                                                    child: ThumbnailImage(
                                                       imageUrl: listing.images.first,
                                                       fit: BoxFit.cover,
                                                       color: Colors.black.withValues(alpha: 0.3),
@@ -183,7 +183,7 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                                                     ),
                                                   ),
                                                   // Main image
-                                                  CachedNetworkImage(
+                                                  ThumbnailImage(
                                                     imageUrl: listing.images.first,
                                                     fit: BoxFit.contain,
                                                     placeholder: (_, __) => Container(

@@ -8,7 +8,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getMyListings, deleteListing, batchDeleteOwnListings, toThumbnailUrl, type Listing, type PaginatedResponse } from "@/services/api";
+import { getMyListings, deleteListing, batchDeleteOwnListings, type Listing, type PaginatedResponse } from "@/services/api";
+import { ListingImage } from "@/components/listing-image";
 import { formatPrice, formatQuantity, timeAgo } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -147,7 +148,7 @@ export default function MyListingsPage() {
                     {listing.images.length > 0 ? (
                       listing.images.slice(0, 4).map((img, i) => (
                         <div key={i} className="h-20 w-20 rounded-md bg-muted overflow-hidden flex-shrink-0 relative">
-                          <Image src={img} alt={`${listing.title} - ${i + 1}`} fill sizes="80px" className="object-cover" />
+                          <ListingImage src={img} alt={`${listing.title} - ${i + 1}`} fill sizes="80px" className="object-cover" />
                         </div>
                       ))
                     ) : (
