@@ -147,7 +147,7 @@ export default function MyListingsPage() {
                     {listing.images.length > 0 ? (
                       listing.images.slice(0, 4).map((img, i) => (
                         <div key={i} className="h-20 w-20 rounded-md bg-muted overflow-hidden flex-shrink-0 relative">
-                          <Image src={toThumbnailUrl(img)} alt={`${listing.title} - ${i + 1}`} fill sizes="80px" className="object-cover" />
+                          <Image src={img} alt={`${listing.title} - ${i + 1}`} fill sizes="80px" className="object-cover" />
                         </div>
                       ))
                     ) : (

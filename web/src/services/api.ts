@@ -517,6 +517,12 @@ export async function uploadImagePresigned(token: string, file: File, folder: "a
   if (!putRes.ok) {
     throw new ApiError(putRes.status, "upload_failed", "Upload ảnh thất bại");
   }
+  // Step 3: Confirm upload → backend generates thumbnail
+  try {
+    await request("/upload/confirm", { token, method: "POST", body: JSON.stringify({ key: presign.key }) });
+  } catch {
+    // Thumbnail generation failed — original image still works
+  }
   return { url: presign.public_url };
 }
 

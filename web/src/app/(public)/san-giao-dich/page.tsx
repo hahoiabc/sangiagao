@@ -336,7 +336,7 @@ function MarketplaceContent() {
                     {listing.images.length > 0 ? (
                       <>
                         <Image
-                          src={toThumbnailUrl(listing.images[0])}
+                          src={listing.images[0]}
                           alt=""
                           fill
                           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
@@ -344,7 +344,7 @@ function MarketplaceContent() {
                           priority={li < 4}
                         />
                         <Image
-                          src={toThumbnailUrl(listing.images[0])}
+                          src={listing.images[0]}
                           alt={listing.title}
                           fill
                           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
