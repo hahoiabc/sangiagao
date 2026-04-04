@@ -240,12 +240,12 @@ export default function ChatRoomPage() {
   function startPolling() {
     pollingRef.current = setInterval(async () => {
       try {
-        const res = await getMessages("", convId!, 1, 100);
+        const res = await getMessages("", convId!, 1, 30);
         setMessages((res.data ?? []).reverse());
       } catch {
         // ignore
       }
-    }, 3000);
+    }, 10000);
   }
 
   // Send typing event via WebSocket
@@ -266,7 +266,7 @@ export default function ChatRoomPage() {
 
     async function fetchMessages() {
       try {
-        const res = await getMessages("", convId!, 1, 100);
+        const res = await getMessages("", convId!, 1, 30);
         setMessages((res.data ?? []).reverse());
         markConversationRead("", convId!).catch(() => {});
       } catch {

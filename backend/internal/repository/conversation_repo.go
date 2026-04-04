@@ -311,7 +311,11 @@ func (r *ConversationRepo) loadReactions(ctx context.Context, messages []*model.
 func (r *ConversationRepo) MarkRead(ctx context.Context, conversationID, readerID string) error {
 	_, err := r.pool.Exec(ctx,
 		`UPDATE messages SET read_at = NOW()
-		 WHERE conversation_id = $1 AND sender_id <> $2 AND read_at IS NULL`,
+		 WHERE id IN (
+		   SELECT id FROM messages
+		   WHERE conversation_id = $1 AND sender_id <> $2 AND read_at IS NULL
+		   LIMIT 500
+		 )`,
 		conversationID, readerID,
 	)
 	return err
