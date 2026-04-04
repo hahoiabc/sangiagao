@@ -155,8 +155,7 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
                     },
                   ),
                 ),
-      floatingActionButton: _listings.isNotEmpty
-          ? Row(
+      floatingActionButton: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 FilledButton.tonal(
@@ -196,8 +195,7 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
                   child: const Text('Đăng tin', style: TextStyle(fontSize: 14)),
                 ),
               ],
-            )
-          : null,
+            ),
     );
   }
 
