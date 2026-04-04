@@ -176,7 +176,7 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                                                   ImageFiltered(
                                                     imageFilter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                                                     child: CachedNetworkImage(
-                                                      imageUrl: toThumbnailUrl(listing.images.first),
+                                                      imageUrl: listing.images.first,
                                                       fit: BoxFit.cover,
                                                       color: Colors.black.withValues(alpha: 0.3),
                                                       colorBlendMode: BlendMode.darken,
@@ -184,7 +184,7 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                                                   ),
                                                   // Main image
                                                   CachedNetworkImage(
-                                                    imageUrl: toThumbnailUrl(listing.images.first),
+                                                    imageUrl: listing.images.first,
                                                     fit: BoxFit.contain,
                                                     placeholder: (_, __) => Container(
                                                       color: AppColors.border,
