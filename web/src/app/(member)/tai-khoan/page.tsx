@@ -308,10 +308,7 @@ export default function ProfilePage() {
               onChange={handleAvatarUpload}
             />
           </div>
-          <div className="text-center">
-            <p className="text-xl font-bold">{profile.name || profile.phone}</p>
-            <p className="text-sm text-muted-foreground">Thành viên</p>
-          </div>
+          <p className="text-xl font-bold">{profile.name || profile.phone}</p>
         </div>
 
         {editing ? (
@@ -390,15 +387,6 @@ export default function ProfilePage() {
             <Card>
               <CardContent className="p-4 space-y-3">
                 <InfoRow icon={<Phone className="h-4 w-4" />} label="Số điện thoại" value={profile.phone} />
-                {profile.province && (
-                  <InfoRow icon={<User className="h-4 w-4" />} label="Tỉnh/Thành phố" value={profile.province} />
-                )}
-                {profile.ward && (
-                  <InfoRow icon={<User className="h-4 w-4" />} label="Phường/Xã" value={profile.ward} />
-                )}
-                {profile.address && (
-                  <InfoRow icon={<User className="h-4 w-4" />} label="Địa chỉ" value={profile.address} />
-                )}
                 {profile.org_name && (
                   <InfoRow icon={<User className="h-4 w-4" />} label="Tổ chức" value={profile.org_name} />
                 )}

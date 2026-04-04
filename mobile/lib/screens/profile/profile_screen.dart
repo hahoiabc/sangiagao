@@ -279,8 +279,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: 12),
             Text(user.name ?? user.phone, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, height: 1.3)),
-            const SizedBox(height: 4),
-            Text('Thành viên', style: TextStyle(color: AppColors.textSecondary, height: 1.3)),
             const SizedBox(height: 20),
             if (_editing) ...[
               TextField(
@@ -337,9 +335,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
             ] else ...[
               _infoTile(Icons.phone, 'Số điện thoại', user.phone),
-              if (user.province != null) _infoTile(Icons.location_city, 'Tỉnh/TP', user.province!),
-              if (user.ward != null) _infoTile(Icons.location_on, 'Phường/Xã', user.ward!),
-              if (user.address != null) _infoTile(Icons.home, 'Địa chỉ chi tiết', user.address!),
               if (user.orgName != null) _infoTile(Icons.business, 'Tổ chức', user.orgName!),
               if (user.description != null) _infoTile(Icons.info_outline, 'Giới thiệu', user.description!),
               const Divider(height: 28),
