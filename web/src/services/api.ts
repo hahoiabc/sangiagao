@@ -500,19 +500,57 @@ export async function uploadImage(token: string, file: File, folder: "avatars" |
   return res.json() as Promise<{ url: string }>;
 }
 
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const COMPRESS_MAX_DIM = 1920;
+const COMPRESS_QUALITY = 0.9;
+
+async function compressImage(file: File): Promise<File> {
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) return file;
+  const bitmap = await createImageBitmap(file);
+  const { width, height } = bitmap;
+  if (width <= COMPRESS_MAX_DIM && height <= COMPRESS_MAX_DIM && file.size <= MAX_IMAGE_BYTES) {
+    bitmap.close();
+    return file;
+  }
+  const scale = Math.min(COMPRESS_MAX_DIM / width, COMPRESS_MAX_DIM / height, 1);
+  const w = Math.round(width * scale);
+  const h = Math.round(height * scale);
+  const canvas = new OffscreenCanvas(w, h);
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  bitmap.close();
+  const blob = await canvas.convertToBlob({ type: "image/jpeg", quality: COMPRESS_QUALITY });
+  return new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" });
+}
+
 // Presigned direct upload: client → MinIO (bypasses backend for better performance)
 export async function uploadImagePresigned(token: string, file: File, folder: "avatars" | "listings"): Promise<{ url: string }> {
-  const ext = file.name.includes(".") ? file.name.substring(file.name.lastIndexOf(".")) : "";
+  // Validate type
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    throw new ApiError(400, "invalid_type", "Chỉ chấp nhận ảnh JPEG, PNG hoặc WebP");
+  }
+  // Validate size before compression
+  if (file.size > MAX_IMAGE_BYTES * 2) {
+    throw new ApiError(400, "file_too_large", "Ảnh không được vượt quá 10 MB");
+  }
+  // Compress image
+  const compressed = await compressImage(file);
+  // Validate size after compression
+  if (compressed.size > MAX_IMAGE_BYTES) {
+    throw new ApiError(400, "file_too_large", "Ảnh sau khi nén vẫn vượt quá 5 MB");
+  }
+  const ext = compressed.name.includes(".") ? compressed.name.substring(compressed.name.lastIndexOf(".")) : "";
   // Step 1: Get presigned URL from backend
   const presign = await request<{ upload_url: string; public_url: string; key: string }>(
-    `/upload/presign?folder=${folder}&content_type=${encodeURIComponent(file.type)}&ext=${encodeURIComponent(ext)}`,
+    `/upload/presign?folder=${folder}&content_type=${encodeURIComponent(compressed.type)}&ext=${encodeURIComponent(ext)}`,
     { token }
   );
   // Step 2: PUT file directly to MinIO via nginx proxy
   const putRes = await fetchWithTimeout(presign.upload_url, {
     method: "PUT",
-    headers: { "Content-Type": file.type },
-    body: file,
+    headers: { "Content-Type": compressed.type },
+    body: compressed,
   }, UPLOAD_TIMEOUT);
   if (!putRes.ok) {
     throw new ApiError(putRes.status, "upload_failed", "Upload ảnh thất bại");
@@ -609,6 +647,14 @@ export async function addListingImage(token: string, listingId: string, url: str
   return request<Listing>(`/listings/${listingId}/images`, {
     token,
     method: "POST",
+    body: JSON.stringify({ url }),
+  });
+}
+
+export async function removeListingImage(token: string, listingId: string, url: string) {
+  return request<Listing>(`/listings/${listingId}/images`, {
+    token,
+    method: "DELETE",
     body: JSON.stringify({ url }),
   });
 }

@@ -348,10 +348,11 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
     try {
       final api = ref.read(apiServiceProvider);
       final result = await api.batchCreateListings(items);
-      final createdList = result['created'] as List? ?? [];
+      final createdList = result['listings'] as List? ?? [];
       final apiErrors = result['errors'] as List? ?? [];
 
       // Attach images
+      int imageFailCount = 0;
       for (int i = 0; i < createdList.length && i < validForms.length; i++) {
         final form = validForms[i];
         if (form.imageUrls.isEmpty) continue;
@@ -359,12 +360,18 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
         for (final url in form.imageUrls) {
           try {
             await api.addListingImage(listingId, url);
-          } catch (_) {}
+          } catch (e) {
+            imageFailCount++;
+            debugPrint('Attach image failed: $e');
+          }
         }
       }
 
       if (mounted) {
         String msg = 'Đã đăng ${createdList.length} tin thành công!';
+        if (imageFailCount > 0) {
+          msg += '\n$imageFailCount ảnh chưa gắn được, vui lòng sửa tin để thêm ảnh';
+        }
         if (apiErrors.isNotEmpty) {
           msg += '\n${apiErrors.length} lỗi: ${apiErrors.join(', ')}';
         }

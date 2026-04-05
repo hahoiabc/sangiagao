@@ -40,6 +40,7 @@ type ListingServiceInterface interface {
 	BatchDeleteOwn(ctx context.Context, userID string, ids []string) (int, error)
 	ListByUser(ctx context.Context, userID string, page, limit int) ([]*model.Listing, int, error)
 	AddImage(ctx context.Context, userID, id, imageURL string) (*model.Listing, error)
+	RemoveImage(ctx context.Context, userID, id, imageURL string) (*model.Listing, error)
 	Browse(ctx context.Context, page, limit int) ([]*model.Listing, int, error)
 	Search(ctx context.Context, filter *model.ListingFilter) ([]*model.Listing, int, error)
 	GetDetail(ctx context.Context, id string) (*model.ListingDetail, error)

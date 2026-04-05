@@ -361,6 +361,11 @@ class ApiService {
     return Listing.fromJson(res.data);
   }
 
+  Future<Listing> removeListingImage(String listingId, String imageUrl) async {
+    final res = await _dio.delete('/listings/$listingId/images', data: {'url': imageUrl});
+    return Listing.fromJson(res.data);
+  }
+
   // --- Conversations ---
   Future<Conversation> createConversation(String sellerId, {String? listingId}) async {
     final data = <String, dynamic>{'seller_id': sellerId};

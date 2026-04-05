@@ -285,10 +285,21 @@ func (s *ListingService) AddImage(ctx context.Context, userID, id, imageURL stri
 	if listing.UserID != userID {
 		return nil, ErrNotListingOwner
 	}
-	if len(listing.Images) >= 1 {
+	if len(listing.Images) >= 3 {
 		return nil, ErrMaxImages
 	}
 	return s.listingRepo.AddImage(ctx, id, imageURL)
+}
+
+func (s *ListingService) RemoveImage(ctx context.Context, userID, id, imageURL string) (*model.Listing, error) {
+	listing, err := s.listingRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if listing.UserID != userID {
+		return nil, ErrNotListingOwner
+	}
+	return s.listingRepo.RemoveImage(ctx, id, imageURL)
 }
 
 // --- Marketplace operations ---

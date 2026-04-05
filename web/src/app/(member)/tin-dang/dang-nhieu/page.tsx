@@ -98,6 +98,18 @@ export default function QuickBatchPage() {
     const entry = entries[entryIndex];
     const remaining = MAX_IMAGES - entry.images.length;
     const selected = Array.from(files).slice(0, remaining);
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    const maxSize = 10 * 1024 * 1024;
+    for (const f of selected) {
+      if (!allowedTypes.includes(f.type)) {
+        toast.error("Chỉ chấp nhận ảnh JPEG, PNG hoặc WebP");
+        return;
+      }
+      if (f.size > maxSize) {
+        toast.error("Ảnh không được vượt quá 10 MB");
+        return;
+      }
+    }
     const newImages: ImageItem[] = selected.map((file) => ({
       file,
       preview: URL.createObjectURL(file),
@@ -189,6 +201,7 @@ export default function QuickBatchPage() {
       const count = listings.length || items.length;
 
       // Upload images for each listing
+      let imageFails = 0;
       for (let i = 0; i < listings.length && i < selected.length; i++) {
         const listing = listings[i];
         const entry = selected[i];
@@ -198,11 +211,12 @@ export default function QuickBatchPage() {
             const { url } = await uploadImagePresigned("", img.file, "listings");
             await addListingImage("", listing.id, url);
           } catch {
-            // continue
+            imageFails++;
           }
         }
       }
 
+      if (imageFails > 0) toast.warning(`${imageFails} ảnh chưa gắn được, vui lòng sửa tin để thêm ảnh`);
       toast.success(`Đã đăng ${count} tin thành công!`);
       router.push("/tin-dang");
     } catch (err) {

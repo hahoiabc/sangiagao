@@ -174,6 +174,10 @@ func (m *mockAdminListingRepo) AddImage(ctx context.Context, id, imageURL string
 	args := m.Called(ctx, id, imageURL)
 	return args.Get(0).(*model.Listing), args.Error(1)
 }
+func (m *mockAdminListingRepo) RemoveImage(ctx context.Context, id, imageURL string) (*model.Listing, error) {
+	args := m.Called(ctx, id, imageURL)
+	return args.Get(0).(*model.Listing), args.Error(1)
+}
 func (m *mockAdminListingRepo) GetImageCount(ctx context.Context, id string) (int, error) {
 	args := m.Called(ctx, id)
 	return args.Int(0), args.Error(1)

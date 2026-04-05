@@ -72,6 +72,14 @@ func (m *mockListingRepo) AddImage(ctx context.Context, id, imageURL string) (*m
 	return args.Get(0).(*model.Listing), args.Error(1)
 }
 
+func (m *mockListingRepo) RemoveImage(ctx context.Context, id, imageURL string) (*model.Listing, error) {
+	args := m.Called(ctx, id, imageURL)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Listing), args.Error(1)
+}
+
 func (m *mockListingRepo) GetImageCount(ctx context.Context, id string) (int, error) {
 	args := m.Called(ctx, id)
 	return args.Int(0), args.Error(1)

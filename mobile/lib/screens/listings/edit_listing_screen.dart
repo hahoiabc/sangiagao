@@ -1,10 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../models/listing.dart';
 import '../../providers/providers.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/thumbnail_image.dart';
 
 class EditListingScreen extends ConsumerStatefulWidget {
   final String listingId;
@@ -17,13 +20,16 @@ class EditListingScreen extends ConsumerStatefulWidget {
 class _EditListingScreenState extends ConsumerState<EditListingScreen> {
   bool _loading = true;
   bool _submitting = false;
+  bool _uploading = false;
   Listing? _listing;
+  List<String> _images = [];
+  String? _newLocalPath;
 
   final _priceCtrl = TextEditingController();
   final _quantityCtrl = TextEditingController();
   final _seasonCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
-
+  final _picker = ImagePicker();
 
   @override
   void initState() {
@@ -38,6 +44,7 @@ class _EditListingScreenState extends ConsumerState<EditListingScreen> {
       if (mounted) {
         setState(() {
           _listing = l;
+          _images = List<String>.from(l.images);
           _priceCtrl.text = l.pricePerKg.toStringAsFixed(0);
           _quantityCtrl.text = l.quantityKg.toStringAsFixed(0);
           _seasonCtrl.text = l.harvestSeason ?? '';
@@ -52,6 +59,68 @@ class _EditListingScreenState extends ConsumerState<EditListingScreen> {
           SnackBar(content: Text('Lỗi tải tin đăng: $e')),
         );
       }
+    }
+  }
+
+  Future<void> _removeImage(String url) async {
+    try {
+      await ref.read(apiServiceProvider).removeListingImage(widget.listingId, url);
+      if (mounted) {
+        setState(() => _images.remove(url));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã xóa ảnh')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi xóa ảnh: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _addImage() async {
+    if (_images.length >= 3) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tối đa 3 hình ảnh')),
+      );
+      return;
+    }
+    final image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1920,
+      maxHeight: 1920,
+      imageQuality: 95,
+    );
+    if (image == null) return;
+
+    setState(() {
+      _uploading = true;
+      _newLocalPath = image.path;
+    });
+    try {
+      final api = ref.read(apiServiceProvider);
+      final url = await api.uploadImagePresigned(image.path, 'listings');
+      await api.addListingImage(widget.listingId, url);
+      if (mounted) {
+        setState(() {
+          _images.add(url);
+          _newLocalPath = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã thêm ảnh')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _newLocalPath = null);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi tải ảnh: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploading = false);
     }
   }
 
@@ -151,6 +220,89 @@ class _EditListingScreenState extends ConsumerState<EditListingScreen> {
                             style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
                           ),
                         ),
+                      const SizedBox(height: 20),
+
+                      // Images section
+                      Text('Hình ảnh (tối đa 3)', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          ..._images.map((url) => Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: SizedBox(
+                                  width: 80,
+                                  height: 80,
+                                  child: ThumbnailImage(
+                                    imageUrl: url,
+                                    fit: BoxFit.cover,
+                                    errorWidget: (_, __, ___) => Container(
+                                      color: AppColors.divider,
+                                      child: Icon(Icons.broken_image, color: AppColors.textHint),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                top: -6,
+                                right: -6,
+                                child: GestureDetector(
+                                  onTap: () => _removeImage(url),
+                                  child: Container(
+                                    decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
+                                    padding: const EdgeInsets.all(3),
+                                    child: const Icon(Icons.close, size: 14, color: Colors.white),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )),
+                          if (_newLocalPath != null)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: SizedBox(
+                                width: 80,
+                                height: 80,
+                                child: Stack(
+                                  children: [
+                                    Image.file(File(_newLocalPath!), width: 80, height: 80, fit: BoxFit.cover),
+                                    Container(
+                                      color: Colors.black38,
+                                      child: const Center(
+                                        child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          if (_images.length < 3 && _newLocalPath == null)
+                            GestureDetector(
+                              onTap: _uploading ? null : _addImage,
+                              child: Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: AppColors.border, width: 1.5),
+                                  borderRadius: BorderRadius.circular(10),
+                                  color: AppColors.surfaceVariant.withValues(alpha: 0.3),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.add_a_photo_outlined, size: 22, color: AppColors.textHint),
+                                    const SizedBox(height: 2),
+                                    Text('${_images.length}/3', style: TextStyle(fontSize: 11, color: AppColors.textHint)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                       const SizedBox(height: 20),
 
                       // Price

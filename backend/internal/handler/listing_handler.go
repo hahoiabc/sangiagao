@@ -230,3 +230,33 @@ func (h *ListingHandler) AddImage(c *gin.Context) {
 
 	c.JSON(http.StatusOK, listing)
 }
+
+type removeImageRequest struct {
+	URL string `json:"url" binding:"required"`
+}
+
+func (h *ListingHandler) RemoveImage(c *gin.Context) {
+	userID := c.GetString("user_id")
+	id := c.Param("id")
+
+	var req removeImageRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "url is required"})
+		return
+	}
+
+	listing, err := h.listingService.RemoveImage(c.Request.Context(), userID, id, req.URL)
+	if err != nil {
+		switch {
+		case errors.Is(err, repository.ErrListingNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": "listing not found"})
+		case errors.Is(err, service.ErrNotListingOwner):
+			c.JSON(http.StatusForbidden, gin.H{"error": "you don't own this listing"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to remove image"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, listing)
+}

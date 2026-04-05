@@ -81,6 +81,18 @@ export default function CreateListingPage() {
     const form = forms[formIndex];
     const remaining = MAX_IMAGES - form.images.length;
     const selected = Array.from(files).slice(0, remaining);
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    const maxSize = 10 * 1024 * 1024; // 10MB raw (sẽ nén xuống trước upload)
+    for (const f of selected) {
+      if (!allowedTypes.includes(f.type)) {
+        toast.error("Chỉ chấp nhận ảnh JPEG, PNG hoặc WebP");
+        return;
+      }
+      if (f.size > maxSize) {
+        toast.error("Ảnh không được vượt quá 10 MB");
+        return;
+      }
+    }
     const newImages = selected.map((file) => ({
       file,
       preview: URL.createObjectURL(file),
@@ -152,14 +164,16 @@ export default function CreateListingPage() {
           description: f.description,
         });
         // Upload images
+        let imageFails = 0;
         for (const img of f.images) {
           try {
             const { url } = await uploadImagePresigned("", img.file, "listings");
             await addListingImage("", listing.id, url);
           } catch {
-            // continue
+            imageFails++;
           }
         }
+        if (imageFails > 0) toast.warning(`${imageFails} ảnh chưa gắn được, vui lòng sửa tin đ�� thêm ảnh`);
       } else {
         // Batch create
         const items = forms.map((f) => ({
@@ -172,6 +186,7 @@ export default function CreateListingPage() {
         }));
         const result = await batchCreateListings("", items);
         // Upload images for each listing
+        let imageFails = 0;
         for (let i = 0; i < forms.length; i++) {
           const listing = result.listings[i];
           if (!listing) continue;
@@ -180,10 +195,11 @@ export default function CreateListingPage() {
               const { url } = await uploadImagePresigned("", img.file, "listings");
               await addListingImage("", listing.id, url);
             } catch {
-              // continue
+              imageFails++;
             }
           }
         }
+        if (imageFails > 0) toast.warning(`${imageFails} ảnh chưa gắn được, vui lòng sửa tin đ��� thêm ảnh`);
       }
 
       toast.success(`Tạo ${forms.length} tin đăng thành công!`);

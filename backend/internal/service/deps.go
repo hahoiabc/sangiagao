@@ -86,6 +86,7 @@ type ListingRepository interface {
 	BatchSoftDelete(ctx context.Context, ids []string) (int, error)
 	ListByUser(ctx context.Context, userID string, page, limit int) ([]*model.Listing, int, error)
 	AddImage(ctx context.Context, id, imageURL string) (*model.Listing, error)
+	RemoveImage(ctx context.Context, id, imageURL string) (*model.Listing, error)
 	GetImageCount(ctx context.Context, id string) (int, error)
 	Browse(ctx context.Context, page, limit int) ([]*model.Listing, int, error)
 	Search(ctx context.Context, filter *model.ListingFilter) ([]*model.Listing, int, error)

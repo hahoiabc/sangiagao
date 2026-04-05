@@ -391,6 +391,7 @@ func main() {
 				listings.DELETE("/:id", listingHandler.Delete)
 				listings.POST("/batch-delete", listingHandler.BatchDeleteOwn)
 				listings.POST("/:id/images", middleware.RequirePermission(permissionService, "listings.edit_own"), listingHandler.AddImage)
+				listings.DELETE("/:id/images", middleware.RequirePermission(permissionService, "listings.edit_own"), listingHandler.RemoveImage)
 			}
 
 			// Conversations

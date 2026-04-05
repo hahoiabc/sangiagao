@@ -322,6 +322,7 @@ class _QuickBatchScreenState extends ConsumerState<QuickBatchScreen> {
       final apiErrors = result['errors'] as List? ?? [];
 
       // Attach images to created listings
+      int imageFailCount = 0;
       for (int i = 0; i < created.length && i < selected.length; i++) {
         final entry = selected[i];
         if (entry.imageUrls.isEmpty) continue;
@@ -329,12 +330,18 @@ class _QuickBatchScreenState extends ConsumerState<QuickBatchScreen> {
         for (final url in entry.imageUrls) {
           try {
             await api.addListingImage(listingId, url);
-          } catch (_) {}
+          } catch (e) {
+            imageFailCount++;
+            debugPrint('Attach image failed: $e');
+          }
         }
       }
 
       if (mounted) {
         String msg = 'Đã đăng ${created.length} tin thành công!';
+        if (imageFailCount > 0) {
+          msg += '\n$imageFailCount ảnh chưa gắn được, vui lòng sửa tin để thêm ảnh';
+        }
         if (apiErrors.isNotEmpty) {
           msg += '\n${apiErrors.length} lỗi: ${apiErrors.join(', ')}';
         }

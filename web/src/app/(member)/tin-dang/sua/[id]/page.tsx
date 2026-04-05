@@ -1,16 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, ImagePlus, X } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getListingDetail, updateListing, type ListingDetail } from "@/services/api";
+import { getListingDetail, updateListing, uploadImagePresigned, addListingImage, removeListingImage, type ListingDetail } from "@/services/api";
+import { ListingImage } from "@/components/listing-image";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+
+const MAX_IMAGES = 3;
 
 export default function EditListingPage() {
   const { id } = useParams<{ id: string }>();
@@ -19,12 +22,15 @@ export default function EditListingPage() {
   const [listing, setListing] = useState<ListingDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Editable fields (same as mobile: price, quantity, harvest_season, description)
+  // Editable fields
   const [pricePerKg, setPricePerKg] = useState("");
   const [quantityKg, setQuantityKg] = useState("");
   const [harvestSeason, setHarvestSeason] = useState("");
   const [description, setDescription] = useState("");
+  const [images, setImages] = useState<string[]>([]);
 
   useEffect(() => {
     if (id) {
@@ -35,11 +41,51 @@ export default function EditListingPage() {
           setQuantityKg(String(Math.round(detail.quantity_kg)));
           setHarvestSeason(detail.harvest_season || "");
           setDescription(detail.description || "");
+          setImages(detail.images || []);
         })
         .catch(() => toast.error("Không tìm thấy tin đăng"))
         .finally(() => setLoading(false));
     }
   }, [id]);
+
+  async function handleRemoveImage(url: string) {
+    if (!id) return;
+    try {
+      await removeListingImage("", id, url);
+      setImages((prev) => prev.filter((u) => u !== url));
+      toast.success("Đã xóa ảnh");
+    } catch {
+      toast.error("Lỗi xóa ảnh");
+    }
+  }
+
+  async function handleAddImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !id) return;
+    if (fileInputRef.current) fileInputRef.current.value = "";
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Chỉ chấp nhận ảnh JPEG, PNG hoặc WebP");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Ảnh không được vượt quá 10 MB");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const { url } = await uploadImagePresigned("", file, "listings");
+      await addListingImage("", id, url);
+      setImages((prev) => [...prev, url]);
+      toast.success("Đã thêm ảnh");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Lỗi tải ảnh");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -122,6 +168,47 @@ export default function EditListingPage() {
             {listing.rice_type && (
               <p className="text-sm text-muted-foreground mt-1">{listing.rice_type}</p>
             )}
+          </div>
+
+          {/* Images section */}
+          <div className="mb-6">
+            <label className="text-sm font-medium mb-2 block">Hình ảnh (tối đa {MAX_IMAGES})</label>
+            <div className="flex flex-wrap gap-3">
+              {images.map((url) => (
+                <div key={url} className="relative group">
+                  <div className="w-20 h-20 rounded-lg overflow-hidden border">
+                    <ListingImage src={url} alt="Ảnh tin đăng" fill className="object-cover" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImage(url)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+              {images.length < MAX_IMAGES && (
+                <label className="w-20 h-20 rounded-lg border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center cursor-pointer hover:border-muted-foreground/50 transition-colors">
+                  {uploading ? (
+                    <div className="h-5 w-5 border-2 border-muted-foreground/30 border-t-primary rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <ImagePlus className="h-5 w-5 text-muted-foreground/50" />
+                      <span className="text-[10px] text-muted-foreground/50 mt-1">{images.length}/{MAX_IMAGES}</span>
+                    </>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleAddImage}
+                    className="hidden"
+                    disabled={uploading}
+                  />
+                </label>
+              )}
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">

@@ -190,6 +190,17 @@ func (r *ListingRepo) AddImage(ctx context.Context, id, imageURL string) (*model
 	return r.scanListing(row)
 }
 
+func (r *ListingRepo) RemoveImage(ctx context.Context, id, imageURL string) (*model.Listing, error) {
+	row := r.pool.QueryRow(ctx,
+		`UPDATE listings
+		 SET images = (SELECT COALESCE(jsonb_agg(elem), '[]'::jsonb) FROM jsonb_array_elements(images) AS elem WHERE elem #>> '{}' != $2)
+		 WHERE id = $1 AND status != 'deleted'
+		 RETURNING `+listingColumns,
+		id, imageURL,
+	)
+	return r.scanListing(row)
+}
+
 func (r *ListingRepo) GetImageCount(ctx context.Context, id string) (int, error) {
 	var count int
 	err := r.pool.QueryRow(ctx,

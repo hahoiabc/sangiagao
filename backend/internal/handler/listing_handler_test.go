@@ -63,6 +63,14 @@ func (m *mockListingService) AddImage(ctx context.Context, userID, id, imageURL 
 	return args.Get(0).(*model.Listing), args.Error(1)
 }
 
+func (m *mockListingService) RemoveImage(ctx context.Context, userID, id, imageURL string) (*model.Listing, error) {
+	args := m.Called(ctx, userID, id, imageURL)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Listing), args.Error(1)
+}
+
 func (m *mockListingService) Browse(ctx context.Context, page, limit int) ([]*model.Listing, int, error) {
 	args := m.Called(ctx, page, limit)
 	if args.Get(0) == nil {
