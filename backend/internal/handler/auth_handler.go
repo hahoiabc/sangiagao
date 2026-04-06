@@ -77,8 +77,10 @@ func (h *AuthHandler) SendOTP(c *gin.Context) {
 		switch {
 		case errors.Is(err, service.ErrInvalidPhone):
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid phone number format"})
+		case errors.Is(err, service.ErrOTPCooldown):
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "vui lòng chờ 60 giây trước khi gửi lại"})
 		case errors.Is(err, service.ErrRateLimited):
-			c.JSON(http.StatusTooManyRequests, gin.H{"error": "too many OTP requests, try again later"})
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "quá 3 lần gửi OTP trong 1 giờ, vui lòng thử lại sau"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to send OTP"})
 		}
@@ -163,8 +165,10 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		switch {
 		case errors.Is(err, service.ErrInvalidPhone):
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Số điện thoại không hợp lệ"})
+		case errors.Is(err, service.ErrOTPCooldown):
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "vui lòng chờ 60 giây trước khi gửi lại"})
 		case errors.Is(err, service.ErrRateLimited):
-			c.JSON(http.StatusTooManyRequests, gin.H{"error": "Quá nhiều yêu cầu, vui lòng thử lại sau"})
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "quá 3 lần gửi OTP trong 1 giờ, vui lòng thử lại sau"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Không thể gửi mã OTP"})
 		}

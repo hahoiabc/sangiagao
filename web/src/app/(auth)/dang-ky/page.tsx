@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Wheat, Eye, EyeOff, X } from "lucide-react";
@@ -27,8 +27,15 @@ export default function RegisterPage() {
   const [showTerms, setShowTerms] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
   const { login } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
 
   // Location state
   const provinceRef = useRef<string | undefined>(undefined);
@@ -52,6 +59,7 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await register(phone);
+      setCooldown(60);
       setStep(2);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Đăng ký thất bại");
@@ -149,8 +157,8 @@ export default function RegisterPage() {
                 required
               />
               {error && <p className="text-sm text-destructive">{error}</p>}
-              <Button type="submit" className="w-full h-11" disabled={loading}>
-                {loading ? "Đang gửi..." : "Tiếp tục"}
+              <Button type="submit" className="w-full h-11" disabled={loading || cooldown > 0}>
+                {loading ? "Đang gửi..." : cooldown > 0 ? `Gửi lại sau ${cooldown} giây` : "Tiếp tục"}
               </Button>
             </form>
           ) : (

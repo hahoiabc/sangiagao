@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -30,6 +31,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _step2 = false; // false = phone step, true = OTP + details step
   bool _acceptedTOS = false;
   String? _error;
+  int _cooldown = 0;
+  Timer? _cooldownTimer;
 
   @override
   void dispose() {
@@ -39,7 +42,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _addressController.dispose();
+    _cooldownTimer?.cancel();
     super.dispose();
+  }
+
+  void _startCooldown() {
+    _cooldown = 60;
+    _cooldownTimer?.cancel();
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (mounted) {
+        setState(() { _cooldown--; });
+        if (_cooldown <= 0) t.cancel();
+      } else {
+        t.cancel();
+      }
+    });
   }
 
   // Step 1: Validate phone and send OTP
@@ -53,6 +70,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       await ref.read(authProvider.notifier).register(phone);
+      _startCooldown();
       setState(() { _step2 = true; });
     } catch (e) {
       String msg = 'Gửi mã OTP thất bại';
@@ -324,9 +342,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 const SizedBox(height: 16),
 
                 FilledButton(
-                  onPressed: _loading ? null : _sendOTP,
+                  onPressed: (_loading || _cooldown > 0) ? null : _sendOTP,
                   style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-                  child: Text(_loading ? 'Đang gửi mã OTP...' : 'Tiếp tục'),
+                  child: Text(_loading ? 'Đang gửi mã OTP...' : _cooldown > 0 ? 'Gửi lại sau $_cooldown giây' : 'Tiếp tục'),
                 ),
               ] else ...[
                 // Step 2: OTP + all details

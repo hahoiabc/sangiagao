@@ -25,6 +25,7 @@ import (
 var (
 	ErrInvalidPhone   = errors.New("invalid phone number")
 	ErrRateLimited    = errors.New("too many OTP requests, try again later")
+	ErrOTPCooldown    = errors.New("vui lòng chờ 60 giây trước khi gửi lại")
 	ErrInvalidOTP     = errors.New("invalid or expired OTP")
 	ErrTooManyAttempts = errors.New("too many failed attempts")
 	ErrUserBlocked    = errors.New("account is blocked")
@@ -101,12 +102,21 @@ func (s *AuthService) SendOTP(ctx context.Context, phone string) error {
 		return ErrInvalidPhone
 	}
 
-	// Rate limit: max 5 OTP per phone per hour
+	// Cooldown: 1 OTP per phone per 60 seconds
+	recentCount, err := s.otpRepo.CountRecent(ctx, phone, time.Now().Add(-60*time.Second))
+	if err != nil {
+		return fmt.Errorf("count recent OTP: %w", err)
+	}
+	if recentCount > 0 {
+		return ErrOTPCooldown
+	}
+
+	// Rate limit: max 3 OTP per phone per hour
 	count, err := s.otpRepo.CountRecent(ctx, phone, time.Now().Add(-1*time.Hour))
 	if err != nil {
 		return fmt.Errorf("count OTP: %w", err)
 	}
-	if count >= 5 {
+	if count >= 3 {
 		return ErrRateLimited
 	}
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
@@ -17,12 +18,28 @@ class _ChangePhoneScreenState extends ConsumerState<ChangePhoneScreen> {
   bool _loading = false;
   bool _otpStep = false;
   String? _error;
+  int _cooldown = 0;
+  Timer? _cooldownTimer;
 
   @override
   void dispose() {
     _phoneCtrl.dispose();
     _otpCtrl.dispose();
+    _cooldownTimer?.cancel();
     super.dispose();
+  }
+
+  void _startCooldown() {
+    _cooldown = 60;
+    _cooldownTimer?.cancel();
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (mounted) {
+        setState(() { _cooldown--; });
+        if (_cooldown <= 0) t.cancel();
+      } else {
+        t.cancel();
+      }
+    });
   }
 
   Future<void> _sendOTP() async {
@@ -35,6 +52,7 @@ class _ChangePhoneScreenState extends ConsumerState<ChangePhoneScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       await ref.read(apiServiceProvider).sendOTP(phone);
+      _startCooldown();
       setState(() => _otpStep = true);
     } catch (e) {
       String msg = 'Gửi mã OTP thất bại';
@@ -107,9 +125,9 @@ class _ChangePhoneScreenState extends ConsumerState<ChangePhoneScreen> {
               ),
               const SizedBox(height: 24),
               FilledButton(
-                onPressed: _loading ? null : _sendOTP,
+                onPressed: (_loading || _cooldown > 0) ? null : _sendOTP,
                 style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-                child: Text(_loading ? 'Đang gửi mã OTP...' : 'Gửi mã OTP'),
+                child: Text(_loading ? 'Đang gửi mã OTP...' : _cooldown > 0 ? 'Gửi lại sau $_cooldown giây' : 'Gửi mã OTP'),
               ),
             ] else ...[
               Text(

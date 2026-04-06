@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -23,6 +24,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
   String? _error;
+  int _cooldown = 0;
+  Timer? _cooldownTimer;
 
   @override
   void dispose() {
@@ -30,7 +33,21 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     _otpController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _cooldownTimer?.cancel();
     super.dispose();
+  }
+
+  void _startCooldown() {
+    _cooldown = 60;
+    _cooldownTimer?.cancel();
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (mounted) {
+        setState(() { _cooldown--; });
+        if (_cooldown <= 0) t.cancel();
+      } else {
+        t.cancel();
+      }
+    });
   }
 
   Future<void> _sendOTP() async {
@@ -43,6 +60,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       await ref.read(authProvider.notifier).sendOTP(phone);
+      _startCooldown();
       setState(() { _otpStep = true; });
     } catch (e) {
       String msg = 'Gửi mã OTP thất bại';
@@ -160,9 +178,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 ),
                 const SizedBox(height: 24),
                 FilledButton(
-                  onPressed: _loading ? null : _sendOTP,
+                  onPressed: (_loading || _cooldown > 0) ? null : _sendOTP,
                   style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-                  child: Text(_loading ? 'Đang gửi mã OTP...' : 'Gửi mã OTP'),
+                  child: Text(_loading ? 'Đang gửi mã OTP...' : _cooldown > 0 ? 'Gửi lại sau $_cooldown giây' : 'Gửi mã OTP'),
                 ),
               ] else ...[
                 TextField(

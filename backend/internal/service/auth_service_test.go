@@ -290,7 +290,7 @@ func TestSendOTP_Success(t *testing.T) {
 	smsMock := new(mockSMS)
 	svc := NewAuthService(userRepo, otpRepo, subRepo, newTestJWT(), smsMock)
 
-	otpRepo.On("CountRecent", mock.Anything, "0901234567", mock.Anything).Return(0, nil)
+	otpRepo.On("CountRecent", mock.Anything, "0901234567", mock.Anything).Return(0, nil).Twice()
 	otpRepo.On("Create", mock.Anything, "0901234567", mock.Anything, mock.Anything).Return(nil)
 	smsMock.On("SendOTP", "0901234567", mock.AnythingOfType("string")).Return(nil)
 
@@ -313,14 +313,24 @@ func TestSendOTP_InvalidPhone(t *testing.T) {
 	}
 }
 
+func TestSendOTP_Cooldown(t *testing.T) {
+	otpRepo := new(mockOTPRepo)
+	svc := NewAuthService(nil, otpRepo, nil, newTestJWT(), nil)
+
+	otpRepo.On("CountRecent", mock.Anything, "0901234567", mock.Anything).Return(1, nil).Once()
+
+	err := svc.SendOTP(context.Background(), "0901234567")
+	assert.ErrorIs(t, err, ErrOTPCooldown)
+}
+
 func TestSendOTP_RateLimited(t *testing.T) {
 	otpRepo := new(mockOTPRepo)
 	svc := NewAuthService(nil, otpRepo, nil, newTestJWT(), nil)
 
-	otpRepo.On("CountRecent", mock.Anything, "0901234567", mock.Anything).Return(5, nil)
+	otpRepo.On("CountRecent", mock.Anything, "0901234567", mock.Anything).Return(0, nil).Once()
+	otpRepo.On("CountRecent", mock.Anything, "0901234567", mock.Anything).Return(3, nil).Once()
 
 	err := svc.SendOTP(context.Background(), "0901234567")
-
 	assert.ErrorIs(t, err, ErrRateLimited)
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { KeyRound, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,13 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
 
   async function handleSendOTP(e: React.FormEvent) {
     e.preventDefault();
@@ -25,6 +32,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     try {
       await sendOTP(phone);
+      setCooldown(60);
       setStep("reset");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gửi mã OTP thất bại");
@@ -107,8 +115,8 @@ export default function ForgotPasswordPage() {
               required
             />
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="w-full h-11" disabled={loading}>
-              {loading ? "Đang gửi..." : "Gửi mã OTP"}
+            <Button type="submit" className="w-full h-11" disabled={loading || cooldown > 0}>
+              {loading ? "Đang gửi..." : cooldown > 0 ? `Gửi lại sau ${cooldown} giây` : "Gửi mã OTP"}
             </Button>
           </form>
         ) : (

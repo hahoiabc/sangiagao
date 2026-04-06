@@ -54,6 +54,13 @@ export default function ProfilePage() {
   const [phoneOtp, setPhoneOtp] = useState("");
   const [phoneStep, setPhoneStep] = useState<"input" | "otp">("input");
   const [phoneSaving, setPhoneSaving] = useState(false);
+  const [phoneCooldown, setPhoneCooldown] = useState(0);
+
+  useEffect(() => {
+    if (phoneCooldown <= 0) return;
+    const t = setTimeout(() => setPhoneCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [phoneCooldown]);
 
   // Delete account state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -203,6 +210,7 @@ export default function ProfilePage() {
     setPhoneSaving(true);
     try {
       await sendOTP(newPhone);
+      setPhoneCooldown(60);
       setPhoneStep("otp");
       toast.success("Đã gửi mã OTP đến số mới");
     } catch (err) {
@@ -575,11 +583,11 @@ export default function ProfilePage() {
                   type="button"
                   variant="outline"
                   className="gap-2"
-                  disabled={phoneSaving || !newPhone}
+                  disabled={phoneSaving || !newPhone || phoneCooldown > 0}
                   onClick={handleSendPhoneOTP}
                 >
                   <Phone className="h-4 w-4" />
-                  {phoneSaving ? "Đang gửi..." : "Gửi mã OTP"}
+                  {phoneSaving ? "Đang gửi..." : phoneCooldown > 0 ? `Gửi lại sau ${phoneCooldown} giây` : "Gửi mã OTP"}
                 </Button>
               </div>
             ) : (
