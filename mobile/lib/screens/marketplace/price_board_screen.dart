@@ -98,12 +98,6 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
           ),
         ),
         actions: [
-          if (!isAuth)
-            TextButton.icon(
-              onPressed: () => context.push('/user-guide'),
-              icon: const Icon(Icons.help_outline, size: 20),
-              label: const Text('Hướng dẫn', style: TextStyle(fontSize: 13)),
-            ),
           if (isAuth)
             IconButton(
               onPressed: () => context.push('/system-inbox'),

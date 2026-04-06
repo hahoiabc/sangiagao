@@ -195,6 +195,10 @@ class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserv
       ));
     } else {
       navItems.add(_NavDest(
+        dest: const NavigationDestination(icon: Icon(Icons.help_outline), label: 'Hướng dẫn'),
+        route: '/user-guide',
+      ));
+      navItems.add(_NavDest(
         dest: const NavigationDestination(icon: Icon(Icons.login), label: 'Đăng nhập'),
         route: '/login',
       ));
