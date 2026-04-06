@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Wheat, Search, MessageCircle, Bell, User, LogOut, Menu, X, Crown, MessageSquareText } from "lucide-react";
+import { Wheat, Search, MessageCircle, Bell, User, LogOut, Menu, X, Crown, MessageSquareText, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth";
@@ -19,6 +19,7 @@ const memberLinks = [
   { href: "/tin-dang", label: "Tin của tôi", icon: Search, perm: "listings.create" },
   { href: "/tin-nhan", label: "Tin nhắn", icon: MessageCircle, perm: "chat.send" },
   { href: "/thong-bao", label: "Thông báo", icon: Bell, perm: null },
+  { href: "/hop-thu", label: "Hộp thư", icon: Mail, perm: null },
   { href: "/goi-thanh-vien", label: "Gói dịch vụ", icon: Crown, perm: null },
   { href: "/phan-hoi", label: "Góp ý", icon: MessageSquareText, perm: "feedback.create" },
 ];

@@ -310,6 +310,16 @@ export interface Feedback {
   created_at: string;
 }
 
+export interface InboxMessage {
+  id: string;
+  title: string;
+  body: string;
+  image_url: string | null;
+  is_pinned: boolean;
+  is_read: boolean;
+  created_at: string;
+}
+
 // --- Auth ---
 export async function loginPassword(phone: string, password: string) {
   return request<{
@@ -785,6 +795,24 @@ export async function createFeedback(token: string, content: string) {
 export async function getMyFeedbacks(token: string, page: number, limit: number) {
   const params = new URLSearchParams({ page: String(page), limit: String(limit) });
   return request<PaginatedResponse<Feedback>>(`/feedbacks/my?${params}`, { token });
+}
+
+// --- System Inbox ---
+export async function getInbox(token: string, page: number = 1, limit: number = 20) {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  return request<{ data: InboxMessage[]; total: number; unread_count: number }>(`/inbox?${params}`, { token });
+}
+
+export async function getInboxDetail(token: string, id: string) {
+  return request<InboxMessage>(`/inbox/${id}`, { token });
+}
+
+export async function markInboxRead(token: string, id: string) {
+  return request<void>(`/inbox/${id}/read`, { token, method: "PUT" });
+}
+
+export async function getInboxUnreadCount(token: string) {
+  return request<{ unread_count: number }>("/inbox/unread-count", { token });
 }
 
 // --- Permissions ---
