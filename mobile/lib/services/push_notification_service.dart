@@ -29,8 +29,8 @@ class PushNotificationService {
   /// Track last notification time per conversation — for sound suppression
   static final Map<String, DateTime> _lastNotifTime = {};
 
-  /// Sound suppression window: same conversation within 3 seconds → silent
-  static const _soundSuppressWindow = Duration(seconds: 3);
+  /// Sound suppression window: same conversation within 5 seconds → silent
+  static const _soundSuppressWindow = Duration(seconds: 5);
 
   /// Track unread message count per conversation — for smart summary
   static final Map<String, int> _unreadCount = {};
