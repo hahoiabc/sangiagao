@@ -278,23 +278,23 @@ export default function CreateListingPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium mb-1 block">Số lượng (kg) *</label>
-                    <Input
-                      type="number"
-                      value={form.quantity_kg}
-                      onChange={(e) => updateForm(fi, "quantity_kg", e.target.value)}
-                      placeholder="VD: 1000"
-                      required
-                      min="1"
-                    />
-                  </div>
-                  <div>
                     <label className="text-sm font-medium mb-1 block">Giá (đ/kg) *</label>
                     <Input
                       type="number"
                       value={form.price_per_kg}
                       onChange={(e) => updateForm(fi, "price_per_kg", e.target.value)}
                       placeholder="VD: 15000"
+                      required
+                      min="1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">Số lượng (kg) *</label>
+                    <Input
+                      type="number"
+                      value={form.quantity_kg}
+                      onChange={(e) => updateForm(fi, "quantity_kg", e.target.value)}
+                      placeholder="VD: 1000"
                       required
                       min="1"
                     />
