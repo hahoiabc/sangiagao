@@ -81,9 +81,9 @@ class _EditListingScreenState extends ConsumerState<EditListingScreen> {
   }
 
   Future<void> _addImage() async {
-    if (_images.length >= 3) {
+    if (_images.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tối đa 3 hình ảnh')),
+        const SnackBar(content: Text('Tối đa 1 hình ảnh')),
       );
       return;
     }
@@ -223,7 +223,7 @@ class _EditListingScreenState extends ConsumerState<EditListingScreen> {
                       const SizedBox(height: 20),
 
                       // Images section
-                      Text('Hình ảnh (tối đa 3)', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                      Text('Hình ảnh (tối đa 1)', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 10,
@@ -280,7 +280,7 @@ class _EditListingScreenState extends ConsumerState<EditListingScreen> {
                                 ),
                               ),
                             ),
-                          if (_images.length < 3 && _newLocalPath == null)
+                          if (_images.isEmpty && _newLocalPath == null)
                             GestureDetector(
                               onTap: _uploading ? null : _addImage,
                               child: Container(
@@ -296,7 +296,7 @@ class _EditListingScreenState extends ConsumerState<EditListingScreen> {
                                   children: [
                                     Icon(Icons.add_a_photo_outlined, size: 22, color: AppColors.textHint),
                                     const SizedBox(height: 2),
-                                    Text('${_images.length}/3', style: TextStyle(fontSize: 11, color: AppColors.textHint)),
+                                    Text('${_images.length}/1', style: TextStyle(fontSize: 11, color: AppColors.textHint)),
                                   ],
                                 ),
                               ),

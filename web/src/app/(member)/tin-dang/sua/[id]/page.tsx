@@ -13,7 +13,7 @@ import { ListingImage } from "@/components/listing-image";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
-const MAX_IMAGES = 3;
+const MAX_IMAGES = 1;
 
 export default function EditListingPage() {
   const { id } = useParams<{ id: string }>();

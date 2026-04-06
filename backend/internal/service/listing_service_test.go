@@ -407,10 +407,10 @@ func TestAddImage_MaxImages(t *testing.T) {
 	svc := NewListingService(repo, nil, nil, nil)
 
 	existing := sampleListing("user-1")
-	existing.Images = []string{"a.jpg", "b.jpg", "c.jpg"}
+	existing.Images = []string{"a.jpg"}
 	repo.On("GetByID", mock.Anything, "listing-1").Return(existing, nil)
 
-	_, err := svc.AddImage(context.Background(), "user-1", "listing-1", "d.jpg")
+	_, err := svc.AddImage(context.Background(), "user-1", "listing-1", "b.jpg")
 	assert.ErrorIs(t, err, ErrMaxImages)
 }
 
@@ -423,6 +423,47 @@ func TestAddImage_NotOwner(t *testing.T) {
 
 	_, err := svc.AddImage(context.Background(), "user-2", "listing-1", "img.jpg")
 	assert.ErrorIs(t, err, ErrNotListingOwner)
+}
+
+// --- RemoveImage Tests ---
+
+func TestRemoveImage_Success(t *testing.T) {
+	repo := new(mockListingRepo)
+	svc := NewListingService(repo, nil, nil, nil)
+
+	existing := sampleListing("user-1")
+	existing.Images = []string{"a.jpg", "b.jpg"}
+	repo.On("GetByID", mock.Anything, "listing-1").Return(existing, nil)
+
+	updated := sampleListing("user-1")
+	updated.Images = []string{"b.jpg"}
+	repo.On("RemoveImage", mock.Anything, "listing-1", "a.jpg").Return(updated, nil)
+
+	result, err := svc.RemoveImage(context.Background(), "user-1", "listing-1", "a.jpg")
+	assert.NoError(t, err)
+	assert.Len(t, result.Images, 1)
+	assert.Equal(t, "b.jpg", result.Images[0])
+}
+
+func TestRemoveImage_NotOwner(t *testing.T) {
+	repo := new(mockListingRepo)
+	svc := NewListingService(repo, nil, nil, nil)
+
+	existing := sampleListing("user-1")
+	repo.On("GetByID", mock.Anything, "listing-1").Return(existing, nil)
+
+	_, err := svc.RemoveImage(context.Background(), "user-2", "listing-1", "a.jpg")
+	assert.ErrorIs(t, err, ErrNotListingOwner)
+}
+
+func TestRemoveImage_NotFound(t *testing.T) {
+	repo := new(mockListingRepo)
+	svc := NewListingService(repo, nil, nil, nil)
+
+	repo.On("GetByID", mock.Anything, "listing-1").Return(nil, repository.ErrListingNotFound)
+
+	_, err := svc.RemoveImage(context.Background(), "user-1", "listing-1", "a.jpg")
+	assert.ErrorIs(t, err, repository.ErrListingNotFound)
 }
 
 // --- Browse Tests ---

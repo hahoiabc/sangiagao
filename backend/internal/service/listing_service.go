@@ -285,7 +285,7 @@ func (s *ListingService) AddImage(ctx context.Context, userID, id, imageURL stri
 	if listing.UserID != userID {
 		return nil, ErrNotListingOwner
 	}
-	if len(listing.Images) >= 3 {
+	if len(listing.Images) >= 1 {
 		return nil, ErrMaxImages
 	}
 	return s.listingRepo.AddImage(ctx, id, imageURL)

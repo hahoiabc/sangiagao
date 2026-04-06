@@ -122,6 +122,7 @@ func listingRouter(h *ListingHandler) *gin.Engine {
 	g.PUT("/listings/:id", h.Update)
 	g.DELETE("/listings/:id", h.Delete)
 	g.POST("/listings/:id/images", h.AddImage)
+	g.DELETE("/listings/:id/images", h.RemoveImage)
 	return r
 }
 
@@ -394,5 +395,50 @@ func TestAddImage_NotFound(t *testing.T) {
 	svc.On("AddImage", mock.Anything, "user-1", "l-1", "img.jpg").Return(nil, repository.ErrListingNotFound)
 
 	w := doRequest(r, "POST", "/listings/l-1/images", `{"url":"img.jpg"}`)
+	assert.Equal(t, 404, w.Code)
+}
+
+// --- RemoveImage Tests ---
+
+func TestRemoveImage_Success(t *testing.T) {
+	svc := new(mockListingService)
+	h := NewListingHandler(svc)
+	r := listingRouter(h)
+
+	listing := &model.Listing{ID: "l-1", Images: []string{"img1.jpg"}}
+	svc.On("RemoveImage", mock.Anything, "user-1", "l-1", "img2.jpg").Return(listing, nil)
+
+	w := doRequest(r, "DELETE", "/listings/l-1/images", `{"url":"img2.jpg"}`)
+	assert.Equal(t, 200, w.Code)
+}
+
+func TestRemoveImage_MissingURL(t *testing.T) {
+	svc := new(mockListingService)
+	h := NewListingHandler(svc)
+	r := listingRouter(h)
+
+	w := doRequest(r, "DELETE", "/listings/l-1/images", `{}`)
+	assert.Equal(t, 400, w.Code)
+}
+
+func TestRemoveImage_NotOwner(t *testing.T) {
+	svc := new(mockListingService)
+	h := NewListingHandler(svc)
+	r := listingRouter(h)
+
+	svc.On("RemoveImage", mock.Anything, "user-1", "l-1", "img.jpg").Return(nil, service.ErrNotListingOwner)
+
+	w := doRequest(r, "DELETE", "/listings/l-1/images", `{"url":"img.jpg"}`)
+	assert.Equal(t, 403, w.Code)
+}
+
+func TestRemoveImage_NotFound(t *testing.T) {
+	svc := new(mockListingService)
+	h := NewListingHandler(svc)
+	r := listingRouter(h)
+
+	svc.On("RemoveImage", mock.Anything, "user-1", "l-1", "img.jpg").Return(nil, repository.ErrListingNotFound)
+
+	w := doRequest(r, "DELETE", "/listings/l-1/images", `{"url":"img.jpg"}`)
 	assert.Equal(t, 404, w.Code)
 }
