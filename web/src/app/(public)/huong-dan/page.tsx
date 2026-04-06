@@ -203,6 +203,7 @@ export default function UserGuidePage() {
             <li><strong>Đổi mật khẩu:</strong> Nhập mật khẩu cũ + mật khẩu mới</li>
             <li><strong>Đổi số điện thoại:</strong> Xác nhận bằng mật khẩu trước khi đổi</li>
             <li><strong>Thông báo:</strong> Xem thông báo hệ thống và tin nhắn từ quản trị viên</li>
+            <li><strong>Tắt thông báo:</strong> Vào Cài đặt điện thoại → Ứng dụng → Sàn Giá Gạo → Thông báo → Tắt</li>
           </ul>
         </section>
 

@@ -83,7 +83,8 @@ class UserGuideScreen extends StatelessWidget {
       'Cập nhật: Tên, ảnh đại diện, địa chỉ, mô tả.\n'
       'Đổi mật khẩu: Nhập mật khẩu cũ + mật khẩu mới.\n'
       'Đổi SĐT: Xác nhận bằng mật khẩu trước khi đổi.\n'
-      'Thông báo: Xem thông báo hệ thống và tin nhắn từ quản trị viên.'
+      'Thông báo: Xem thông báo hệ thống và tin nhắn từ quản trị viên.\n\n'
+      'Tắt thông báo: Vào Cài đặt điện thoại → Ứng dụng → Sàn Giá Gạo → Thông báo → Tắt.'
     ),
     (
       '9. Câu hỏi thường gặp',
