@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'package:dio/dio.dart';
@@ -238,12 +239,8 @@ class ApiService {
         },
       ),
     );
-    // Step 3: Confirm upload → backend generates thumbnail
-    try {
-      await _dio.post('/upload/confirm', data: {'key': key});
-    } catch (_) {
-      // Thumbnail generation failed — original image still works
-    }
+    // Step 3: Confirm upload → backend generates thumbnail (fire-and-forget)
+    unawaited(_dio.post('/upload/confirm', data: {'key': key}).then((_) {}, onError: (_) {}));
     return publicUrl;
   }
 

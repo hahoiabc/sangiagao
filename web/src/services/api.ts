@@ -512,7 +512,7 @@ export async function uploadImage(token: string, file: File, folder: "avatars" |
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const COMPRESS_MAX_DIM = 1920;
+const COMPRESS_MAX_DIM = 1280;
 const COMPRESS_QUALITY = 0.9;
 
 async function compressImage(file: File): Promise<File> {
@@ -565,12 +565,8 @@ export async function uploadImagePresigned(token: string, file: File, folder: "a
   if (!putRes.ok) {
     throw new ApiError(putRes.status, "upload_failed", "Upload ảnh thất bại");
   }
-  // Step 3: Confirm upload → backend generates thumbnail
-  try {
-    await request("/upload/confirm", { token, method: "POST", body: JSON.stringify({ key: presign.key }) });
-  } catch {
-    // Thumbnail generation failed — original image still works
-  }
+  // Step 3: Confirm upload → backend generates thumbnail (fire-and-forget)
+  request("/upload/confirm", { token, method: "POST", body: JSON.stringify({ key: presign.key }) }).catch(() => {});
   return { url: presign.public_url };
 }
 
