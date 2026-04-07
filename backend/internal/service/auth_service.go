@@ -121,7 +121,7 @@ func (s *AuthService) SendOTP(ctx context.Context, phone string) error {
 	}
 
 	code := generateOTP()
-	expiresAt := time.Now().Add(5 * time.Minute)
+	expiresAt := time.Now().Add(10 * time.Minute)
 
 	if err := s.otpRepo.Create(ctx, phone, code, expiresAt); err != nil {
 		return fmt.Errorf("create OTP: %w", err)

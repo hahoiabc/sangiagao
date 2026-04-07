@@ -111,6 +111,15 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 	})
 }
 
+func (h *AdminHandler) ListTrialUsers(c *gin.Context) {
+	users, err := h.adminService.ListTrialUsers(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list trial users"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": users, "total": len(users)})
+}
+
 type blockUserRequest struct {
 	Reason string `json:"reason" binding:"required"`
 }

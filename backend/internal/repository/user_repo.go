@@ -421,6 +421,50 @@ func (r *UserRepo) ListUsers(ctx context.Context, search string, page, limit int
 	return users, total, rows.Err()
 }
 
+func (r *UserRepo) ListTrialUsers(ctx context.Context) ([]*model.User, error) {
+	query := `SELECT ` + userColumns + `, sub.sub_expires_at FROM users
+		INNER JOIN (
+			SELECT DISTINCT user_id, MAX(expires_at) AS sub_expires_at
+			FROM subscriptions WHERE plan = 'free_trial'
+			GROUP BY user_id
+		) sub ON sub.user_id = users.id
+		ORDER BY users.created_at DESC`
+
+	rows, err := r.pool.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []*model.User
+	for rows.Next() {
+		var u model.User
+		var discardDistrict *string
+		var phoneEncrypt *string
+		if err := rows.Scan(
+			&u.ID, &u.Phone, &u.Role, &u.Name, &u.AvatarURL,
+			&u.Address, &u.Province, &discardDistrict, &u.Ward, &u.Description, &u.OrgName,
+			&u.IsBlocked, &u.BlockReason, &u.AcceptedTOSAt,
+			&u.CreatedAt, &u.UpdatedAt,
+			&phoneEncrypt,
+			&u.SubscriptionExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		if phoneEncrypt != nil && *phoneEncrypt != "" {
+			decrypted, decErr := r.crypto.Decrypt(*phoneEncrypt)
+			if decErr == nil {
+				u.Phone = decrypted
+			}
+		}
+		users = append(users, &u)
+	}
+	if users == nil {
+		users = []*model.User{}
+	}
+	return users, rows.Err()
+}
+
 func (r *UserRepo) GetDashboardStats(ctx context.Context) (map[string]int, error) {
 	// Single query with subqueries — 1 DB round-trip instead of 6
 	const q = `SELECT

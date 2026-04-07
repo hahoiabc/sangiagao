@@ -38,6 +38,7 @@ type UserRepository interface {
 	UnblockUser(ctx context.Context, id string) (*model.User, error)
 	DeleteUser(ctx context.Context, id string) error
 	ListUsers(ctx context.Context, search string, page, limit int) ([]*model.User, int, error)
+	ListTrialUsers(ctx context.Context) ([]*model.User, error)
 	GetDashboardStats(ctx context.Context) (map[string]int, error)
 	GetDashboardCharts(ctx context.Context) (*repository.DashboardCharts, error)
 }

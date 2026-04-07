@@ -529,6 +529,7 @@ func main() {
 				adminOnly.Use(middleware.RequireRole("owner", "admin"))
 				{
 					adminOnly.GET("/users", middleware.RequirePermission(permissionService, "users.list"), adminHandler.ListUsers)
+					adminOnly.GET("/users/trial", middleware.RequirePermission(permissionService, "users.list"), adminHandler.ListTrialUsers)
 					adminOnly.GET("/users/:id", middleware.RequirePermission(permissionService, "users.detail"), adminHandler.GetUser)
 					adminOnly.GET("/users/:id/listings", middleware.RequirePermission(permissionService, "users.detail"), adminHandler.ListUserListings)
 					adminOnly.GET("/users/:id/subscriptions", middleware.RequirePermission(permissionService, "users.detail"), adminHandler.ListUserSubscriptions)

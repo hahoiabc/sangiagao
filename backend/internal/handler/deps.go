@@ -96,6 +96,7 @@ type AdminServiceInterface interface {
 	GetDashboardStats(ctx context.Context) (map[string]int, error)
 	GetDashboardCharts(ctx context.Context) (*repository.DashboardCharts, error)
 	ListUsers(ctx context.Context, search string, page, limit int) ([]*model.User, int, error)
+	ListTrialUsers(ctx context.Context) ([]*model.User, error)
 	GetUserByID(ctx context.Context, userID string) (*model.User, error)
 	ListUserListings(ctx context.Context, userID string, page, limit int) ([]*model.Listing, int, error)
 	ListUserSubscriptions(ctx context.Context, userID string, page, limit int) ([]*model.Subscription, int, error)

@@ -14,10 +14,10 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { MoreHorizontal, Eye, ShieldBan, ShieldCheck, CreditCard, UserCog, Users, Shield, Check, X, Lock } from "lucide-react";
+import { MoreHorizontal, Eye, ShieldBan, ShieldCheck, CreditCard, UserCog, Users, Shield, Check, X, Lock, FlaskConical, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
-import { listUsers, blockUser, unblockUser, activateSubscription, changeUserRole, getPermissions, savePermissions, type User, type PermissionMatrix } from "@/services/api";
+import { listUsers, blockUser, unblockUser, activateSubscription, changeUserRole, getPermissions, savePermissions, listTrialUsers, deleteUser, type User, type PermissionMatrix } from "@/services/api";
 import { cn } from "@/lib/utils";
 
 // ── Roles ──
@@ -310,11 +310,160 @@ function RolePermissionsTab() {
   );
 }
 
+// ── Trial Users Tab ──
+function TrialUsersTab() {
+  const { user: currentUser } = useAuth();
+  const router = useRouter();
+  const [trialUsers, setTrialUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<User | null>(null);
+
+  const fetchTrialUsers = useCallback(async () => {
+    if (!currentUser) return;
+    setLoading(true);
+    try {
+      const res = await listTrialUsers("");
+      setTrialUsers(res.data ?? []);
+    } catch {
+      toast.error("Không thể tải danh sách tài khoản dùng thử");
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    fetchTrialUsers();
+  }, [fetchTrialUsers]);
+
+  async function handleDelete() {
+    if (!confirmDelete) return;
+    setDeleting(confirmDelete.id);
+    try {
+      await deleteUser("", confirmDelete.id);
+      toast.success(`Đã xóa tài khoản ${confirmDelete.phone}`);
+      setConfirmDelete(null);
+      fetchTrialUsers();
+    } catch {
+      toast.error("Xóa tài khoản thất bại");
+    } finally {
+      setDeleting(null);
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm text-muted-foreground">
+          Danh sách tài khoản đăng ký dùng thử. Chủ sở hữu có thể xóa để tiện test hệ thống.
+        </p>
+        <span className="text-sm font-medium">{trialUsers.length} tài khoản</span>
+      </div>
+
+      <div className="rounded-lg border shadow-sm bg-card overflow-x-auto">
+        <Table className="min-w-[700px]">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Thành viên</TableHead>
+              <TableHead>SĐT</TableHead>
+              <TableHead>Địa chỉ</TableHead>
+              <TableHead>Trạng thái gói</TableHead>
+              <TableHead>Ngày tạo</TableHead>
+              <TableHead className="text-right">Thao tác</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Đang tải...</TableCell>
+              </TableRow>
+            ) : trialUsers.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Không có tài khoản dùng thử</TableCell>
+              </TableRow>
+            ) : (
+              trialUsers.map((u) => (
+                <TableRow key={u.id} className="hover:bg-muted/50">
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={u.avatar_url} alt={u.name || u.phone} />
+                        <AvatarFallback className="text-xs">
+                          {(u.name || u.phone || "?").charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="font-medium text-sm">{u.name || "-"}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-mono text-sm">{u.phone}</TableCell>
+                  <TableCell className="text-sm">
+                    {[u.ward, u.province].filter(Boolean).join(", ") || "-"}
+                  </TableCell>
+                  <TableCell>
+                    {u.subscription_expires_at && new Date(u.subscription_expires_at) > new Date() ? (
+                      <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border bg-blue-50 text-blue-700 border-blue-200">
+                        Dùng thử — {new Date(u.subscription_expires_at).toLocaleDateString("vi-VN")}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border bg-gray-50 text-gray-500 border-gray-200">
+                        Hết hạn
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {new Date(u.created_at).toLocaleDateString("vi-VN")}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => router.push(`/users/${u.id}`)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      {currentUser?.role === "owner" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                          onClick={() => setConfirmDelete(u)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Confirm Delete Dialog */}
+      <Dialog open={!!confirmDelete} onOpenChange={() => setConfirmDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xóa tài khoản dùng thử</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Bạn có chắc muốn xóa tài khoản <strong>{confirmDelete?.phone}</strong> ({confirmDelete?.name || "Chưa đặt tên"})?
+            Hành động này không thể hoàn tác.
+          </p>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmDelete(null)}>Hủy</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={!!deleting}>
+              {deleting ? "Đang xóa..." : "Xóa tài khoản"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 // ── Main page ──
 export default function UsersPage() {
   const { user: currentUser } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"users" | "roles">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "trial" | "roles">("users");
   const [users, setUsers] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
@@ -438,6 +587,18 @@ export default function UsersPage() {
           Quản lý người dùng
         </button>
         <button
+          onClick={() => setActiveTab("trial")}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px",
+            activeTab === "trial"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
+          )}
+        >
+          <FlaskConical className="h-4 w-4" />
+          Dùng thử
+        </button>
+        <button
           onClick={() => setActiveTab("roles")}
           className={cn(
             "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px",
@@ -450,6 +611,9 @@ export default function UsersPage() {
           Vai trò & Quyền hạn
         </button>
       </div>
+
+      {/* ── Tab: Trial Users ── */}
+      {activeTab === "trial" && <TrialUsersTab />}
 
       {/* ── Tab: Roles & Permissions ── */}
       {activeTab === "roles" && <RolePermissionsTab />}

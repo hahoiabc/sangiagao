@@ -41,6 +41,10 @@ func (s *AdminService) ListUsers(ctx context.Context, search string, page, limit
 	return s.userRepo.ListUsers(ctx, search, page, limit)
 }
 
+func (s *AdminService) ListTrialUsers(ctx context.Context) ([]*model.User, error) {
+	return s.userRepo.ListTrialUsers(ctx)
+}
+
 func (s *AdminService) GetUserByID(ctx context.Context, userID string) (*model.User, error) {
 	return s.userRepo.GetByID(ctx, userID)
 }

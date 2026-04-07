@@ -211,6 +211,13 @@ func (m *mockAdminService) ListUsers(ctx context.Context, search string, page, l
 	}
 	return args.Get(0).([]*model.User), args.Int(1), args.Error(2)
 }
+func (m *mockAdminService) ListTrialUsers(ctx context.Context) ([]*model.User, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*model.User), args.Error(1)
+}
 func (m *mockAdminService) BlockUser(ctx context.Context, userID, reason, callerRole string) (*model.User, error) {
 	args := m.Called(ctx, userID, reason, callerRole)
 	if args.Get(0) == nil {
