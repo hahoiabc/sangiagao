@@ -77,6 +77,31 @@ func (h *SiteSettingsHandler) UpdateGuideVideo(c *gin.Context) {
 	c.JSON(http.StatusOK, setting)
 }
 
+// GetAboutPage — public, no auth required
+func (h *SiteSettingsHandler) GetAboutPage(c *gin.Context) {
+	setting, err := h.service.GetAboutPage(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không thể lấy nội dung trang giới thiệu"})
+		return
+	}
+	c.JSON(http.StatusOK, setting)
+}
+
+// UpdateAboutPage — admin only
+func (h *SiteSettingsHandler) UpdateAboutPage(c *gin.Context) {
+	var req model.UpdateAboutPageRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Nội dung không hợp lệ (tối đa 10000 ký tự)"})
+		return
+	}
+	setting, err := h.service.UpdateAboutPage(c.Request.Context(), req.Value)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cập nhật trang giới thiệu thất bại"})
+		return
+	}
+	c.JSON(http.StatusOK, setting)
+}
+
 // UpdateSloganColor — admin only
 func (h *SiteSettingsHandler) UpdateSloganColor(c *gin.Context) {
 	var req model.UpdateSiteSettingRequest

@@ -402,6 +402,10 @@ export async function getSloganColor(): Promise<{ key: string; value: string }> 
   return request<{ key: string; value: string }>("/site-settings/slogan-color");
 }
 
+export async function getAboutPage(): Promise<{ key: string; value: string }> {
+  return request<{ key: string; value: string }>("/site-settings/about-page");
+}
+
 export async function getProductCatalog() {
   return request<RiceCategory[]>("/marketplace/product-catalog");
 }

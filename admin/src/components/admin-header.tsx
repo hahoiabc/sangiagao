@@ -16,6 +16,7 @@ const pageTitles: Record<string, string> = {
   "/feedbacks": "Góp ý",
   "/profile": "Tài khoản của tôi",
   "/slogan": "Quản lý Slogan",
+  "/gioi-thieu": "Trang giới thiệu",
   "/monitoring": "Giám sát hệ thống",
 };
 

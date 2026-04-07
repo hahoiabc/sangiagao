@@ -838,6 +838,17 @@ export async function updateGuideVideo(value: string): Promise<SiteSetting> {
   });
 }
 
+export async function getAboutPage(): Promise<SiteSetting> {
+  return request<SiteSetting>("/site-settings/about-page");
+}
+
+export async function updateAboutPage(value: string): Promise<SiteSetting> {
+  return request<SiteSetting>("/admin/site-settings/about-page", {
+    method: "PUT",
+    body: JSON.stringify({ value }),
+  });
+}
+
 // --- Payments ---
 export interface PaymentOrder {
   id: string;

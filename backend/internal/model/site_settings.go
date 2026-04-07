@@ -11,3 +11,7 @@ type SiteSetting struct {
 type UpdateSiteSettingRequest struct {
 	Value string `json:"value" binding:"required,max=500"`
 }
+
+type UpdateAboutPageRequest struct {
+	Value string `json:"value" binding:"required,max=10000"`
+}

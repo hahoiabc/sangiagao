@@ -341,6 +341,7 @@ func main() {
 		v1.GET("/site-settings/slogan", siteSettingsHandler.GetSlogan)
 		v1.GET("/site-settings/slogan-color", siteSettingsHandler.GetSloganColor)
 		v1.GET("/site-settings/guide-video", siteSettingsHandler.GetGuideVideo)
+		v1.GET("/site-settings/about-page", siteSettingsHandler.GetAboutPage)
 
 		// SePay webhook (public — verified by API key in handler)
 		v1.POST("/webhooks/sepay", paymentHandler.SepayWebhook)
@@ -511,6 +512,7 @@ func main() {
 				admin.PUT("/site-settings/slogan", siteSettingsHandler.UpdateSlogan)
 				admin.PUT("/site-settings/slogan-color", siteSettingsHandler.UpdateSloganColor)
 				admin.PUT("/site-settings/guide-video", siteSettingsHandler.UpdateGuideVideo)
+				admin.PUT("/site-settings/about-page", siteSettingsHandler.UpdateAboutPage)
 
 				// System Inbox management
 				admin.GET("/inbox", inboxHandler.AdminList)
