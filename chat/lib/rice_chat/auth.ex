@@ -9,7 +9,7 @@ defmodule RiceChat.Auth do
   end
 
   def verify_token(token) do
-    secret = System.get_env("JWT_SECRET", "dev-jwt-secret-change-in-production")
+    secret = System.get_env("JWT_SECRET") || raise("JWT_SECRET environment variable must be set")
     signer = Joken.Signer.create("HS256", secret)
 
     case verify_and_validate(token, signer) do

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"regexp"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -347,8 +348,11 @@ func (r *UserRepo) ListUsers(ctx context.Context, search string, page, limit int
 			countArgs = []interface{}{phoneHash}
 		} else {
 			// Name search only (can't LIKE on encrypted phone)
+			// Escape LIKE wildcards to prevent pattern injection
+			escaped := strings.ReplaceAll(search, "%", "\\%")
+			escaped = strings.ReplaceAll(escaped, "_", "\\_")
 			countQuery = `SELECT COUNT(*) FROM users WHERE name ILIKE $1`
-			countArgs = []interface{}{"%" + search + "%"}
+			countArgs = []interface{}{"%" + escaped + "%"}
 		}
 	} else {
 		countQuery = `SELECT COUNT(*) FROM users`
@@ -375,10 +379,12 @@ func (r *UserRepo) ListUsers(ctx context.Context, search string, page, limit int
 				ORDER BY users.created_at DESC LIMIT $2 OFFSET $3`
 			dataArgs = []interface{}{phoneHash, limit, offset}
 		} else {
+			escaped := strings.ReplaceAll(search, "%", "\\%")
+			escaped = strings.ReplaceAll(escaped, "_", "\\_")
 			dataQuery = `SELECT ` + userColumns + `, sub.sub_expires_at FROM users` + subExpiryJoin + `
 				WHERE name ILIKE $1
 				ORDER BY users.created_at DESC LIMIT $2 OFFSET $3`
-			dataArgs = []interface{}{"%" + search + "%", limit, offset}
+			dataArgs = []interface{}{"%" + escaped + "%", limit, offset}
 		}
 	} else {
 		dataQuery = `SELECT ` + userColumns + `, sub.sub_expires_at FROM users` + subExpiryJoin + `

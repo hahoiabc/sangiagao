@@ -5,13 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, ImageIcon, X, Search, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
-import { useAuth } from "@/lib/auth";
 import { broadcastNotification, sendNotification, listUsers, type User } from "@/services/api";
 
 type Tab = "broadcast" | "individual";
 
 export default function NotificationsPage() {
-  const { token } = useAuth();
   const [tab, setTab] = useState<Tab>("broadcast");
 
   return (
@@ -47,15 +45,15 @@ export default function NotificationsPage() {
       </div>
 
       {tab === "broadcast" ? (
-        <BroadcastForm token={token} />
+        <BroadcastForm />
       ) : (
-        <IndividualForm token={token} />
+        <IndividualForm />
       )}
     </div>
   );
 }
 
-function BroadcastForm({ token }: { token: string | null }) {
+function BroadcastForm() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -73,7 +71,7 @@ function BroadcastForm({ token }: { token: string | null }) {
       if (imageUrl.trim()) {
         payload.image_url = imageUrl.trim();
       }
-      const result = await broadcastNotification(token ?? "", payload);
+      const result = await broadcastNotification(payload);
       toast.success(`Gửi thành công tới ${result.sent_to} thành viên`);
       setTitle("");
       setBody("");
@@ -130,7 +128,7 @@ function BroadcastForm({ token }: { token: string | null }) {
   );
 }
 
-function IndividualForm({ token }: { token: string | null }) {
+function IndividualForm() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -141,7 +139,7 @@ function IndividualForm({ token }: { token: string | null }) {
     if (!selectedUser || !title.trim() || !body.trim()) return;
     setSending(true);
     try {
-      await sendNotification(token ?? "", {
+      await sendNotification({
         user_id: selectedUser.id,
         title: title.trim(),
         body: body.trim(),
@@ -180,7 +178,7 @@ function IndividualForm({ token }: { token: string | null }) {
             </Button>
           </div>
         ) : (
-          <UserSearch token={token} onSelect={setSelectedUser} />
+          <UserSearch onSelect={setSelectedUser} />
         )}
       </div>
 
@@ -201,7 +199,7 @@ function IndividualForm({ token }: { token: string | null }) {
   );
 }
 
-function UserSearch({ token, onSelect }: { token: string | null; onSelect: (u: User) => void }) {
+function UserSearch({ onSelect }: { onSelect: (u: User) => void }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
@@ -219,7 +217,7 @@ function UserSearch({ token, onSelect }: { token: string | null; onSelect: (u: U
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
-        const res = await listUsers(token ?? "", query.trim(), 1, 10);
+        const res = await listUsers("", query.trim(), 1, 10);
         setResults(res.data || []);
         setOpen(true);
       } catch {
@@ -229,7 +227,7 @@ function UserSearch({ token, onSelect }: { token: string | null; onSelect: (u: U
       }
     }, 300);
     return () => clearTimeout(debounceRef.current);
-  }, [query, token]);
+  }, [query]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {

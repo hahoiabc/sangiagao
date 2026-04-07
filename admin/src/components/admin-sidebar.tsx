@@ -66,14 +66,13 @@ function saveNavOrder(items: typeof defaultNavItems) {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
 
-function useUnrepliedCount(token: string | null) {
+function useUnrepliedCount() {
   const [unrepliedCount, setUnrepliedCount] = useState(0);
 
   const fetchUnreplied = useCallback(async () => {
-    if (!token) return;
     try {
       const res = await fetch(`${API_BASE}/admin/feedbacks/unreplied-count`, {
-        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
       });
       if (res.ok) {
         const data = await res.json();
@@ -82,7 +81,7 @@ function useUnrepliedCount(token: string | null) {
     } catch {
       // ignore
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     fetchUnreplied();
@@ -242,8 +241,8 @@ function SidebarBrand() {
 
 export function AdminSidebar() {
   const pathname = usePathname();
-  const { user, token, logout } = useAuth();
-  const unrepliedCount = useUnrepliedCount(token);
+  const { user, logout } = useAuth();
+  const unrepliedCount = useUnrepliedCount();
 
   return (
     <aside className="hidden lg:flex h-screen w-64 flex-col bg-sidebar">
@@ -256,8 +255,8 @@ export function AdminSidebar() {
 
 export function MobileSidebar() {
   const pathname = usePathname();
-  const { user, token, logout } = useAuth();
-  const unrepliedCount = useUnrepliedCount(token);
+  const { user, logout } = useAuth();
+  const unrepliedCount = useUnrepliedCount();
   const [open, setOpen] = useState(false);
 
   // Close on route change

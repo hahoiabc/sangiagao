@@ -7,7 +7,7 @@ import { AdminSidebar } from "@/components/admin-sidebar";
 import { AdminHeader } from "@/components/admin-header";
 
 const allowedRoles = ["owner", "admin", "editor"];
-const adminOnlyPaths = ["/users"];
+const adminOnlyPaths = ["/users", "/revenue", "/notifications", "/zalo-zns"];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();

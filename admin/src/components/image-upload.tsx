@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
-import { useAuth } from "@/lib/auth";
 import { uploadImage } from "@/services/api";
 
 interface ImageUploadProps {
@@ -14,7 +13,6 @@ interface ImageUploadProps {
 }
 
 export function ImageUpload({ folder, onUpload, maxSizeMB = 5, className }: ImageUploadProps) {
-  const { token } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +20,7 @@ export function ImageUpload({ folder, onUpload, maxSizeMB = 5, className }: Imag
 
   async function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !token) return;
+    if (!file) return;
 
     if (file.size > maxSizeMB * 1024 * 1024) {
       setError(`File không được vượt quá ${maxSizeMB}MB`);
@@ -39,7 +37,7 @@ export function ImageUpload({ folder, onUpload, maxSizeMB = 5, className }: Imag
     setUploading(true);
 
     try {
-      const result = await uploadImage(token, file, folder);
+      const result = await uploadImage(file, folder);
       onUpload(result.url);
     } catch {
       setError("Tải ảnh thất bại. Vui lòng thử lại.");

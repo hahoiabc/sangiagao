@@ -16,6 +16,8 @@ DATE_LABEL=$(date +"%Y-%m-%d %H:%M:%S")
 PG_BACKUP_DIR="/backup/postgres"
 MONGO_BACKUP_DIR="/backup/mongo"
 RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-30}"
+ENCRYPT_BACKUPS="${BACKUP_ENCRYPT:-false}"
+GPG_PASSPHRASE="${BACKUP_GPG_PASSPHRASE:-}"
 
 mkdir -p "$PG_BACKUP_DIR" "$MONGO_BACKUP_DIR"
 
@@ -45,6 +47,12 @@ if [ ! -s "$PG_FILE" ]; then
   echo "[PostgreSQL] ERROR: Backup file rỗng hoặc không tồn tại!" >&2
   exit 1
 fi
+if [ "$ENCRYPT_BACKUPS" = "true" ] && [ -n "$GPG_PASSPHRASE" ]; then
+  echo "[PostgreSQL] Đang mã hóa backup..."
+  echo "$GPG_PASSPHRASE" | gpg --batch --yes --passphrase-fd 0 --symmetric --cipher-algo AES256 -o "${PG_FILE}.gpg" "$PG_FILE"
+  rm -f "$PG_FILE"
+  PG_FILE="${PG_FILE}.gpg"
+fi
 PG_SIZE=$(du -h "$PG_FILE" | cut -f1)
 echo "[PostgreSQL] Backup thành công: $PG_FILE ($PG_SIZE)"
 
@@ -69,6 +77,14 @@ if [ ! -d "$MONGO_FILE" ]; then
   echo "[MongoDB] ERROR: Backup thư mục không tồn tại!" >&2
   exit 1
 fi
+if [ "$ENCRYPT_BACKUPS" = "true" ] && [ -n "$GPG_PASSPHRASE" ]; then
+  echo "[MongoDB] Đang mã hóa backup..."
+  MONGO_TAR="${MONGO_FILE}.tar.gz"
+  tar -czf "$MONGO_TAR" -C "$(dirname "$MONGO_FILE")" "$(basename "$MONGO_FILE")"
+  echo "$GPG_PASSPHRASE" | gpg --batch --yes --passphrase-fd 0 --symmetric --cipher-algo AES256 -o "${MONGO_TAR}.gpg" "$MONGO_TAR"
+  rm -rf "$MONGO_FILE" "$MONGO_TAR"
+  MONGO_FILE="${MONGO_TAR}.gpg"
+fi
 MONGO_SIZE=$(du -sh "$MONGO_FILE" | cut -f1)
 echo "[MongoDB] Backup thành công: $MONGO_FILE ($MONGO_SIZE)"
 
@@ -77,16 +93,16 @@ echo "[MongoDB] Backup thành công: $MONGO_FILE ($MONGO_SIZE)"
 # ========================
 echo "[Cleanup] Xóa backup cũ hơn ${RETENTION_DAYS} ngày..."
 
-PG_DELETED=$(find "$PG_BACKUP_DIR" -name "*.sql.gz" -mtime +"$RETENTION_DAYS" -delete -print | wc -l)
-MONGO_DELETED=$(find "$MONGO_BACKUP_DIR" -maxdepth 1 -type d -name "${MONGO_DB}_*" -mtime +"$RETENTION_DAYS" -exec rm -rf {} + -print | wc -l)
+PG_DELETED=$(find "$PG_BACKUP_DIR" \( -name "*.sql.gz" -o -name "*.sql.gz.gpg" \) -mtime +"$RETENTION_DAYS" -delete -print | wc -l)
+MONGO_DELETED=$(find "$MONGO_BACKUP_DIR" -maxdepth 1 \( -type d -name "${MONGO_DB}_*" -o -name "*.tar.gz.gpg" \) -mtime +"$RETENTION_DAYS" -exec rm -rf {} + -print | wc -l)
 
 echo "[Cleanup] Đã xóa: $PG_DELETED file PG, $MONGO_DELETED thư mục Mongo"
 
 # ========================
 # 4. Tổng kết
 # ========================
-PG_TOTAL=$(find "$PG_BACKUP_DIR" -name "*.sql.gz" | wc -l)
-MONGO_TOTAL=$(find "$MONGO_BACKUP_DIR" -maxdepth 1 -type d -name "${MONGO_DB}_*" | wc -l)
+PG_TOTAL=$(find "$PG_BACKUP_DIR" \( -name "*.sql.gz" -o -name "*.sql.gz.gpg" \) | wc -l)
+MONGO_TOTAL=$(find "$MONGO_BACKUP_DIR" -maxdepth 1 \( -type d -name "${MONGO_DB}_*" -o -name "*.tar.gz.gpg" \) | wc -l)
 TOTAL_SIZE=$(du -sh /backup | cut -f1)
 
 echo "============================================"

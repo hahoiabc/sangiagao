@@ -15,11 +15,11 @@ defmodule RiceChat.Application do
       # PostgreSQL connection (conversations live in PG)
       {Postgrex, [
         name: :pg,
-        hostname: System.get_env("PG_HOST", "localhost"),
+        hostname: System.get_env("PG_HOST") || raise("PG_HOST must be set"),
         port: String.to_integer(System.get_env("PG_PORT", "5432")),
-        username: System.get_env("PG_USER", "rice_user"),
-        password: System.get_env("PG_PASSWORD", "rice_password"),
-        database: System.get_env("PG_DATABASE", "rice_marketplace")
+        username: System.get_env("PG_USER") || raise("PG_USER must be set"),
+        password: System.get_env("PG_PASSWORD") || raise("PG_PASSWORD must be set"),
+        database: System.get_env("PG_DATABASE") || raise("PG_DATABASE must be set")
       ]},
       # Phoenix endpoint
       RiceChatWeb.Endpoint

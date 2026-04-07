@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@/lib/auth";
 import { getSlogan, updateSlogan, getSloganColor, updateSloganColor, getGuideVideo, updateGuideVideo } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +21,6 @@ const PRESET_COLORS = [
 ];
 
 export default function SloganPage() {
-  const { token } = useAuth();
   const [slogan, setSlogan] = useState("");
   const [savedSlogan, setSavedSlogan] = useState("");
   const [color, setColor] = useState("#4F46E5");

@@ -150,10 +150,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         return;
       }
 
-      // Pass token as query param — Phoenix UserSocket reads it from connect params
-      final wsUrl = Uri.parse('$_phoenixWsUrl?token=$token');
+      final wsUrl = Uri.parse(_phoenixWsUrl);
       _channel = IOWebSocketChannel.connect(
         wsUrl,
+        headers: {'X-Auth-Token': token},
         customClient: !kDebugMode ? (HttpClient()
           ..badCertificateCallback = (cert, host, port) =>
               ['sangiagao.vn', 'www.sangiagao.vn'].contains(host)) : null,

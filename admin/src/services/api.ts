@@ -686,9 +686,8 @@ export interface BroadcastResponse {
   sent_to: number;
 }
 
-export async function broadcastNotification(token: string, data: BroadcastRequest): Promise<BroadcastResponse> {
+export async function broadcastNotification(data: BroadcastRequest): Promise<BroadcastResponse> {
   return request<BroadcastResponse>("/admin/notifications/broadcast", {
-    token,
     method: "POST",
     body: JSON.stringify(data),
   });
@@ -702,9 +701,8 @@ export interface SendNotificationRequest {
   image_url?: string;
 }
 
-export async function sendNotification(token: string, data: SendNotificationRequest): Promise<{ message: string }> {
+export async function sendNotification(data: SendNotificationRequest): Promise<{ message: string }> {
   return request<{ message: string }>("/admin/notifications/send", {
-    token,
     method: "POST",
     body: JSON.stringify(data),
   });

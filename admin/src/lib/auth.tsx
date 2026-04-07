@@ -12,7 +12,6 @@ interface AuthUser {
 
 interface AuthContextType {
   user: AuthUser | null;
-  token: string | null;
   login: (user: AuthUser, accessToken: string, refreshToken: string) => void;
   logout: () => void;
   isLoading: boolean;
@@ -65,10 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = "/login";
   }, []);
 
-  // token is kept in the interface for backward compatibility but always null
-  // (auth is handled via httpOnly cookies now)
   return (
-    <AuthContext.Provider value={{ user, token: null, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

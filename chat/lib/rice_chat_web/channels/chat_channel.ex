@@ -85,27 +85,39 @@ defmodule RiceChatWeb.ChatChannel do
   # Relay: broadcast a message already saved by Go backend (no DB write)
   @impl true
   def handle_in("relay", payload, socket) do
-    broadcast_from!(socket, "new_message", %{
-      id: to_string(payload["id"] || ""),
-      conversation_id: to_string(payload["conversation_id"] || socket.assigns.conversation_id),
-      sender_id: to_string(payload["sender_id"] || socket.assigns.user_id),
-      content: to_string(payload["content"] || ""),
-      type: to_string(payload["type"] || "text"),
-      reply_to_id: if(payload["reply_to_id"], do: to_string(payload["reply_to_id"]), else: nil),
-      timestamp: to_string(payload["created_at"] || DateTime.to_iso8601(DateTime.utc_now())),
-      read_at: nil
-    })
-    {:noreply, socket}
+    type = to_string(payload["type"] || "text")
+
+    if type not in @valid_types do
+      {:reply, {:error, %{reason: "invalid message type"}}, socket}
+    else
+      broadcast_from!(socket, "new_message", %{
+        id: to_string(payload["id"] || ""),
+        conversation_id: to_string(payload["conversation_id"] || socket.assigns.conversation_id),
+        sender_id: socket.assigns.user_id,
+        content: to_string(payload["content"] || ""),
+        type: type,
+        reply_to_id: if(payload["reply_to_id"], do: to_string(payload["reply_to_id"]), else: nil),
+        timestamp: to_string(payload["created_at"] || DateTime.to_iso8601(DateTime.utc_now())),
+        read_at: nil
+      })
+      {:noreply, socket}
+    end
   end
+
+  @allowed_emoji ~w(👍 ❤️ 😂 😮 😢 😡 🔥 👎)
 
   @impl true
   def handle_in("reaction", %{"message_id" => message_id, "emoji" => emoji}, socket) do
-    broadcast!(socket, "reaction", %{
-      message_id: message_id,
-      user_id: socket.assigns.user_id,
-      emoji: emoji
-    })
-    {:noreply, socket}
+    if emoji in @allowed_emoji do
+      broadcast!(socket, "reaction", %{
+        message_id: message_id,
+        user_id: socket.assigns.user_id,
+        emoji: emoji
+      })
+      {:noreply, socket}
+    else
+      {:reply, {:error, %{reason: "invalid emoji"}}, socket}
+    end
   end
 
   # --- Serialization ---

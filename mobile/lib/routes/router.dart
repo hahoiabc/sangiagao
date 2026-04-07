@@ -33,6 +33,13 @@ import '../widgets/main_shell.dart';
 final _uuidRegex = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$');
 bool _isValidId(String? id) => id != null && _uuidRegex.hasMatch(id);
 
+// Sanitize deep link query params: only allow alphanumeric, underscore, hyphen
+String? _sanitizeParam(String? value) {
+  if (value == null) return null;
+  final sanitized = value.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '');
+  return sanitized.isEmpty ? null : sanitized;
+}
+
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
 
@@ -74,9 +81,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/marketplace/search',
             builder: (_, state) => MarketplaceScreen(
-              initialCategory: state.uri.queryParameters['category'],
-              initialType: state.uri.queryParameters['type'],
-              initialSort: state.uri.queryParameters['sort'],
+              initialCategory: _sanitizeParam(state.uri.queryParameters['category']),
+              initialType: _sanitizeParam(state.uri.queryParameters['type']),
+              initialSort: _sanitizeParam(state.uri.queryParameters['sort']),
             ),
           ),
           GoRoute(

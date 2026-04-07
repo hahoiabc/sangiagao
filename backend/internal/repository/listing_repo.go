@@ -245,11 +245,8 @@ func (r *ListingRepo) Search(ctx context.Context, filter *model.ListingFilter) (
 	argIdx := 1
 
 	if filter.Query != "" {
-		// Convert search query to tsquery format
-		words := strings.Fields(filter.Query)
-		tsquery := strings.Join(words, " & ")
-		where = append(where, fmt.Sprintf("search_vector @@ to_tsquery('simple', $%d)", argIdx))
-		args = append(args, tsquery)
+		where = append(where, fmt.Sprintf("search_vector @@ plainto_tsquery('simple', $%d)", argIdx))
+		args = append(args, filter.Query)
 		argIdx++
 	}
 

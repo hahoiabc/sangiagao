@@ -36,7 +36,11 @@ const nextConfig: NextConfig = {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=()",
           },
-          // CSP is set by nginx
+          // Primary CSP is set by nginx; this is a defense-in-depth fallback
+          {
+            key: "Content-Security-Policy",
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; font-src 'self' data:; connect-src 'self' https://admin.sangiagao.vn https://sangiagao.vn; frame-ancestors 'none'",
+          },
         ],
       },
     ];
