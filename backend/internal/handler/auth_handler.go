@@ -111,7 +111,7 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 		case errors.Is(err, service.ErrInvalidPhone):
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid phone number format"})
 		case errors.Is(err, service.ErrInvalidOTP):
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired OTP"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid or expired OTP"})
 		case errors.Is(err, service.ErrTooManyAttempts):
 			c.JSON(http.StatusTooManyRequests, gin.H{"error": "too many failed attempts"})
 		case errors.Is(err, service.ErrUserBlocked):
@@ -177,7 +177,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":    "Đã gửi mã OTP",
-		"expires_in": 300,
+		"expires_in": 600,
 	})
 }
 
@@ -204,7 +204,7 @@ func (h *AuthHandler) CompleteRegister(c *gin.Context) {
 		case errors.Is(err, service.ErrInvalidPhone):
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Số điện thoại không hợp lệ"})
 		case errors.Is(err, service.ErrInvalidOTP):
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Mã OTP không đúng hoặc đã hết hạn"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Mã OTP không đúng hoặc đã hết hạn"})
 		case errors.Is(err, service.ErrTooManyAttempts):
 			c.JSON(http.StatusTooManyRequests, gin.H{"error": "Quá nhiều lần thử"})
 		case errors.Is(err, service.ErrPhoneExists):
@@ -307,7 +307,7 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 		case errors.Is(err, service.ErrInvalidPhone):
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Số điện thoại không hợp lệ"})
 		case errors.Is(err, service.ErrInvalidOTP):
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Mã OTP không đúng hoặc đã hết hạn"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Mã OTP không đúng hoặc đã hết hạn"})
 		case errors.Is(err, service.ErrTooManyAttempts):
 			c.JSON(http.StatusTooManyRequests, gin.H{"error": "Quá nhiều lần thử"})
 		case errors.Is(err, service.ErrWeakPassword):

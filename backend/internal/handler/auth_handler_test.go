@@ -195,7 +195,7 @@ func TestVerifyOTP_InvalidOTP(t *testing.T) {
 
 	w := doPost(r, "/auth/verify-otp", `{"phone":"0901234567","code":"999999"}`)
 
-	assert.Equal(t, 401, w.Code)
+	assert.Equal(t, 400, w.Code)
 	assert.Contains(t, w.Body.String(), "invalid or expired OTP")
 }
 
