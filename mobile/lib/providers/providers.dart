@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/api_service.dart';
 import '../models/user.dart';
@@ -207,4 +209,29 @@ class PermissionNotifier extends StateNotifier<Map<String, bool>> {
 
 final permissionProvider = StateNotifierProvider<PermissionNotifier, Map<String, bool>>(
   (ref) => PermissionNotifier(ref.read(apiServiceProvider)),
+);
+
+// Network connectivity state
+class ConnectivityNotifier extends StateNotifier<bool> {
+  late final StreamSubscription<List<ConnectivityResult>> _sub;
+
+  ConnectivityNotifier() : super(true) {
+    _sub = Connectivity().onConnectivityChanged.listen((results) {
+      state = results.any((r) => r != ConnectivityResult.none);
+    });
+    // Check initial state
+    Connectivity().checkConnectivity().then((results) {
+      state = results.any((r) => r != ConnectivityResult.none);
+    });
+  }
+
+  @override
+  void dispose() {
+    _sub.cancel();
+    super.dispose();
+  }
+}
+
+final connectivityProvider = StateNotifierProvider<ConnectivityNotifier, bool>(
+  (ref) => ConnectivityNotifier(),
 );

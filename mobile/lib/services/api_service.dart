@@ -73,13 +73,56 @@ class ApiService {
             final response = await _dio.fetch(opts);
             return handler.resolve(response);
           } else {
-            // Refresh failed — clear tokens to force re-login
             await _storage.deleteAll();
           }
         }
-        return handler.next(error);
+        // Wrap network errors with friendly Vietnamese messages
+        return handler.next(_wrapError(error));
       },
     ));
+  }
+
+  /// Wrap DioException with friendly Vietnamese message
+  DioException _wrapError(DioException error) {
+    // If backend returned a response with error message, keep it
+    if (error.response?.data is Map && error.response!.data['error'] != null) {
+      return error;
+    }
+
+    String message;
+    switch (error.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+        message = 'Kết nối quá chậm. Vui lòng thử lại.';
+        break;
+      case DioExceptionType.connectionError:
+        message = 'Không thể kết nối đến máy chủ. Kiểm tra kết nối mạng.';
+        break;
+      default:
+        if (error.response?.statusCode != null) {
+          final code = error.response!.statusCode!;
+          if (code >= 500) {
+            message = 'Lỗi máy chủ. Vui lòng thử lại sau.';
+          } else if (code == 403) {
+            message = 'Bạn không có quyền thực hiện thao tác này.';
+          } else if (code == 429) {
+            message = 'Quá nhiều yêu cầu. Vui lòng chờ một lát.';
+          } else {
+            return error; // Keep original for other status codes
+          }
+        } else {
+          message = 'Lỗi kết nối. Vui lòng thử lại.';
+        }
+    }
+
+    return DioException(
+      requestOptions: error.requestOptions,
+      response: error.response,
+      type: error.type,
+      error: message,
+      message: message,
+    );
   }
 
   /// Get or generate a persistent device ID for spam protection

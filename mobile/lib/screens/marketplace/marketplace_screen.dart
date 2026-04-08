@@ -23,6 +23,7 @@ class MarketplaceScreen extends ConsumerStatefulWidget {
 class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
   List<Listing> _listings = [];
   bool _loading = true;
+  String? _error;
   int _page = 1;
   int _total = 0;
   static const _limit = 20;
@@ -56,7 +57,10 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
 
   Future<void> _loadListings() async {
     if (!mounted) return;
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final api = ref.read(apiServiceProvider);
       final result = await api.searchMarketplace(
@@ -74,6 +78,9 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
       });
     } catch (e) {
       debugPrint('Load listings error: $e');
+      if (mounted) {
+        setState(() => _error = 'Không thể tải dữ liệu. Kiểm tra kết nối mạng và thử lại.');
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -146,9 +153,29 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
-                : _listings.isEmpty
-                    ? const Center(child: Text('Không tìm thấy tin đăng nào'))
-                    : RefreshIndicator(
+                : _error != null
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.wifi_off, size: 48, color: Colors.grey),
+                              const SizedBox(height: 12),
+                              Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                onPressed: _loadListings,
+                                icon: const Icon(Icons.refresh, size: 18),
+                                label: const Text('Thử lại'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : _listings.isEmpty
+                        ? const Center(child: Text('Không tìm thấy tin đăng nào'))
+                        : RefreshIndicator(
                         onRefresh: _loadListings,
                         child: ListView.separated(
                           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),

@@ -35,6 +35,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
         _tryNavigate();
       }
     });
+
+    // Timeout: nếu auth check hang (mất mạng), chuyển marketplace sau 10 giây
+    Future.delayed(const Duration(seconds: 10), () {
+      if (mounted && !_navigated) {
+        _navigated = true;
+        context.go('/marketplace');
+      }
+    });
   }
 
   void _tryNavigate() {

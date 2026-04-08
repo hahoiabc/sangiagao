@@ -890,24 +890,30 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       if (other != null)
                         Row(
                           children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: other.isOnline ? AppColors.onlineGreen : AppColors.offlineGrey,
-                                shape: BoxShape.circle,
+                            if (!_joined) ...[
+                              const Icon(Icons.sync_problem, size: 12, color: Colors.orange),
+                              const SizedBox(width: 3),
+                              const Text('Đang kết nối lại...', style: TextStyle(fontSize: 11, color: Colors.orange)),
+                            ] else ...[
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: other.isOnline ? AppColors.onlineGreen : AppColors.offlineGrey,
+                                  shape: BoxShape.circle,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              other.isOnline
-                                  ? 'Online'
-                                  : (other.lastSeenText ?? 'Offline'),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: other.isOnline ? AppColors.onlineGreen : AppColors.offlineGrey,
+                              const SizedBox(width: 4),
+                              Text(
+                                other.isOnline
+                                    ? 'Online'
+                                    : (other.lastSeenText ?? 'Offline'),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: other.isOnline ? AppColors.onlineGreen : AppColors.offlineGrey,
+                                ),
                               ),
-                            ),
+                            ],
                           ],
                         ),
                     ],

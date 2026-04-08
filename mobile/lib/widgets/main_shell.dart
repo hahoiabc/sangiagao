@@ -221,9 +221,28 @@ class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserv
     // Show gate for restricted pages when subscription expired
     final showGate = _shouldShowGate;
 
+    final isOnline = ref.watch(connectivityProvider);
+
     return Scaffold(
       body: Column(
         children: [
+          if (!isOnline)
+            Container(
+              width: double.infinity,
+              color: Colors.red.shade700,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.wifi_off, color: Colors.white, size: 16),
+                  SizedBox(width: 8),
+                  Text(
+                    'Không có kết nối mạng',
+                    style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ),
           if (_shouldShowBanner && !showGate)
             MaterialBanner(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
