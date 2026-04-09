@@ -17,6 +17,7 @@ class _ProductForm {
   final List<String> imageUrls = [];
   final List<String> localPaths = [];
   bool uploading = false;
+  Future<String>? uploadFuture;
 
   _ProductForm()
       : priceCtrl = TextEditingController(),
@@ -166,7 +167,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
   }
 
   Future<void> _pickImage(_ProductForm form) async {
-    if (form.imageUrls.isNotEmpty) {
+    if (form.localPaths.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Tối đa 1 hình ảnh')),
       );
@@ -180,32 +181,41 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
     );
     if (image == null) return;
 
-    setState(() => form.uploading = true);
-    try {
-      final url = await ref.read(apiServiceProvider).uploadImagePresigned(image.path, 'listings');
+    // Hiện ảnh local ngay lập tức
+    setState(() {
+      form.localPaths.add(image.path);
+      form.uploading = true;
+    });
+
+    // Upload chạy nền
+    form.uploadFuture = ref.read(apiServiceProvider).uploadImagePresigned(image.path, 'listings');
+    form.uploadFuture!.then((url) {
       if (mounted) {
         setState(() {
           form.imageUrls.add(url);
-          form.localPaths.add(image.path);
+          form.uploading = false;
         });
       }
+    }).catchError((e) {
       if (mounted) {
-        setState(() => form.uploading = false);
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => form.uploading = false);
+        setState(() {
+          form.localPaths.clear();
+          form.uploading = false;
+          form.uploadFuture = null;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Lỗi tải ảnh: $e')),
         );
       }
-    }
+    });
   }
 
   void _removeImage(_ProductForm form, int index) {
     setState(() {
-      form.imageUrls.removeAt(index);
+      if (index < form.imageUrls.length) form.imageUrls.removeAt(index);
       form.localPaths.removeAt(index);
+      form.uploadFuture = null;
+      form.uploading = false;
     });
   }
 
@@ -346,6 +356,18 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
 
     setState(() => _submitting = true);
     try {
+      // Chờ tất cả upload nền hoàn tất trước khi tạo listing
+      for (final form in validForms) {
+        if (form.uploadFuture != null && form.imageUrls.isEmpty) {
+          try {
+            final url = await form.uploadFuture!;
+            form.imageUrls.add(url);
+          } catch (_) {
+            // Upload fail — tiếp tục đăng tin không ảnh
+          }
+        }
+      }
+
       final api = ref.read(apiServiceProvider);
       final result = await api.batchCreateListings(items);
       final createdList = result['listings'] as List? ?? [];
@@ -588,6 +610,16 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
                           fit: BoxFit.cover,
                         ),
                       ),
+                      if (form.uploading)
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black38,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))),
+                          ),
+                        ),
                       Positioned(
                         top: -6,
                         right: -6,
@@ -603,7 +635,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
                     ],
                   );
                 }),
-                if (form.imageUrls.isEmpty)
+                if (form.localPaths.isEmpty)
                   GestureDetector(
                     onTap: form.uploading ? null : () => _pickImage(form),
                     child: Container(
@@ -621,7 +653,7 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
                               children: [
                                 Icon(Icons.add_a_photo_outlined, size: 22, color: AppColors.textHint),
                                 const SizedBox(height: 2),
-                                Text('${form.imageUrls.length}/1', style: TextStyle(fontSize: 11, color: AppColors.textHint)),
+                                Text('${form.localPaths.length}/1', style: TextStyle(fontSize: 11, color: AppColors.textHint)),
                               ],
                             ),
                     ),
