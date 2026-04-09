@@ -64,16 +64,16 @@ function MarketplaceContent() {
     fetch("/vietnam_divisions.csv")
       .then((res) => res.text())
       .then((text) => {
-        const lines = text.trim().split("\n").slice(1);
+        const lines = text.trim().split("\n").slice(3); // Skip 2 empty lines + header
         const provMap = new Map<string, string>();
         const wardList: { code: string; name: string; provinceCode: string }[] = [];
         for (const line of lines) {
           const cols = line.split(",");
           if (cols.length < 8) continue;
-          const pCode = cols[0].trim();
-          const pName = cols[1].trim();
-          const wCode = cols[6]?.trim();
-          const wName = cols[7]?.trim();
+          const pCode = cols[2].trim();  // Mã tỉnh
+          const pName = cols[3].trim();  // Tên tỉnh
+          const wCode = cols[6]?.trim(); // Mã xã
+          const wName = cols[7]?.trim(); // Tên xã
           if (pCode && pName) provMap.set(pCode, pName);
           if (wCode && wName && pCode) wardList.push({ code: wCode, name: wName, provinceCode: pCode });
         }
