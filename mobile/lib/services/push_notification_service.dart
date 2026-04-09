@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' show VoidCallback;
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -70,6 +71,14 @@ class PushNotificationService {
       ),
       onDidReceiveNotificationResponse: _onLocalNotificationTap,
     );
+
+    // Skip Firebase messaging if Firebase not initialized
+    try {
+      FirebaseMessaging.instance;
+    } catch (_) {
+      debugPrint('[PUSH] Firebase not available, skipping push notifications');
+      return;
+    }
 
     // Request permission (Android 13+ and iOS)
     await FirebaseMessaging.instance.requestPermission(

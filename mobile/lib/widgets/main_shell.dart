@@ -140,10 +140,23 @@ class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserv
     return !_isAllowedRoute(location);
   }
 
+  // Default permissions for authenticated users (shown while API permissions load)
+  static const _defaultAuthPerms = {
+    'marketplace.browse', 'marketplace.search', 'marketplace.detail',
+    'marketplace.priceboard', 'marketplace.seller_profile',
+    'listings.create', 'listings.edit_own',
+    'chat.send', 'chat.send_image',
+    'ratings.create', 'reports.create', 'feedback.create',
+  };
+
   bool _hasPerm(String key) {
     final user = ref.read(authProvider).user;
     if (user != null && user.role == 'owner') return true;
-    return ref.read(permissionProvider.notifier).hasPermission(key);
+    final perms = ref.read(permissionProvider);
+    // If permissions loaded → use them; otherwise → use defaults for authenticated users
+    if (perms.isNotEmpty) return perms[key] == true;
+    if (user != null) return _defaultAuthPerms.contains(key);
+    return false;
   }
 
   @override
@@ -153,6 +166,25 @@ class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserv
     final user = ref.watch(authProvider).user;
     // Watch permissions to rebuild when loaded
     ref.watch(permissionProvider);
+
+    // Detect login/logout and reload permissions + timers
+    final nowAuthenticated = user != null;
+    if (nowAuthenticated != _isAuthenticated) {
+      _isAuthenticated = nowAuthenticated;
+      _stopTimers();
+      if (nowAuthenticated) {
+        _checkSubscription();
+        ref.read(unreadCountProvider.notifier).refresh();
+        ref.read(inboxUnreadProvider.notifier).refresh();
+        ref.read(permissionProvider.notifier).load(force: true);
+        _startTimers();
+      } else {
+        _bannerDismissed = false;
+        _needsSubscription = false;
+        _subChecked = true;
+        ref.read(permissionProvider.notifier).loadGuest(force: true);
+      }
+    }
 
     // Build nav destinations based on permissions
     final navItems = <_NavDest>[];
@@ -169,13 +201,11 @@ class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserv
         route: '/marketplace',
       ));
     }
-    if (_hasPerm('listings.create')) {
+    if (user != null) {
       navItems.add(_NavDest(
         dest: const NavigationDestination(icon: Icon(Icons.list_alt), label: 'Tin của tôi'),
         route: '/my-listings',
       ));
-    }
-    if (_hasPerm('chat.send')) {
       navItems.add(_NavDest(
         dest: NavigationDestination(
           icon: Badge(
