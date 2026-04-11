@@ -5,10 +5,10 @@ import { getGuideVideo } from "@/services/api";
 
 function toEmbedUrl(url: string): string | null {
   if (!url) return null;
-  // youtube.com/watch?v=ID → youtube.com/embed/ID
-  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]+)/);
+  // Support: watch?v=ID, youtu.be/ID, embed/ID, shorts/ID
+  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]+)/);
   if (match) return `https://www.youtube.com/embed/${match[1]}`;
-  return url; // fallback: use as-is (direct embed URL)
+  return url;
 }
 
 export default function GuideVideo() {
