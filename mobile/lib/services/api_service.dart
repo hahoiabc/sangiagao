@@ -321,6 +321,11 @@ class ApiService {
     return res.data['value'] as String? ?? '#4F46E5';
   }
 
+  Future<String> getGuideVideo() async {
+    final res = await _dio.get('/site-settings/guide-video');
+    return res.data['value'] as String? ?? '';
+  }
+
   // --- Marketplace ---
   Future<PriceBoardResponse> getPriceBoard() async {
     final res = await _dio.get('/marketplace/price-board');

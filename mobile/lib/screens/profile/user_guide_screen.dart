@@ -1,8 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../providers/providers.dart';
 import '../../theme/app_theme.dart';
 
-class UserGuideScreen extends StatelessWidget {
+class UserGuideScreen extends ConsumerStatefulWidget {
   const UserGuideScreen({super.key});
+
+  @override
+  ConsumerState<UserGuideScreen> createState() => _UserGuideScreenState();
+}
+
+class _UserGuideScreenState extends ConsumerState<UserGuideScreen> {
+  String? _videoUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    ref.read(apiServiceProvider).getGuideVideo().then((url) {
+      if (mounted && url.isNotEmpty) setState(() => _videoUrl = url);
+    }).catchError((_) {});
+  }
+
+  Future<void> _openVideo() async {
+    if (_videoUrl == null) return;
+    final uri = Uri.parse(_videoUrl!);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,6 +42,44 @@ class UserGuideScreen extends StatelessWidget {
             Text('SanGiaGao.vn — Sàn giao dịch gạo Việt Nam',
                 style: TextStyle(fontSize: 13, color: AppColors.textHint)),
             const SizedBox(height: 20),
+            if (_videoUrl != null) ...[
+              InkWell(
+                onTap: _openVideo,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                        child: const Icon(Icons.play_arrow, color: Colors.white, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Xem video hướng dẫn',
+                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                            SizedBox(height: 2),
+                            Text('Mở trên YouTube',
+                                style: TextStyle(fontSize: 12, color: AppColors.textHint)),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.open_in_new, size: 18, color: AppColors.textHint),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
             ..._sections.map((s) => _buildSection(s.$1, s.$2)),
           ],
         ),
