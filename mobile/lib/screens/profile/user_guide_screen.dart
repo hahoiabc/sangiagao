@@ -25,9 +25,7 @@ class _UserGuideScreenState extends ConsumerState<UserGuideScreen> {
   Future<void> _openVideo() async {
     if (_videoUrl == null) return;
     final uri = Uri.parse(_videoUrl!);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   @override
