@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useRef } from "react";
-import { getConversations } from "@/services/api";
+import { getUnreadTotal } from "@/services/api";
 
 const publicLinks = [
   { href: "/bang-gia", label: "Sàn gạo", perm: "marketplace.priceboard" },
@@ -41,9 +41,7 @@ export function Navbar() {
 
     async function fetchUnread() {
       try {
-        const res = await getConversations("", 1, 50);
-        const total = (res.data ?? []).reduce((sum, c) => sum + c.unread_count, 0);
-        setUnreadCount(total);
+        setUnreadCount(await getUnreadTotal());
       } catch {
         // ignore
       }

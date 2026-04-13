@@ -410,20 +410,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       );
       if (images.isEmpty) return;
 
-      setState(() => _uploadingImage = true);
-      try {
-        for (final image in images) {
-          final url = await ref.read(apiServiceProvider).uploadImagePresigned(image.path, 'images');
-          await _sendMessage(url, 'image');
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Gửi ảnh thất bại: $e')),
-          );
-        }
-      } finally {
-        if (mounted) setState(() => _uploadingImage = false);
+      for (final image in images) {
+        _uploadAndSendImage(image.path);
       }
     } else {
       // Camera: single image
@@ -434,21 +422,47 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         imageQuality: 80,
       );
       if (image == null) return;
-
-      setState(() => _uploadingImage = true);
-      try {
-        final url = await ref.read(apiServiceProvider).uploadImagePresigned(image.path, 'images');
-        await _sendMessage(url, 'image');
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Gửi ảnh thất bại: $e')),
-          );
-        }
-      } finally {
-        if (mounted) setState(() => _uploadingImage = false);
-      }
+      _uploadAndSendImage(image.path);
     }
+  }
+
+  void _uploadAndSendImage(String localPath) {
+    // Show temp message with local path immediately
+    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+    final tempMsg = Message(
+      id: tempId,
+      conversationId: widget.conversationId,
+      senderId: _currentUserId ?? '',
+      content: 'file://$localPath',
+      type: 'image',
+      createdAt: DateTime.now().toIso8601String(),
+    );
+    setState(() {
+      _messages.add(tempMsg);
+      _uploadingImage = true;
+    });
+    _scrollToBottom();
+
+    // Upload + send in background
+    ref.read(apiServiceProvider).uploadImagePresigned(localPath, 'images').then((url) async {
+      await _sendMessage(url, 'image');
+      if (mounted) {
+        setState(() {
+          _messages.removeWhere((m) => m.id == tempId);
+          _uploadingImage = false;
+        });
+      }
+    }).catchError((e) {
+      if (mounted) {
+        setState(() {
+          _messages.removeWhere((m) => m.id == tempId);
+          _uploadingImage = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gửi ảnh thất bại: $e')),
+        );
+      }
+    });
   }
 
   // --- Audio recording ---
@@ -1276,18 +1290,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     child: SizedBox(
                       width: 200,
                       height: 200,
-                      child: ThumbnailImage(
-                        imageUrl: msg.content,
-                        fit: BoxFit.cover,
-                        placeholder: (_, __) => Container(
-                          color: AppColors.chatBubbleOther,
-                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                        ),
-                        errorWidget: (_, __, ___) => Container(
-                          color: AppColors.chatBubbleOther,
-                          child: const Icon(Icons.broken_image, size: 48, color: AppColors.textHint),
-                        ),
-                      ),
+                      child: msg.content.startsWith('file://')
+                          ? Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                Image.file(File(msg.content.substring(7)), fit: BoxFit.cover),
+                                Container(color: Colors.black26, child: const Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)))),
+                              ],
+                            )
+                          : ThumbnailImage(
+                              imageUrl: msg.content,
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => Container(
+                                color: AppColors.chatBubbleOther,
+                                child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                              ),
+                              errorWidget: (_, __, ___) => Container(
+                                color: AppColors.chatBubbleOther,
+                                child: const Icon(Icons.broken_image, size: 48, color: AppColors.textHint),
+                              ),
+                            ),
                     ),
                   ),
                 ),

@@ -185,6 +185,68 @@ class _EditListingScreenState extends ConsumerState<EditListingScreen> {
     }
   }
 
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    int initialDay = now.day, initialMonth = now.month, initialYear = now.year;
+    if (_seasonCtrl.text.isNotEmpty) {
+      final parts = _seasonCtrl.text.split('/');
+      if (parts.length == 3) {
+        initialDay = int.tryParse(parts[0]) ?? now.day;
+        initialMonth = int.tryParse(parts[1]) ?? now.month;
+        initialYear = int.tryParse(parts[2]) ?? now.year;
+      }
+    }
+    int selectedDay = initialDay, selectedMonth = initialMonth, selectedYear = initialYear;
+
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          int daysInMonth(int y, int m) => DateTime(y, m + 1, 0).day;
+          final maxDay = daysInMonth(selectedYear, selectedMonth);
+          if (selectedDay > maxDay) selectedDay = maxDay;
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Row(children: [
+                  const Text('Chọn ngày gặt', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                ]),
+                const SizedBox(height: 16),
+                Row(children: [
+                  Expanded(child: _buildDropdown('Ngày', selectedDay, List.generate(maxDay, (i) => i + 1), (v) => setSheetState(() => selectedDay = v!))),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildDropdown('Tháng', selectedMonth, List.generate(12, (i) => i + 1), (v) => setSheetState(() => selectedMonth = v!))),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildDropdown('Năm', selectedYear, List.generate(6, (i) => now.year - 5 + i), (v) => setSheetState(() => selectedYear = v!))),
+                ]),
+                const SizedBox(height: 20),
+                SizedBox(width: double.infinity, child: FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Xác nhận'))),
+              ]),
+            ),
+          );
+        },
+      ),
+    );
+    if (result == true && mounted) {
+      setState(() => _seasonCtrl.text = '${selectedDay.toString().padLeft(2, '0')}/${selectedMonth.toString().padLeft(2, '0')}/$selectedYear');
+    }
+  }
+
+  Widget _buildDropdown(String label, int value, List<int> items, ValueChanged<int?> onChanged) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+      const SizedBox(height: 4),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
+        child: DropdownButton<int>(value: value, isExpanded: true, underline: const SizedBox(), items: items.map((i) => DropdownMenuItem(value: i, child: Text('$i'))).toList(), onChanged: onChanged),
+      ),
+    ]);
+  }
+
   @override
   void dispose() {
     _priceCtrl.dispose();
@@ -330,9 +392,13 @@ class _EditListingScreenState extends ConsumerState<EditListingScreen> {
                       // Harvest season
                       TextField(
                         controller: _seasonCtrl,
+                        readOnly: true,
+                        onTap: _pickDate,
                         decoration: const InputDecoration(
                           labelText: 'Mùa gặt',
+                          hintText: 'Chọn ngày gặt',
                           border: OutlineInputBorder(),
+                          suffixIcon: Icon(Icons.calendar_today, size: 18),
                         ),
                       ),
                       const SizedBox(height: 12),

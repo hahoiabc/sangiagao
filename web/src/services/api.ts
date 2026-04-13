@@ -675,6 +675,11 @@ export async function getConversations(token: string, page: number, limit: numbe
   return request<PaginatedResponse<Conversation>>(`/conversations?${params}`, { token });
 }
 
+export async function getUnreadTotal() {
+  const res = await request<{ total: number }>("/conversations/unread-total");
+  return res.total;
+}
+
 export async function createConversation(token: string, sellerId: string, listingId?: string) {
   const body: Record<string, string> = { seller_id: sellerId };
   if (listingId) body.listing_id = listingId;
