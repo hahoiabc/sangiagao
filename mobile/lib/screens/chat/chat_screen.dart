@@ -522,16 +522,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       return;
     }
 
+    final duration = _recordSeconds;
+    setState(() => _isRecording = false);
+
+    // Show temp message immediately
+    final tempId = 'temp_audio_${DateTime.now().millisecondsSinceEpoch}';
+    final tempMsg = Message(
+      id: tempId,
+      conversationId: widget.conversationId,
+      senderId: _currentUserId ?? '',
+      content: 'audio_uploading:$duration',
+      type: 'audio',
+      createdAt: DateTime.now().toIso8601String(),
+    );
     setState(() {
-      _isRecording = false;
+      _messages.add(tempMsg);
       _uploadingAudio = true;
     });
+    _scrollToBottom();
 
+    // Upload + send in background
     try {
       final url = await ref.read(apiServiceProvider).uploadAudio(path);
+      if (mounted) setState(() => _messages.removeWhere((m) => m.id == tempId));
       await _sendMessage(url, 'audio');
     } catch (e) {
       if (mounted) {
+        setState(() => _messages.removeWhere((m) => m.id == tempId));
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Gửi âm thanh thất bại: $e')),
         );
@@ -1089,6 +1106,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Widget _buildAudioBubble(Message msg, bool isMe) {
+    // Temp uploading state
+    if (msg.content.startsWith('audio_uploading:')) {
+      final secs = int.tryParse(msg.content.split(':').last) ?? 0;
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: isMe ? AppColors.chatBubbleMe : AppColors.chatBubbleOther,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(16), topRight: const Radius.circular(16),
+            bottomLeft: Radius.circular(isMe ? 16 : 4), bottomRight: Radius.circular(isMe ? 4 : 16),
+          ),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+          const SizedBox(width: 8),
+          Text('Đang gửi ${secs}s...', style: TextStyle(fontSize: 13, color: isMe ? Colors.white70 : AppColors.textHint)),
+        ]),
+      );
+    }
+
     final isPlaying = _playingMsgId == msg.id;
     final progress = _playDuration.inMilliseconds > 0 && isPlaying
         ? _playPosition.inMilliseconds / _playDuration.inMilliseconds
