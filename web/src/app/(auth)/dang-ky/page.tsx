@@ -144,6 +144,11 @@ export default function RegisterPage() {
               ? "Nhập số điện thoại để đăng ký"
               : `Xác minh và hoàn tất đăng ký (${phone})`}
           </CardDescription>
+          {step === 1 && (
+            <span className="inline-block mt-1 px-3 py-1 text-xs font-medium text-green-700 bg-green-50 rounded-full">
+              Dùng thử miễn phí 30 ngày
+            </span>
+          )}
         </CardHeader>
         <CardContent>
           {step === 1 ? (

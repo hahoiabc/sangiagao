@@ -318,6 +318,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
+              if (!_step2)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text('Dùng thử miễn phí 30 ngày', style: TextStyle(fontSize: 12, color: Colors.green.shade700, fontWeight: FontWeight.w500)),
+                ),
               Text(
                 _step2
                     ? 'Nhập mã OTP đã gửi đến ${_phoneController.text} và điền thông tin'

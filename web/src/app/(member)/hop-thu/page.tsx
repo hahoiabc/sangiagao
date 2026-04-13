@@ -155,7 +155,7 @@ export default function SystemInboxPage() {
             <Card
               key={msg.id}
               className={`cursor-pointer transition-colors hover:bg-muted/50 ${
-                !msg.is_read ? "bg-primary/[0.04] border-primary/20" : ""
+                !msg.is_read ? "bg-primary/[0.08] border-primary/30" : ""
               }`}
               onClick={() => handleSelect(msg)}
             >

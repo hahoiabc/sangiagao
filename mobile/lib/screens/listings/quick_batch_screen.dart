@@ -659,7 +659,7 @@ class _QuickBatchScreenState extends ConsumerState<QuickBatchScreen> {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(Icons.add_photo_alternate_outlined, size: 24, color: Colors.grey.shade500),
-                                  Text('Thêm ảnh', style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+                                  Text('${entry.imageUrls.length}/$_kMaxImages ảnh', style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
                                 ],
                               ),
                       ),

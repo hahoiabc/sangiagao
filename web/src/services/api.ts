@@ -28,7 +28,7 @@ interface RequestOptions extends RequestInit {
   timeout?: number;
 }
 
-const DEFAULT_TIMEOUT = 20_000;
+const DEFAULT_TIMEOUT = 10_000;
 const UPLOAD_TIMEOUT = 120_000;
 const REFRESH_TIMEOUT = 10_000;
 const RETRYABLE_STATUSES = [429, 502, 503, 504];

@@ -14,6 +14,7 @@ export default function ForgotPasswordPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [step, setStep] = useState<"phone" | "reset">("phone");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -147,14 +148,23 @@ export default function ForgotPasswordPage() {
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            <Input
-              type={showPassword ? "text" : "password"}
-              placeholder="Nhập lại mật khẩu mới"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="h-11"
-              required
-            />
+            <div className="relative">
+              <Input
+                type={showConfirmPassword ? "text" : "password"}
+                placeholder="Nhập lại mật khẩu mới"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="h-11 pr-10"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
             <p className="text-xs text-muted-foreground">
               Mật khẩu phải có chữ hoa, chữ thường và ký tự đặc biệt
             </p>
