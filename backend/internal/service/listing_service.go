@@ -40,7 +40,7 @@ type catalogCache struct {
 	loadedAt      time.Time
 }
 
-const catalogCacheTTL = 10 * time.Minute
+const catalogCacheTTL = 1 * time.Hour
 
 type ListingService struct {
 	listingRepo ListingRepository

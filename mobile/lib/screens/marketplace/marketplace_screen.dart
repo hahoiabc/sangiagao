@@ -174,7 +174,21 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                         ),
                       )
                     : _listings.isEmpty
-                        ? const Center(child: Text('Không tìm thấy tin đăng nào'))
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(32),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.search_off, size: 48, color: Colors.grey.shade400),
+                                  const SizedBox(height: 12),
+                                  const Text('Không tìm thấy tin đăng nào', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+                                  const SizedBox(height: 4),
+                                  Text('Thử thay đổi từ khóa hoặc bộ lọc', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+                                ],
+                              ),
+                            ),
+                          )
                         : RefreshIndicator(
                         onRefresh: _loadListings,
                         child: ListView.separated(

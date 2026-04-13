@@ -207,7 +207,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   void _startPolling() {
     _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(const Duration(seconds: 10), (_) => _pollNewMessages());
+    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) => _pollNewMessages());
   }
 
 
@@ -663,6 +663,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ListTile(
                 leading: const Icon(Icons.replay, color: AppColors.warning),
                 title: const Text('Thu hồi tin nhắn'),
+                subtitle: const Text('Chỉ thu hồi được trong 24 giờ', style: TextStyle(fontSize: 11)),
                 onTap: () {
                   Navigator.pop(context);
                   _recallMessage(msg);
@@ -939,7 +940,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             child: _loading
                 ? const Align(alignment: Alignment.centerLeft, child: Padding(padding: EdgeInsets.only(left: 16), child: CircularProgressIndicator()))
                 : _messages.isEmpty
-                    ? const Center(child: Text('Chưa có tin nhắn'))
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.chat_bubble_outline, size: 48, color: Colors.grey.shade400),
+                            const SizedBox(height: 12),
+                            const Text('Chưa có tin nhắn', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+                            const SizedBox(height: 4),
+                            Text('Nhắn tin để bắt đầu trò chuyện', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+                          ],
+                        ),
+                      )
                     : _buildGroupedMessages(),
           ),
           if (_otherUserTyping)

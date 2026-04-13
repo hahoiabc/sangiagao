@@ -19,7 +19,8 @@ defmodule RiceChat.Application do
         port: String.to_integer(System.get_env("PG_PORT", "5432")),
         username: System.get_env("PG_USER") || raise("PG_USER must be set"),
         password: System.get_env("PG_PASSWORD") || raise("PG_PASSWORD must be set"),
-        database: System.get_env("PG_DATABASE") || raise("PG_DATABASE must be set")
+        database: System.get_env("PG_DATABASE") || raise("PG_DATABASE must be set"),
+        pool_size: 20
       ]},
       # Phoenix endpoint
       RiceChatWeb.Endpoint
