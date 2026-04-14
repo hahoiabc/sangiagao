@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import GuideVideo from "./guide-video";
 
+export const revalidate = 600; // 10 minutes
+
 export const metadata: Metadata = {
   title: "Hướng dẫn sử dụng | SanGiaGao.Vn",
   description: "Hướng dẫn chi tiết cách sử dụng Sàn Giá Gạo - nền tảng giao dịch gạo Việt Nam",
