@@ -114,7 +114,7 @@ function MarketplaceContent() {
           min_price: minPrice ? Number(minPrice) : undefined,
           max_price: maxPrice ? Number(maxPrice) : undefined,
           page: p,
-          limit: 20,
+          limit: 50,
         });
         setResult(res);
       } catch {
