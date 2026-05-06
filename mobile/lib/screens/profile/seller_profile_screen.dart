@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../models/user.dart';
 import '../../models/rating.dart';
 import '../../providers/providers.dart';
+import '../../providers/user_block_provider.dart';
 import '../../theme/app_theme.dart';
 
 class SellerProfileScreen extends ConsumerStatefulWidget {
@@ -114,6 +115,44 @@ class _SellerProfileScreenState extends ConsumerState<SellerProfileScreen> {
     }
   }
 
+  Future<void> _block() async {
+    if (_seller == null) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Chặn người dùng?'),
+        content: Text(
+          'Sau khi chặn, bạn sẽ không thấy tin đăng và tin nhắn từ "${_seller!.name ?? 'người dùng này'}". '
+          'Người này cũng không thể nhắn tin cho bạn nữa.\n\nBạn có chắc muốn chặn?',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Chặn'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    try {
+      await ref.read(userBlockProvider.notifier).block(widget.sellerId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã chặn người dùng')),
+        );
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Chặn thất bại: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -137,6 +176,23 @@ class _SellerProfileScreenState extends ConsumerState<SellerProfileScreen> {
         title: Text(seller.name ?? 'Thành viên'),
         actions: [
           IconButton(icon: const Icon(Icons.flag_outlined, color: AppColors.error), onPressed: _report, tooltip: 'Báo cáo'),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (v) {
+              if (v == 'block') _block();
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'block',
+                child: ListTile(
+                  leading: Icon(Icons.block, color: AppColors.error),
+                  title: Text('Chặn người dùng', style: TextStyle(color: AppColors.error)),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
       body: SingleChildScrollView(

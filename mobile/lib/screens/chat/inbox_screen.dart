@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../models/conversation.dart';
 import '../../models/user.dart';
 import '../../providers/providers.dart';
+import '../../providers/user_block_provider.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/shimmer_loading.dart';
 import '../../theme/app_theme.dart';
@@ -220,19 +221,25 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
       ),
       body: _loading
           ? const ListSkeleton()
-          : _conversations.isEmpty
-              ? const EmptyState(
+          : Builder(builder: (context) {
+              final blocked = ref.watch(userBlockProvider);
+              final visible = _conversations
+                  .where((c) => c.otherUser == null || !blocked.contains(c.otherUser!.id))
+                  .toList();
+              if (visible.isEmpty) {
+                return const EmptyState(
                   icon: Icons.chat_bubble_outline,
                   title: 'Chưa có cuộc trò chuyện',
                   subtitle: 'Khi bạn liên hệ với người bán, tin nhắn sẽ hiển thị ở đây',
-                )
-              : RefreshIndicator(
+                );
+              }
+              return RefreshIndicator(
                   onRefresh: _load,
                   child: ListView.separated(
-                    itemCount: _conversations.length,
+                    itemCount: visible.length,
                     separatorBuilder: (_, __) => const Divider(height: 1, indent: 72),
                     itemBuilder: (_, i) {
-                      final conv = _conversations[i];
+                      final conv = visible[i];
                       final other = conv.otherUser;
                       final hasUnread = conv.unreadCount > 0;
                       final isOnline = other?.isOnline ?? false;
@@ -340,7 +347,8 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                       );
                     },
                   ),
-                ),
+                );
+            }),
     );
   }
 }

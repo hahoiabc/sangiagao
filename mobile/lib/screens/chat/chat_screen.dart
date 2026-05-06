@@ -22,6 +22,7 @@ import '../../models/conversation.dart';
 import '../../models/listing.dart';
 import '../../models/user.dart';
 import '../../providers/providers.dart';
+import '../../providers/user_block_provider.dart';
 import '../../services/push_notification_service.dart';
 import '../../theme/app_theme.dart';
 
@@ -468,31 +469,54 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   // --- Audio recording ---
 
   Future<void> _startRecording() async {
-    var status = await Permission.microphone.request();
-    if (!status.isGranted) {
-      if (status.isPermanentlyDenied) {
-        if (mounted) {
-          final shouldOpen = await showDialog<bool>(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: const Text('Cần quyền micro'),
-              content: const Text('Bạn đã từ chối quyền micro. Vui lòng vào Cài đặt để cấp quyền.'),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
-                TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Mở Cài đặt')),
-              ],
-            ),
-          );
-          if (shouldOpen == true) {
-            await openAppSettings();
-          }
-        }
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cần cấp quyền micro để ghi âm')),
-        );
-      }
+    final current = await Permission.microphone.status;
+
+    if (current.isPermanentlyDenied) {
+      if (!mounted) return;
+      final shouldOpen = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Cần quyền micro'),
+          content: const Text('Bạn đã từ chối quyền micro. Vui lòng vào Cài đặt để cấp quyền.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Mở Cài đặt')),
+          ],
+        ),
+      );
+      if (shouldOpen == true) await openAppSettings();
       return;
+    }
+
+    if (!current.isGranted) {
+      if (!mounted) return;
+      final proceed = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Quyền truy cập micro'),
+          content: const Text(
+            'Để gửi tin nhắn thoại trong cuộc trò chuyện, ứng dụng cần quyền truy cập micro của thiết bị.\n\n'
+            'Tin nhắn thoại sẽ được tải lên máy chủ Sàn Giá Gạo và gửi cho người nhận. '
+            'Bạn có thể thay đổi quyền này bất kỳ lúc nào trong Cài đặt.',
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Để sau')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Tiếp tục')),
+          ],
+        ),
+      );
+      if (proceed != true) return;
+
+      final status = await Permission.microphone.request();
+      if (!status.isGranted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Cần cấp quyền micro để ghi âm tin nhắn thoại')),
+          );
+        }
+        return;
+      }
     }
 
     final dir = await getTemporaryDirectory();
@@ -769,6 +793,44 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
   }
 
+  Future<void> _blockUser() async {
+    if (_otherUser == null) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Chặn người dùng?'),
+        content: Text(
+          'Sau khi chặn, bạn sẽ không thấy tin đăng và tin nhắn từ "${_otherUser!.name ?? _otherUser!.phone}". '
+          'Người này cũng không thể nhắn tin cho bạn nữa.\n\nBạn có chắc muốn chặn?',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Chặn'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    try {
+      await ref.read(userBlockProvider.notifier).block(_otherUser!.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã chặn người dùng. Nội dung của họ sẽ không còn hiển thị.')),
+        );
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Chặn thất bại: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _reportUser() async {
     if (_otherUser == null) return;
     final reasons = ['Spam', 'Quấy rối', 'Lừa đảo', 'Nội dung không phù hợp', 'Khác'];
@@ -955,12 +1017,29 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               actions: [
                 PopupMenuButton<String>(
                   onSelected: (value) {
-                    if (value == 'report_user' && _otherUser != null) {
-                      _reportUser();
-                    }
+                    if (_otherUser == null) return;
+                    if (value == 'report_user') _reportUser();
+                    if (value == 'block_user') _blockUser();
                   },
-                  itemBuilder: (_) => [
-                    const PopupMenuItem(value: 'report_user', child: Text('Báo cáo người dùng')),
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(
+                      value: 'report_user',
+                      child: ListTile(
+                        leading: Icon(Icons.flag_outlined),
+                        title: Text('Báo cáo người dùng'),
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'block_user',
+                      child: ListTile(
+                        leading: Icon(Icons.block, color: AppColors.error),
+                        title: Text('Chặn người dùng', style: TextStyle(color: AppColors.error)),
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                      ),
+                    ),
                   ],
                 ),
               ],

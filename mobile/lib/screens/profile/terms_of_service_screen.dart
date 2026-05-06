@@ -82,12 +82,22 @@ class TermsOfServiceScreen extends StatelessWidget {
           '• Chúng tôi không đảm bảo hoàn tiền cho bất kỳ giao dịch nào',
     ),
     (
-      '6. Hành vi bị cấm',
-      '• Spam, quấy rối, đe dọa người dùng khác\n'
-          '• Sử dụng Dịch vụ cho mục đích trái pháp luật\n'
-          '• Cố ý phá hoại, can thiệp vào hệ thống\n'
+      '6. Hành vi bị cấm — KHÔNG KHOAN NHƯỢNG',
+      'SanGiaGao.vn áp dụng chính sách KHÔNG KHOAN NHƯỢNG (zero tolerance) đối với '
+          'nội dung phản cảm và hành vi lạm dụng. Các hành vi sau sẽ bị xóa nội dung '
+          'và khóa tài khoản vĩnh viễn ngay khi phát hiện hoặc nhận được báo cáo:\n\n'
+          '• Đăng nội dung phản cảm, khiêu dâm, bạo lực, kích động thù hằn\n'
+          '• Lừa đảo, gian lận, đăng tin sai lệch để trục lợi\n'
+          '• Spam, quấy rối, đe dọa, bắt nạt người dùng khác\n'
+          '• Sử dụng ngôn từ thô tục, xúc phạm trong chat hoặc tin đăng\n'
           '• Mạo danh người khác hoặc tổ chức\n'
-          '• Thu thập thông tin người dùng trái phép',
+          '• Thu thập thông tin người dùng trái phép\n'
+          '• Cố ý phá hoại, can thiệp vào hệ thống\n'
+          '• Sử dụng Dịch vụ cho mục đích trái pháp luật\n\n'
+          'Người dùng có quyền và trách nhiệm:\n'
+          '• Báo cáo (Report) tin đăng / người dùng vi phạm — có nút "Báo cáo" trên mỗi tin và trong chat\n'
+          '• Chặn (Block) người dùng có hành vi xấu — nội dung của họ sẽ bị ẩn khỏi sàn và chat của bạn ngay lập tức\n'
+          '• Mọi báo cáo đều được đội ngũ kiểm duyệt xử lý trong vòng 24 giờ',
     ),
     (
       '7. Quyền và trách nhiệm của chúng tôi',

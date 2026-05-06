@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sangiagao/rice-marketplace/internal/config"
 	"github.com/sangiagao/rice-marketplace/internal/database"
+	"github.com/sangiagao/rice-marketplace/internal/apple"
 	"github.com/sangiagao/rice-marketplace/internal/handler"
 	"github.com/sangiagao/rice-marketplace/internal/middleware"
 	"github.com/sangiagao/rice-marketplace/internal/repository"
@@ -210,6 +211,21 @@ func main() {
 	catalogHandler := handler.NewCatalogHandler(catalogService)
 	marketplaceHandler := handler.NewMarketplaceHandler(listingService, catalogService)
 	subHandler := handler.NewSubscriptionHandler(subService, adminService)
+
+	// User Block (Apple Guideline 1.2 UGC)
+	userBlockService := service.NewUserBlockService(pgPool)
+	userBlockHandler := handler.NewUserBlockHandler(userBlockService)
+
+	// Apple In-App Purchase (optional — only wire if env vars set)
+	var appleIAPHandler *handler.AppleIAPHandler
+	if appleCfg, err := apple.LoadConfig(); err != nil {
+		slog.Info("apple_iap disabled", "reason", err.Error())
+	} else {
+		appleClient := apple.NewClient(appleCfg)
+		appleIAPService := service.NewAppleIAPService(pgPool, appleClient, appleCfg.BundleID)
+		appleIAPHandler = handler.NewAppleIAPHandler(appleIAPService)
+		slog.Info("apple_iap enabled", "bundle", appleCfg.BundleID, "env", appleCfg.Env)
+	}
 	ratingHandler := handler.NewRatingHandler(ratingService)
 	reportHandler := handler.NewReportHandler(reportService, notifService, listingService, adminService)
 	notifHandler := handler.NewNotificationHandler(notifService)
@@ -346,6 +362,11 @@ func main() {
 		// SePay webhook (public — verified by API key in handler)
 		v1.POST("/webhooks/sepay", paymentHandler.SepayWebhook)
 
+		// Apple App Store Server Notifications V2 (public — JWS verified in handler)
+		if appleIAPHandler != nil {
+			v1.POST("/webhooks/apple/notifications", appleIAPHandler.Webhook)
+		}
+
 		// User (public — permission-controlled)
 		v1.GET("/users/:id/profile", middleware.OptionalJWTAuth(jwtManager), middleware.RequirePermission(permissionService, "marketplace.seller_profile"), userHandler.GetProfile)
 		v1.GET("/users/:id/ratings", middleware.OptionalJWTAuth(jwtManager), middleware.RequirePermission(permissionService, "marketplace.seller_profile"), ratingHandler.ListBySeller)
@@ -419,6 +440,14 @@ func main() {
 			protected.GET("/subscription/status", subHandler.GetStatus)
 			protected.GET("/subscription/plans", subHandler.GetPlans)
 			protected.GET("/subscription/history", subHandler.GetMyHistory)
+			if appleIAPHandler != nil {
+				protected.POST("/subscription/iap/verify", appleIAPHandler.Verify)
+			}
+
+			// User block (Apple Guideline 1.2 UGC)
+			protected.POST("/me/blocks", userBlockHandler.Block)
+			protected.DELETE("/me/blocks/:blocked_id", userBlockHandler.Unblock)
+			protected.GET("/me/blocks", userBlockHandler.List)
 
 			// Notifications
 			notifications := protected.Group("/notifications")

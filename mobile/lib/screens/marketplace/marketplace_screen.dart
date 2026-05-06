@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../models/listing.dart';
 import '../../models/location.dart';
 import '../../providers/providers.dart';
+import '../../providers/user_block_provider.dart';
 import '../../services/location_service.dart';
 import '../../theme/app_theme.dart';
 
@@ -191,12 +192,15 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                           )
                         : RefreshIndicator(
                         onRefresh: _loadListings,
-                        child: ListView.separated(
+                        child: Builder(builder: (context) {
+                          final blocked = ref.watch(userBlockProvider);
+                          final visible = _listings.where((l) => !blocked.contains(l.userId)).toList();
+                          return ListView.separated(
                           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                          itemCount: _listings.length,
+                          itemCount: visible.length,
                           separatorBuilder: (_, __) => const SizedBox(height: 10),
                           itemBuilder: (context, index) {
-                            final listing = _listings[index];
+                            final listing = visible[index];
                             return Card(
                               clipBehavior: Clip.antiAlias,
                               margin: EdgeInsets.zero,
@@ -305,7 +309,8 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                               ),
                             );
                           },
-                        ),
+                        );
+                        }),
                       ),
           ),
           // Pagination

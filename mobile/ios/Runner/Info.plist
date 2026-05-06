@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -22,7 +24,40 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Ứng dụng dùng camera để bạn chụp ảnh sản phẩm gạo cho tin đăng bán (ví dụ: chụp bao gạo ST 25), hoặc chụp ảnh gửi trong tin nhắn chat với người mua/bán. Ảnh chụp sẽ được tải lên máy chủ Sàn Giá Gạo và hiển thị công khai trong tin đăng hoặc gửi cho người nhận trong cuộc trò chuyện.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Ứng dụng dùng micro để bạn ghi âm tin nhắn thoại trong chat với người mua/bán (ví dụ: trao đổi nhanh về giá, số lượng gạo). Tin nhắn thoại sẽ được tải lên máy chủ Sàn Giá Gạo và gửi cho người nhận trong cuộc trò chuyện.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Ứng dụng cần quyền này để lưu ảnh sản phẩm gạo từ tin đăng hoặc ảnh nhận được trong tin nhắn chat vào thư viện ảnh trên thiết bị của bạn (ví dụ: lưu ảnh bao gạo để xem offline).</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Ứng dụng truy cập thư viện ảnh để bạn chọn ảnh sản phẩm gạo từ máy tải lên tin đăng bán (ví dụ: ảnh bao gạo có sẵn), hoặc gửi ảnh trong tin nhắn chat với người mua/bán. Ảnh được chọn sẽ tải lên máy chủ Sàn Giá Gạo và hiển thị trong tin đăng hoặc gửi cho người nhận.</string>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>UIWindowScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>flutter</string>
+					<key>UISceneDelegateClassName</key>
+					<string>FlutterSceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
@@ -41,19 +76,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Ứng dụng cần quyền micro để ghi âm tin nhắn thoại</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Ứng dụng cần quyền truy cập thư viện ảnh để gửi hình ảnh</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Ứng dụng cần quyền truy cập camera để chụp và gửi hình ảnh</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Ứng dụng cần quyền lưu hình ảnh vào thư viện ảnh</string>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
 </dict>
 </plist>

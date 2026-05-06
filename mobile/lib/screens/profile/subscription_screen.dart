@@ -1,8 +1,11 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../providers/providers.dart';
+import '../../services/iap_service.dart';
 import '../../theme/app_theme.dart';
 
 class SubscriptionScreen extends ConsumerStatefulWidget {
@@ -94,14 +97,16 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         _buildStatusCard(sub, isActive, daysLeft),
         const SizedBox(height: 24),
 
-        // Plans section
+        // Plans section — iOS uses StoreKit IAP, Android uses web/Zalo flow
         const Text('Bảng giá gia hạn', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
-        _buildPlansGrid(),
-        const SizedBox(height: 8),
-
-        // Renewal info
-        _buildInfoCard(),
+        if (Platform.isIOS) ...[
+          _buildIAPSection(),
+        ] else ...[
+          _buildPlansGrid(),
+          const SizedBox(height: 8),
+          _buildInfoCard(),
+        ],
 
         if (!isActive) ...[
           const SizedBox(height: 16),
@@ -117,6 +122,174 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         ],
       ],
     );
+  }
+
+  /// iOS-only: load 4 subscription products from StoreKit, render plan cards
+  /// with native price (auto-localized by Apple), Buy + Restore Purchases
+  /// buttons, and the auto-renew disclosure required by Apple guideline 3.1.2.
+  Widget _buildIAPSection() {
+    final iap = ref.watch(iapServiceProvider);
+    final iapNotifier = ref.read(iapServiceProvider.notifier);
+
+    if (iap.loading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 40),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (!iap.available) {
+      return Card(
+        color: AppColors.warning.withValues(alpha: 0.08),
+        child: const Padding(
+          padding: EdgeInsets.all(16),
+          child: Text('Không thể kết nối App Store. Vui lòng kiểm tra Apple ID và thử lại.'),
+        ),
+      );
+    }
+    if (iap.products.isEmpty) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              const Text('Chưa tải được danh sách gói.'),
+              const SizedBox(height: 8),
+              FilledButton(
+                onPressed: () => iapNotifier.loadProducts(),
+                child: const Text('Thử lại'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ...iap.products.map((p) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _buildIAPProductCard(p, iap, iapNotifier),
+            )),
+        const SizedBox(height: 4),
+
+        // Restore Purchases — Apple bắt buộc cho mọi app có IAP
+        OutlinedButton.icon(
+          onPressed: iap.processing ? null : () => iapNotifier.restore(),
+          icon: const Icon(Icons.restore, size: 18),
+          label: const Text('Khôi phục giao dịch đã mua'),
+        ),
+
+        if (iap.error != null) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.error.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, color: AppColors.error, size: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text(iap.error!, style: TextStyle(color: AppColors.error, fontSize: 13))),
+              ],
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 20),
+
+        // Auto-renew disclosure — Apple bắt buộc, không được sửa nội dung core
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.info.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            'Gói tự động gia hạn cho đến khi bạn hủy. Phí gia hạn được tính 24 giờ trước ngày hết hạn. '
+            'Bạn có thể quản lý hoặc hủy gói trong Cài đặt iOS → Apple ID → Gói đăng ký.\n\n'
+            'Bằng việc đăng ký, bạn đồng ý với Điều khoản sử dụng và Chính sách bảo mật của Sàn Giá Gạo.',
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.5),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TextButton(
+              onPressed: () => launchUrl(Uri.parse('https://sangiagao.vn/dieu-khoan-su-dung'), mode: LaunchMode.externalApplication),
+              child: const Text('Điều khoản', style: TextStyle(fontSize: 12)),
+            ),
+            const Text('•', style: TextStyle(color: AppColors.textHint)),
+            TextButton(
+              onPressed: () => launchUrl(Uri.parse('https://sangiagao.vn/chinh-sach-bao-mat'), mode: LaunchMode.externalApplication),
+              child: const Text('Bảo mật', style: TextStyle(fontSize: 12)),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIAPProductCard(ProductDetails product, IAPState state, IAPService notifier) {
+    final months = _monthsFromProductId(product.id);
+    final isOneMonth = months == 1;
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.title.isNotEmpty ? product.title : 'Gói $months tháng',
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    product.price,
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
+                  ),
+                  if (isOneMonth) ...[
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '1 tháng dùng thử miễn phí',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.success),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            FilledButton(
+              onPressed: state.processing ? null : () => notifier.buy(product),
+              child: state.processing
+                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Mua'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  int _monthsFromProductId(String id) {
+    if (id.endsWith('.1m')) return 1;
+    if (id.endsWith('.3m')) return 3;
+    if (id.endsWith('.6m')) return 6;
+    if (id.endsWith('.12m')) return 12;
+    return 0;
   }
 
   Widget _buildStatusCard(Map<String, dynamic>? sub, bool isActive, int daysLeft) {

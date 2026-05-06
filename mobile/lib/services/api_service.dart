@@ -560,6 +560,28 @@ class ApiService {
     return res.data;
   }
 
+  /// Verify Apple StoreKit transaction with backend.
+  /// Backend calls App Store Server API to fetch decoded transaction,
+  /// upserts subscription record, and restores listings.
+  Future<Map<String, dynamic>> verifyAppleIAP(String transactionId) async {
+    final res = await _dio.post('/subscription/iap/verify', data: {'transaction_id': transactionId});
+    return res.data;
+  }
+
+  // --- User Block (Apple Guideline 1.2) ---
+  Future<void> blockUser(String userId, {String? reason}) async {
+    await _dio.post('/me/blocks', data: {'blocked_id': userId, if (reason != null) 'reason': reason});
+  }
+
+  Future<void> unblockUser(String userId) async {
+    await _dio.delete('/me/blocks/$userId');
+  }
+
+  Future<List<Map<String, dynamic>>> listBlocks() async {
+    final res = await _dio.get('/me/blocks');
+    return (res.data['data'] as List? ?? const []).cast<Map<String, dynamic>>();
+  }
+
   // --- Feedback ---
   Future<void> createFeedback(String content) async {
     await _dio.post('/feedbacks', data: {'content': content});
