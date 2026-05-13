@@ -8,17 +8,25 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sangiagao/rice-marketplace/internal/model"
 	"github.com/sangiagao/rice-marketplace/internal/repository"
+	"github.com/sangiagao/rice-marketplace/internal/service"
 )
 
 // AdminReferralHandler exposes commission/payout management for admin + aff roles.
 // 'admin' role: full CRUD across all referrers.
 // 'aff' role: READ-ONLY, filtered to records where referrer_user_id = self.
 type AdminReferralHandler struct {
-	repo *repository.AffiliateRepo
+	repo            *repository.AffiliateRepo
+	referralService *service.ReferralService
 }
 
 func NewAdminReferralHandler(repo *repository.AffiliateRepo) *AdminReferralHandler {
 	return &AdminReferralHandler{repo: repo}
+}
+
+// SetReferralService wires the optional referral service for auto-creating
+// codes when listing aff users (backfill).
+func (h *AdminReferralHandler) SetReferralService(s *service.ReferralService) {
+	h.referralService = s
 }
 
 func isAdminRole(role string) bool {
@@ -93,30 +101,35 @@ func (h *AdminReferralHandler) UpsertRule(c *gin.Context) {
 	c.JSON(http.StatusOK, rule)
 }
 
-// Leaderboard groups commission_records by referrer_user_id with aggregate
-// totals. Admin sees all. Aff sees only their own row.
+// Leaderboard lists all aff-role users + anyone with at least 1 commission,
+// with aggregate totals (zeros if no commission yet). Admin sees all rows.
+// Aff sees only their own row.
 func (h *AdminReferralHandler) Leaderboard(c *gin.Context) {
 	role := c.GetString("user_role")
 	userID := c.GetString("user_id")
 
-	q := `SELECT cr.referrer_user_id,
-	             u.phone, u.name,
+	q := `SELECT u.id AS referrer_user_id,
+	             u.phone, COALESCE(u.name, '') AS name,
 	             COALESCE(rc.code, '') AS code,
 	             COUNT(DISTINCT cr.referee_user_id) AS total_referrals,
 	             COALESCE(SUM(cr.commission_amount), 0) AS total_earned,
 	             COALESCE(SUM(CASE WHEN cr.status='payable' THEN cr.commission_amount END), 0) AS payable_amount,
 	             COALESCE(SUM(CASE WHEN cr.status='pending' THEN cr.commission_amount END), 0) AS pending_amount,
 	             COALESCE(SUM(CASE WHEN cr.status='paid' THEN cr.commission_amount END), 0) AS paid_amount
-	        FROM commission_records cr
-	        JOIN users u ON u.id = cr.referrer_user_id
-	        LEFT JOIN referral_codes rc ON rc.user_id = cr.referrer_user_id`
+	        FROM users u
+	        LEFT JOIN referral_codes rc ON rc.user_id = u.id
+	        LEFT JOIN commission_records cr ON cr.referrer_user_id = u.id`
 	args := []any{}
 	if !isAdminRole(role) {
-		q += " WHERE cr.referrer_user_id = $1"
+		q += " WHERE u.id = $1"
 		args = append(args, userID)
+	} else {
+		q += ` WHERE u.role = 'aff'
+		         OR EXISTS (SELECT 1 FROM commission_records WHERE referrer_user_id = u.id)
+		         OR rc.id IS NOT NULL`
 	}
-	q += ` GROUP BY cr.referrer_user_id, u.phone, u.name, rc.code
-	       ORDER BY total_earned DESC`
+	q += ` GROUP BY u.id, u.phone, u.name, rc.code
+	       ORDER BY total_earned DESC, u.created_at DESC`
 
 	rows, err := h.repo.Pool().Query(c.Request.Context(), q, args...)
 	if err != nil {
@@ -145,6 +158,18 @@ func (h *AdminReferralHandler) Leaderboard(c *gin.Context) {
 		}
 		out = append(out, r)
 	}
+
+	// Backfill: any row with empty code → lazy-create. One-shot per user.
+	if h.referralService != nil {
+		for i := range out {
+			if out[i].Code == "" {
+				if rc, err := h.referralService.GetOrCreateCode(c.Request.Context(), out[i].ReferrerUserID); err == nil && rc != nil {
+					out[i].Code = rc.Code
+				}
+			}
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{"data": out})
 }
 

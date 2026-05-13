@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/sangiagao/rice-marketplace/internal/model"
+	"github.com/sangiagao/rice-marketplace/internal/service"
 )
 
 // AuditLogger logs admin actions for accountability.
@@ -15,13 +16,18 @@ type AuditLogger interface {
 }
 
 type AdminHandler struct {
-	adminService AdminServiceInterface
-	audit        AuditLogger
+	adminService    AdminServiceInterface
+	audit           AuditLogger
+	referralService *service.ReferralService
 }
 
 func NewAdminHandler(adminService AdminServiceInterface, audit AuditLogger) *AdminHandler {
 	return &AdminHandler{adminService: adminService, audit: audit}
 }
+
+// SetReferralService wires the affiliate referral service for auto-creating
+// referral codes when a user is promoted to role='aff'.
+func (h *AdminHandler) SetReferralService(s *service.ReferralService) { h.referralService = s }
 
 func (h *AdminHandler) logAudit(ctx context.Context, adminID, action, targetType, targetID string, details map[string]interface{}) {
 	if h.audit == nil {
@@ -184,6 +190,12 @@ func (h *AdminHandler) ChangeUserRole(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	// Auto-create referral code when promoted to 'aff' so admin sees the code
+	// immediately in the leaderboard (no need to wait for user to open profile).
+	if req.Role == "aff" && h.referralService != nil {
+		_, _ = h.referralService.GetOrCreateCode(c.Request.Context(), userID)
 	}
 
 	h.logAudit(c.Request.Context(), callerID, "change_role", "user", userID, map[string]interface{}{"new_role": req.Role})
