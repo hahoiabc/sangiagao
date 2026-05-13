@@ -119,12 +119,13 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   if (res.status === 403) {
     const body = await res.json().catch(() => ({}));
-    throw new ApiError(403, body.error || "forbidden", body.message || "Bạn không có quyền thực hiện thao tác này");
+    throw new ApiError(403, body.error || "forbidden", body.error || body.message || "Bạn không có quyền thực hiện thao tác này");
   }
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new ApiError(res.status, body.error || "unknown", body.message || res.statusText);
+    // Backend returns user-facing Vietnamese in body.error → use that as Error.message
+    throw new ApiError(res.status, body.error || "unknown", body.error || body.message || res.statusText);
   }
 
   return res.json();
