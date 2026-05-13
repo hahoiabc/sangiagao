@@ -25,6 +25,10 @@ func NewReferralService(pool *pgxpool.Pool, affRepo *repository.AffiliateRepo) *
 	return &ReferralService{pool: pool, affRepo: affRepo}
 }
 
+// Pool exposes the underlying pgxpool for handlers needing ad-hoc SQL
+// (e.g. /me/referees, /me/payouts).
+func (s *ReferralService) Pool() *pgxpool.Pool { return s.pool }
+
 var (
 	ErrReferralSelfRefer    = errors.New("không thể tự dùng mã giới thiệu của mình")
 	ErrReferralAlreadySet   = errors.New("tài khoản này đã có người giới thiệu")

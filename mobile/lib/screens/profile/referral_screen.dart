@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
 import '../../providers/providers.dart';
@@ -114,6 +115,8 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
                       _buildCodeCard(),
                       const SizedBox(height: 16),
                       _buildStatsCard(),
+                      if (isAff) const SizedBox(height: 16),
+                      if (isAff) _buildQuickNav(),
                       if (isAff) const SizedBox(height: 16),
                       if (isAff) _buildHistoryHeader(),
                       if (isAff) ..._history.map(_buildHistoryItem),
@@ -284,6 +287,28 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
           Text(value, style: TextStyle(fontWeight: FontWeight.w600, color: color)),
         ],
       ),
+    );
+  }
+
+  Widget _buildQuickNav() {
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            icon: const Icon(Icons.people_outline, size: 18),
+            label: const Text('Người tôi giới thiệu'),
+            onPressed: () => context.push('/referral/referees'),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: OutlinedButton.icon(
+            icon: const Icon(Icons.account_balance_wallet_outlined, size: 18),
+            label: const Text('Lịch sử thanh toán'),
+            onPressed: () => context.push('/referral/payouts'),
+          ),
+        ),
+      ],
     );
   }
 

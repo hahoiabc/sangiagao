@@ -614,6 +614,16 @@ class ApiService {
     await _dio.post('/me/become-affiliate');
   }
 
+  Future<List<Map<String, dynamic>>> getMyReferees() async {
+    final res = await _dio.get('/me/referees');
+    return ((res.data['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
+  }
+
+  Future<List<Map<String, dynamic>>> getMyPayouts() async {
+    final res = await _dio.get('/me/payouts');
+    return ((res.data['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
+  }
+
   // --- Feedback ---
   Future<void> createFeedback(String content) async {
     await _dio.post('/feedbacks', data: {'content': content});
