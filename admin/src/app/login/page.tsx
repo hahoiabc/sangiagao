@@ -24,12 +24,13 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const result = await loginPassword(phone, password);
-      if (!["owner", "admin", "editor"].includes(result.user.role)) {
-        setError("Truy cập bị từ chối. Cần quyền quản trị viên hoặc biên tập viên.");
+      if (!["owner", "admin", "editor", "aff"].includes(result.user.role)) {
+        setError("Truy cập bị từ chối. Cần quyền quản trị, biên tập hoặc đối tác Affiliate.");
         return;
       }
       login(result.user, result.tokens.access_token, result.tokens.refresh_token);
-      router.push("/dashboard");
+      // Aff role lands on /referrals (the only place they can go).
+      router.push(result.user.role === "aff" ? "/referrals" : "/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Đăng nhập thất bại");
     } finally {
