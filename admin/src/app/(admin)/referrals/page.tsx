@@ -78,7 +78,12 @@ export default function ReferralsOverviewPage() {
                 {rows.map((r) => (
                   <tr key={r.referrer_user_id} className="border-b hover:bg-gray-50">
                     <td className="px-4 py-2">
-                      <div className="font-medium">{r.name || "—"}</div>
+                      <Link
+                        href={`/referrals/${r.referrer_user_id}`}
+                        className="font-medium hover:text-primary hover:underline"
+                      >
+                        {r.name || "—"}
+                      </Link>
                       <div className="text-xs text-gray-500">{r.phone}</div>
                     </td>
                     <td className="px-4 py-2 font-mono">{r.code}</td>

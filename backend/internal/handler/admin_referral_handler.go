@@ -351,6 +351,110 @@ func (h *AdminReferralHandler) ListPayouts(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": payouts})
 }
 
+// ListReferees — list members referred by a given referrer with their
+// subscription status + commission stats. Aff sees only their own list
+// (path referrerID must match user_id), admin sees any. Aff receives
+// masked phone + hidden name; admin sees full.
+func (h *AdminReferralHandler) ListReferees(c *gin.Context) {
+	role := c.GetString("user_role")
+	userID := c.GetString("user_id")
+	referrerID := c.Param("referrer_id")
+
+	if !h.can(role, permViewAll) && referrerID != userID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied"})
+		return
+	}
+
+	rows, err := h.repo.Pool().Query(c.Request.Context(),
+		`SELECT u.id, u.phone, COALESCE(u.name, ''),
+		        to_char(u.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS registered_at,
+		        COALESCE(s.status, 'none') AS sub_status,
+		        to_char(s.expires_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS sub_expires_at,
+		        (SELECT COUNT(*)::int FROM commission_records cr WHERE cr.referee_user_id = u.id AND cr.referrer_user_id = u.referrer_user_id) AS commission_count,
+		        (SELECT COALESCE(SUM(commission_amount), 0) FROM commission_records cr WHERE cr.referee_user_id = u.id AND cr.referrer_user_id = u.referrer_user_id) AS total_commission,
+		        (SELECT COALESCE(SUM(commission_amount), 0) FROM commission_records cr WHERE cr.referee_user_id = u.id AND cr.referrer_user_id = u.referrer_user_id AND cr.status = 'paid') AS paid_commission
+		   FROM users u
+		   LEFT JOIN LATERAL (
+		     SELECT status, expires_at FROM subscriptions
+		      WHERE user_id = u.id
+		      ORDER BY started_at DESC LIMIT 1
+		   ) s ON true
+		  WHERE u.referrer_user_id = $1
+		  ORDER BY u.created_at DESC`, referrerID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "query failed: " + err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	canSeeFull := h.can(role, permViewAll) // admin sees full identity
+
+	type item struct {
+		ID              string `json:"id"`
+		Phone           string `json:"phone"`
+		Name            string `json:"name"`
+		RegisteredAt    string `json:"registered_at"`
+		SubStatus       string `json:"sub_status"`
+		SubExpiresAt    string `json:"sub_expires_at"`
+		CommissionCount int    `json:"commission_count"`
+		TotalCommission int64  `json:"total_commission"`
+		PaidCommission  int64  `json:"paid_commission"`
+	}
+
+	out := []item{}
+	for rows.Next() {
+		var it item
+		var subExpires *string
+		if err := rows.Scan(&it.ID, &it.Phone, &it.Name, &it.RegisteredAt,
+			&it.SubStatus, &subExpires, &it.CommissionCount, &it.TotalCommission, &it.PaidCommission); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "scan failed: " + err.Error()})
+			return
+		}
+		if subExpires != nil {
+			it.SubExpiresAt = *subExpires
+		}
+		if !canSeeFull {
+			it.Phone = maskPhone(it.Phone)
+			it.Name = maskName(it.Name)
+			it.ID = "" // hide internal id from aff
+		}
+		out = append(out, it)
+	}
+	c.JSON(http.StatusOK, gin.H{"data": out})
+}
+
+// maskPhone keeps first 4 (operator code) + last 3 digits, masks middle.
+// "0966898679" → "0966***679", "0933706689" → "0933***689".
+func maskPhone(p string) string {
+	if len(p) < 7 {
+		return p
+	}
+	return p[:4] + "***" + p[len(p)-3:]
+}
+
+// maskName keeps first character of each word, hides the rest.
+// "Gạo Hà Ân sell" → "G. H. Â. s.", "Hoàng Gạo" → "H. G."
+func maskName(n string) string {
+	if n == "" {
+		return ""
+	}
+	out := []rune{}
+	prevSpace := true
+	for _, r := range n {
+		if r == ' ' {
+			out = append(out, '.', ' ')
+			prevSpace = true
+			continue
+		}
+		if prevSpace {
+			out = append(out, r)
+			prevSpace = false
+		}
+	}
+	out = append(out, '.')
+	return string(out)
+}
+
 // MarkPayoutSent — gated by referrals.create_payout. Transitions pending → sent.
 func (h *AdminReferralHandler) MarkPayoutSent(c *gin.Context) {
 	role := c.GetString("user_role")

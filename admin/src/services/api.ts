@@ -964,3 +964,19 @@ export async function createPayout(body: {
 export async function markPayoutSent(id: string) {
   return request<{ ok: boolean }>(`/admin/referrals/payouts/${id}/sent`, { method: "PUT" });
 }
+
+export interface RefereeRow {
+  id: string;
+  phone: string;
+  name: string;
+  registered_at: string;
+  sub_status: string;
+  sub_expires_at: string;
+  commission_count: number;
+  total_commission: number;
+  paid_commission: number;
+}
+
+export async function getReferees(referrerId: string) {
+  return request<{ data: RefereeRow[] }>(`/admin/referrals/referees/${referrerId}`);
+}
