@@ -399,7 +399,9 @@ export interface SEOPriceEntry {
   province: string;
   province_slug: string;
   category: string;
+  category_label: string;
   rice_type: string;
+  rice_type_label: string;
   rice_type_slug: string;
   min_price: number;
   avg_price: number;

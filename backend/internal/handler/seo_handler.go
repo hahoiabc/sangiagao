@@ -21,16 +21,18 @@ func NewSEOHandler(pool *pgxpool.Pool, listingRepo *repository.ListingRepo) *SEO
 }
 
 type seoPriceEntry struct {
-	Province     string    `json:"province"`
-	ProvinceSlug string    `json:"province_slug"`
-	Category     string    `json:"category"`
-	RiceType     string    `json:"rice_type"`
-	RiceTypeSlug string    `json:"rice_type_slug"`
-	MinPrice     float64   `json:"min_price"`
-	AvgPrice     float64   `json:"avg_price"`
-	MaxPrice     float64   `json:"max_price"`
-	ListingCount int       `json:"listing_count"`
-	LastUpdated  time.Time `json:"last_updated"`
+	Province      string    `json:"province"`
+	ProvinceSlug  string    `json:"province_slug"`
+	Category      string    `json:"category"`
+	CategoryLabel string    `json:"category_label"`
+	RiceType      string    `json:"rice_type"`
+	RiceTypeLabel string    `json:"rice_type_label"`
+	RiceTypeSlug  string    `json:"rice_type_slug"`
+	MinPrice      float64   `json:"min_price"`
+	AvgPrice      float64   `json:"avg_price"`
+	MaxPrice      float64   `json:"max_price"`
+	ListingCount  int       `json:"listing_count"`
+	LastUpdated   time.Time `json:"last_updated"`
 }
 
 // GetPriceBoard returns aggregated price data grouped by (province, category,
@@ -46,16 +48,18 @@ func (h *SEOHandler) GetPriceBoard(c *gin.Context) {
 	out := make([]seoPriceEntry, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, seoPriceEntry{
-			Province:     r.Province,
-			ProvinceSlug: slugify(r.Province),
-			Category:     r.Category,
-			RiceType:     r.RiceType,
-			RiceTypeSlug: slugify(r.RiceType),
-			MinPrice:     r.MinPrice,
-			AvgPrice:     r.AvgPrice,
-			MaxPrice:     r.MaxPrice,
-			ListingCount: r.ListingCount,
-			LastUpdated:  r.LastUpdated,
+			Province:      r.Province,
+			ProvinceSlug:  slugify(r.Province),
+			Category:      r.Category,
+			CategoryLabel: r.CategoryLabel,
+			RiceType:      r.RiceType,
+			RiceTypeLabel: r.RiceTypeLabel,
+			RiceTypeSlug:  slugify(r.RiceType),
+			MinPrice:      r.MinPrice,
+			AvgPrice:      r.AvgPrice,
+			MaxPrice:      r.MaxPrice,
+			ListingCount:  r.ListingCount,
+			LastUpdated:   r.LastUpdated,
 		})
 	}
 

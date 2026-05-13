@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     const minPrice = Math.min(...result.entries.map((e) => e.min_price));
     return {
-      title: `Giá gạo ${result.province} hôm nay — Bảng giá ${result.entries.length} loại gạo | SanGiaGao.vn`,
+      title: `Giá gạo ${result.province} hôm nay — Bảng giá ${result.entries.length} loại gạo`,
       description: `Giá gạo tại ${result.province} cập nhật hàng giờ. ${result.entries.length} loại gạo (ST 25, Tài Nguyên, Nàng Hoa...). Giá từ ${formatPriceVND(minPrice)}/kg. Liên hệ trực tiếp thương lái qua app.`,
       keywords: [
         `giá gạo ${result.province}`,
@@ -51,7 +51,7 @@ export default async function ProvincePricePage({ params }: Props) {
   const result = await loadProvinceData(provinceSlug);
   if (!result) notFound();
 
-  const sortedTypes = [...result.entries].sort((a, b) => a.rice_type.localeCompare(b.rice_type, "vi"));
+  const sortedTypes = [...result.entries].sort((a, b) => a.rice_type_label.localeCompare(b.rice_type_label, "vi"));
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-8">
@@ -89,9 +89,9 @@ export default async function ProvincePricePage({ params }: Props) {
                     href={`/bang-gia-gao/${provinceSlug}/${e.rice_type_slug}`}
                     className="text-red-700 hover:underline font-medium"
                   >
-                    {e.rice_type}
+                    {e.rice_type_label}
                   </Link>
-                  <div className="text-xs text-gray-400">{e.category}</div>
+                  <div className="text-xs text-gray-400">{e.category_label}</div>
                 </td>
                 <td className="px-4 py-2 text-right text-green-700 font-semibold">
                   {formatPriceVND(e.min_price)}

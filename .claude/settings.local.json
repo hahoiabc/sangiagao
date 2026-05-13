@@ -31,7 +31,9 @@
       "Bash(docker compose restart backend)",
       "Bash(lsof -i :8080 -t)",
       "Bash(lsof -i :3000 -t)",
-      "Bash(npx tsc --noEmit)"
+      "Bash(npx tsc --noEmit)",
+      "Bash(go vet:*)",
+      "Bash(git add:*)"
     ],
     "additionalDirectories": [
       "/Users/hahoi83/Documents/sangiagao/admin/src/app/(admin)/users"

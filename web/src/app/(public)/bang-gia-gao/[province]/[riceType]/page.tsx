@@ -27,17 +27,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     if (!result) return { title: "Không tìm thấy" };
 
     const e = result.entry;
-    const title = `Giá gạo ${e.rice_type} tại ${e.province} hôm nay — ${formatPriceVND(e.min_price)}/kg | SanGiaGao.vn`;
-    const description = `Giá gạo ${e.rice_type} ở ${e.province} từ ${formatPriceVND(e.min_price)} đến ${formatPriceVND(e.max_price)}/kg. ${e.listing_count} tin đăng từ thương lái và nông dân. Liên hệ trực tiếp qua app SanGiaGao.vn.`;
+    const title = `Giá gạo ${e.rice_type_label} tại ${e.province} hôm nay — ${formatPriceVND(e.min_price)}/kg`;
+    const description = `Giá gạo ${e.rice_type_label} ở ${e.province} từ ${formatPriceVND(e.min_price)} đến ${formatPriceVND(e.max_price)}/kg. ${e.listing_count} tin đăng từ thương lái và nông dân. Liên hệ trực tiếp qua app SanGiaGao.vn.`;
     return {
       title,
       description,
       keywords: [
-        `giá gạo ${e.rice_type}`,
-        `giá gạo ${e.rice_type} ${e.province}`,
-        `giá gạo ${e.rice_type} hôm nay`,
-        `mua gạo ${e.rice_type} ${e.province}`,
-        `thương lái gạo ${e.rice_type}`,
+        `giá gạo ${e.rice_type_label}`,
+        `giá gạo ${e.rice_type_label} ${e.province}`,
+        `giá gạo ${e.rice_type_label} hôm nay`,
+        `mua gạo ${e.rice_type_label} ${e.province}`,
+        `thương lái gạo ${e.rice_type_label}`,
       ],
       openGraph: {
         title,
@@ -66,14 +66,14 @@ export default async function PriceDetailPage({ params }: Props) {
         <Link href="/">Trang chủ</Link> /{" "}
         <Link href="/bang-gia-gao">Bảng giá gạo</Link> /{" "}
         <Link href={`/bang-gia-gao/${provinceSlug}`}>{e.province}</Link> /{" "}
-        <span className="text-gray-700">{e.rice_type}</span>
+        <span className="text-gray-700">{e.rice_type_label}</span>
       </nav>
 
       <h1 className="text-3xl font-bold mb-2">
-        Giá gạo {e.rice_type} tại {e.province} hôm nay
+        Giá gạo {e.rice_type_label} tại {e.province} hôm nay
       </h1>
       <p className="text-gray-600 mb-6">
-        Giá gạo <strong>{e.rice_type}</strong> ({e.category}) tại{" "}
+        Giá gạo <strong>{e.rice_type_label}</strong> ({e.category_label}) tại{" "}
         <strong>{e.province}</strong> dao động từ {formatPriceVND(e.min_price)} đến{" "}
         {formatPriceVND(e.max_price)}/kg, theo <strong>{e.listing_count}</strong> tin đăng từ
         thương lái và nông dân trên sàn SanGiaGao.vn.
@@ -100,7 +100,7 @@ export default async function PriceDetailPage({ params }: Props) {
       {result.listings.length > 0 && (
         <>
           <h2 className="text-xl font-semibold mb-3">
-            Tin đăng gạo {e.rice_type} mới nhất tại {e.province}
+            Tin đăng gạo {e.rice_type_label} mới nhất tại {e.province}
           </h2>
           <div className="border rounded-lg overflow-hidden mb-6">
             <table className="w-full text-sm">
@@ -145,7 +145,7 @@ export default async function PriceDetailPage({ params }: Props) {
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
         <h2 className="font-semibold text-blue-900 mb-2">
-          Liên hệ thương lái mua gạo {e.rice_type} tại {e.province}
+          Liên hệ thương lái mua gạo {e.rice_type_label} tại {e.province}
         </h2>
         <p className="text-sm text-blue-800">
           Cài app <strong>SanGiaGao.vn</strong> để chat trực tiếp với người bán, xem giá realtime
@@ -177,9 +177,9 @@ export default async function PriceDetailPage({ params }: Props) {
           __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Product",
-            name: `Gạo ${e.rice_type} ${e.province}`,
-            description: `Gạo ${e.rice_type} (${e.category}) tại ${e.province}. ${e.listing_count} tin đăng từ thương lái và nông dân.`,
-            category: e.category,
+            name: `Gạo ${e.rice_type_label} ${e.province}`,
+            description: `Gạo ${e.rice_type_label} (${e.category_label}) tại ${e.province}. ${e.listing_count} tin đăng từ thương lái và nông dân.`,
+            category: e.category_label,
             offers: {
               "@type": "AggregateOffer",
               priceCurrency: "VND",

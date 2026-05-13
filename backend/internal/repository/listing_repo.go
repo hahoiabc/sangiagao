@@ -403,14 +403,16 @@ func (r *ListingRepo) GetPriceBoardData(ctx context.Context) ([]PriceBoardRow, e
 // SEOPriceRow holds aggregated price data per (province, category, rice_type)
 // for SEO landing pages. Province name is normalized (strip "Tỉnh "/"Thành phố ").
 type SEOPriceRow struct {
-	Province     string  // normalized name, e.g. "Đồng Nai"
-	Category     string
-	RiceType     string
-	MinPrice     float64
-	AvgPrice     float64
-	MaxPrice     float64
-	ListingCount int
-	LastUpdated  time.Time
+	Province      string // normalized name, e.g. "Đồng Nai"
+	Category      string // enum key, e.g. "gao_deo_thom"
+	CategoryLabel string // human-readable, e.g. "Gạo dẻo thơm"
+	RiceType      string // enum key, e.g. "dai_loan"
+	RiceTypeLabel string // human-readable, e.g. "Đài Loan"
+	MinPrice      float64
+	AvgPrice      float64
+	MaxPrice      float64
+	ListingCount  int
+	LastUpdated   time.Time
 }
 
 // GetSEOPriceBoard returns price aggregation grouped by (province, category,
@@ -419,21 +421,25 @@ type SEOPriceRow struct {
 func (r *ListingRepo) GetSEOPriceBoard(ctx context.Context) ([]SEOPriceRow, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT
-		    TRIM(regexp_replace(province, '^(Tỉnh|Thành phố|TP\.?|TP|Tỉnh\.?)\s+', '', 'i')) AS province_norm,
-		    category,
-		    rice_type,
-		    MIN(price_per_kg) AS min_price,
-		    ROUND(AVG(price_per_kg))::float8 AS avg_price,
-		    MAX(price_per_kg) AS max_price,
+		    TRIM(regexp_replace(l.province, '^(Tỉnh|Thành phố|TP\.?|TP|Tỉnh\.?)\s+', '', 'i')) AS province_norm,
+		    l.category,
+		    COALESCE(c.label, l.category) AS category_label,
+		    l.rice_type,
+		    COALESCE(p.label, l.rice_type) AS rice_type_label,
+		    MIN(l.price_per_kg) AS min_price,
+		    ROUND(AVG(l.price_per_kg))::float8 AS avg_price,
+		    MAX(l.price_per_kg) AS max_price,
 		    COUNT(*) AS listing_count,
-		    MAX(updated_at) AS last_updated
-		 FROM listings
-		 WHERE status = 'active'
-		   AND category IS NOT NULL
-		   AND province IS NOT NULL
-		   AND TRIM(province) <> ''
-		 GROUP BY province_norm, category, rice_type
-		 ORDER BY province_norm, category, rice_type`)
+		    MAX(l.updated_at) AS last_updated
+		 FROM listings l
+		 LEFT JOIN rice_categories c ON c.key = l.category
+		 LEFT JOIN rice_products p ON p.key = l.rice_type
+		 WHERE l.status = 'active'
+		   AND l.category IS NOT NULL
+		   AND l.province IS NOT NULL
+		   AND TRIM(l.province) <> ''
+		 GROUP BY province_norm, l.category, c.label, l.rice_type, p.label
+		 ORDER BY province_norm, l.category, l.rice_type`)
 	if err != nil {
 		return nil, err
 	}
@@ -443,7 +449,8 @@ func (r *ListingRepo) GetSEOPriceBoard(ctx context.Context) ([]SEOPriceRow, erro
 	for rows.Next() {
 		var row SEOPriceRow
 		if err := rows.Scan(
-			&row.Province, &row.Category, &row.RiceType,
+			&row.Province, &row.Category, &row.CategoryLabel,
+			&row.RiceType, &row.RiceTypeLabel,
 			&row.MinPrice, &row.AvgPrice, &row.MaxPrice,
 			&row.ListingCount, &row.LastUpdated,
 		); err != nil {

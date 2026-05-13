@@ -7,7 +7,7 @@ import { formatPriceVND, formatDateVN } from "@/lib/seo-helpers";
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "Bảng giá gạo Việt Nam hôm nay — Cập nhật theo tỉnh | SanGiaGao.vn",
+  title: "Bảng giá gạo Việt Nam hôm nay — Cập nhật theo tỉnh",
   description:
     "Bảng giá gạo Việt Nam cập nhật hàng giờ theo từng tỉnh, từng loại gạo. Giá gạo ST 25, Tài Nguyên, Nàng Hoa, Nhật, Đài Loan... So sánh giá thương lái thu mua.",
   keywords: [
@@ -48,7 +48,7 @@ export default async function PriceBoardIndexPage() {
       byProvince.set(e.province, { slug: e.province_slug, types: [] });
     }
     byProvince.get(e.province)!.types.push({
-      riceType: e.rice_type,
+      riceType: e.rice_type_label,
       slug: e.rice_type_slug,
       minPrice: e.min_price,
       count: e.listing_count,
