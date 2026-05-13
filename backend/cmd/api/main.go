@@ -169,6 +169,8 @@ func main() {
 	referralHandler := handler.NewReferralHandler(referralService)
 	adminReferralHandler := handler.NewAdminReferralHandler(affiliateRepo)
 	adminReferralHandler.SetReferralService(referralService)
+	// Permission service wired after construction (declared later in init flow);
+	// the setter accepts a small interface to avoid an import cycle.
 	ratingService := service.NewRatingService(ratingRepo)
 	reportService := service.NewReportService(reportRepo)
 	pushSender := firebase.NewFCMSender(cfg.FirebaseCredPath)
@@ -197,6 +199,7 @@ func main() {
 	inboxService.SetPool(pushPool)
 	catalogService := service.NewCatalogService(catalogRepo)
 	permissionService := service.NewPermissionService(permissionRepo, appCache)
+	adminReferralHandler.SetPermissionChecker(permissionService)
 	siteSettingsService := service.NewSiteSettingsService(siteSettingsRepo)
 	if appCache != nil {
 		siteSettingsService.SetCache(appCache)

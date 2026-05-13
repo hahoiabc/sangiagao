@@ -11,29 +11,55 @@ import (
 	"github.com/sangiagao/rice-marketplace/internal/service"
 )
 
-// AdminReferralHandler exposes commission/payout management for admin + aff roles.
-// 'admin' role: full CRUD across all referrers.
-// 'aff' role: READ-ONLY, filtered to records where referrer_user_id = self.
+// AdminReferralHandler exposes commission/payout management gated by
+// permission keys (not hardcoded roles). Owner/admin typically have:
+//   - referrals.view_all     (see all partners)
+//   - referrals.manage_rules (edit commission rule defaults / overrides)
+//   - referrals.create_payout (create + mark payout sent)
+// Aff role typically has:
+//   - referrals.view_own (filtered to own referrer_user_id)
+// Admin can re-assign these per role via /users → "Vai trò & Quyền hạn".
 type AdminReferralHandler struct {
 	repo            *repository.AffiliateRepo
 	referralService *service.ReferralService
+	perm            permissionChecker
+}
+
+// permissionChecker is the slice of PermissionService that we need.
+type permissionChecker interface {
+	HasPermission(role, key string) bool
 }
 
 func NewAdminReferralHandler(repo *repository.AffiliateRepo) *AdminReferralHandler {
 	return &AdminReferralHandler{repo: repo}
 }
 
-// SetReferralService wires the optional referral service for auto-creating
-// codes when listing aff users (backfill).
 func (h *AdminReferralHandler) SetReferralService(s *service.ReferralService) {
 	h.referralService = s
 }
 
-func isAdminRole(role string) bool {
+func (h *AdminReferralHandler) SetPermissionChecker(p permissionChecker) {
+	h.perm = p
+}
+
+// can reports whether the caller has the given permission key. Defaults to
+// the conservative role check (owner/admin) when no permission service is
+// wired (e.g. unit tests).
+func (h *AdminReferralHandler) can(role, key string) bool {
+	if h.perm != nil {
+		return h.perm.HasPermission(role, key)
+	}
 	return role == "owner" || role == "admin"
 }
 
-// ListRules — admin sees all; aff sees only their own per-partner rule (if any).
+// Permission keys (must match keys configured in /users → Vai trò & Quyền hạn).
+const (
+	permViewAll     = "referrals.view_all"
+	permManageRules = "referrals.manage_rules"
+	permCreatePayout = "referrals.create_payout"
+)
+
+// ListRules — view_all sees all; otherwise sees only their own per-partner rule.
 func (h *AdminReferralHandler) ListRules(c *gin.Context) {
 	role := c.GetString("user_role")
 	userID := c.GetString("user_id")
@@ -42,7 +68,7 @@ func (h *AdminReferralHandler) ListRules(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list rules"})
 		return
 	}
-	if !isAdminRole(role) {
+	if !h.can(role, permViewAll) {
 		// aff: filter to their own rule (need to look up their referral_code_id)
 		myCode, err := h.repo.GetCodeByUser(c.Request.Context(), userID)
 		if err != nil {
@@ -72,10 +98,10 @@ type upsertRuleRequest struct {
 	MinimumPayout  int64   `json:"minimum_payout" binding:"min=0"`
 }
 
-// UpsertRule — admin only. Creates new active version, expires previous.
+// UpsertRule — gated by referrals.manage_rules. Creates new active version, expires previous.
 func (h *AdminReferralHandler) UpsertRule(c *gin.Context) {
 	role := c.GetString("user_role")
-	if !isAdminRole(role) {
+	if !h.can(role, permManageRules) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied"})
 		return
 	}
@@ -120,7 +146,7 @@ func (h *AdminReferralHandler) Leaderboard(c *gin.Context) {
 	        LEFT JOIN referral_codes rc ON rc.user_id = u.id
 	        LEFT JOIN commission_records cr ON cr.referrer_user_id = u.id`
 	args := []any{}
-	if !isAdminRole(role) {
+	if !h.can(role, permViewAll) {
 		q += " WHERE u.id = $1"
 		args = append(args, userID)
 	} else {
@@ -173,11 +199,12 @@ func (h *AdminReferralHandler) Leaderboard(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": out})
 }
 
-// ListPayablePerReferrer — admin only: list payable (status='payable') records
-// for a given referrer. Used to preview before creating a payout.
+// ListPayablePerReferrer — gated by referrals.create_payout. List payable
+// (status='payable') records for a given referrer. Used to preview before
+// creating a payout.
 func (h *AdminReferralHandler) ListPayablePerReferrer(c *gin.Context) {
 	role := c.GetString("user_role")
-	if !isAdminRole(role) {
+	if !h.can(role, permCreatePayout) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied"})
 		return
 	}
@@ -230,11 +257,11 @@ type createPayoutRequest struct {
 	Note           string          `json:"note"`
 }
 
-// CreatePayout — admin only. Marks the given record IDs as paid + creates
-// payout row. Atomic in repo.
+// CreatePayout — gated by referrals.create_payout. Marks the given record IDs
+// as paid + creates payout row. Atomic in repo.
 func (h *AdminReferralHandler) CreatePayout(c *gin.Context) {
 	role := c.GetString("user_role")
-	if !isAdminRole(role) {
+	if !h.can(role, permCreatePayout) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied"})
 		return
 	}
@@ -297,7 +324,7 @@ func (h *AdminReferralHandler) CreatePayout(c *gin.Context) {
 	c.JSON(http.StatusCreated, p)
 }
 
-// ListPayouts — admin sees all, aff sees own.
+// ListPayouts — view_all sees all, otherwise filtered to own.
 func (h *AdminReferralHandler) ListPayouts(c *gin.Context) {
 	role := c.GetString("user_role")
 	userID := c.GetString("user_id")
@@ -305,7 +332,7 @@ func (h *AdminReferralHandler) ListPayouts(c *gin.Context) {
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
 	var ref *string
-	if !isAdminRole(role) {
+	if !h.can(role, permViewAll) {
 		ref = &userID
 	} else if q := c.Query("referrer_user_id"); q != "" {
 		ref = &q
@@ -319,10 +346,10 @@ func (h *AdminReferralHandler) ListPayouts(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": payouts})
 }
 
-// MarkPayoutSent — admin only. Transitions pending → sent.
+// MarkPayoutSent — gated by referrals.create_payout. Transitions pending → sent.
 func (h *AdminReferralHandler) MarkPayoutSent(c *gin.Context) {
 	role := c.GetString("user_role")
-	if !isAdminRole(role) {
+	if !h.can(role, permCreatePayout) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied"})
 		return
 	}
