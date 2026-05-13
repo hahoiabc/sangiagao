@@ -980,3 +980,26 @@ export interface RefereeRow {
 export async function getReferees(referrerId: string) {
   return request<{ data: RefereeRow[] }>(`/admin/referrals/referees/${referrerId}`);
 }
+
+export interface AllRefereeRow {
+  id: string;
+  phone: string;
+  name: string;
+  registered_at: string;
+  referrer_user_id: string;
+  referrer_name: string;
+  referrer_phone: string;
+  referrer_code: string;
+  sub_status: string;
+  sub_expires_at: string;
+  commission_count: number;
+  total_commission: number;
+}
+
+export async function getAllReferees(page = 1, limit = 50, referrerId?: string) {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  if (referrerId) params.set("referrer_id", referrerId);
+  return request<{ data: AllRefereeRow[]; total: number; page: number; limit: number }>(
+    `/admin/referrals/all-referees?${params}`,
+  );
+}

@@ -636,6 +636,7 @@ func main() {
 			{
 				refAdmin.GET("/rules", adminReferralHandler.ListRules)
 			refAdmin.GET("/referees/:referrer_id", adminReferralHandler.ListReferees)
+			refAdmin.GET("/all-referees", adminReferralHandler.ListAllReferees)
 				refAdmin.POST("/rules", adminReferralHandler.UpsertRule) // admin-only check inside
 				refAdmin.GET("/leaderboard", adminReferralHandler.Leaderboard)
 				refAdmin.GET("/payable", adminReferralHandler.ListPayablePerReferrer)

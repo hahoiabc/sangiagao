@@ -455,6 +455,125 @@ func maskName(n string) string {
 	return string(out)
 }
 
+// ListAllReferees — paginated list of all attributed users. Admin sees every
+// referee with the partner column; aff is force-filtered to own only.
+// Query: ?page=1&limit=50&referrer_id=<optional, admin-only>
+func (h *AdminReferralHandler) ListAllReferees(c *gin.Context) {
+	role := c.GetString("user_role")
+	userID := c.GetString("user_id")
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if page < 1 {
+		page = 1
+	}
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	if limit < 1 || limit > 500 {
+		limit = 50
+	}
+	offset := (page - 1) * limit
+
+	var filter *string
+	if !h.can(role, permViewAll) {
+		filter = &userID
+	} else if q := c.Query("referrer_id"); q != "" {
+		filter = &q
+	}
+
+	whereClause := "WHERE u.referrer_user_id IS NOT NULL"
+	args := []any{limit, offset}
+	if filter != nil {
+		whereClause += " AND u.referrer_user_id = $3"
+		args = append(args, *filter)
+	}
+
+	// Total count for pagination
+	var total int
+	countQ := "SELECT COUNT(*) FROM users u " + whereClause
+	countArgs := []any{}
+	if filter != nil {
+		countArgs = append(countArgs, *filter)
+		countQ = "SELECT COUNT(*) FROM users u WHERE u.referrer_user_id IS NOT NULL AND u.referrer_user_id = $1"
+	}
+	if err := h.repo.Pool().QueryRow(c.Request.Context(), countQ, countArgs...).Scan(&total); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "count failed: " + err.Error()})
+		return
+	}
+
+	rows, err := h.repo.Pool().Query(c.Request.Context(),
+		`SELECT u.id, u.phone, COALESCE(u.name, ''),
+		        to_char(u.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS registered_at,
+		        u.referrer_user_id,
+		        COALESCE(ref.name, '') AS referrer_name,
+		        COALESCE(ref.phone, '') AS referrer_phone,
+		        COALESCE(rc.code, '') AS referrer_code,
+		        COALESCE(s.status, 'none') AS sub_status,
+		        to_char(s.expires_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS sub_expires_at,
+		        (SELECT COUNT(*)::int FROM commission_records cr WHERE cr.referee_user_id = u.id) AS commission_count,
+		        (SELECT COALESCE(SUM(commission_amount), 0) FROM commission_records cr WHERE cr.referee_user_id = u.id) AS total_commission
+		   FROM users u
+		   JOIN users ref ON ref.id = u.referrer_user_id
+		   LEFT JOIN referral_codes rc ON rc.user_id = u.referrer_user_id
+		   LEFT JOIN LATERAL (
+		     SELECT status, expires_at FROM subscriptions
+		      WHERE user_id = u.id
+		      ORDER BY started_at DESC LIMIT 1
+		   ) s ON true
+		   `+whereClause+`
+		  ORDER BY u.created_at DESC
+		  LIMIT $1 OFFSET $2`, args...)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "query failed: " + err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	canSeeFull := h.can(role, permViewAll)
+
+	type item struct {
+		ID              string `json:"id"`
+		Phone           string `json:"phone"`
+		Name            string `json:"name"`
+		RegisteredAt    string `json:"registered_at"`
+		ReferrerUserID  string `json:"referrer_user_id"`
+		ReferrerName    string `json:"referrer_name"`
+		ReferrerPhone   string `json:"referrer_phone"`
+		ReferrerCode    string `json:"referrer_code"`
+		SubStatus       string `json:"sub_status"`
+		SubExpiresAt    string `json:"sub_expires_at"`
+		CommissionCount int    `json:"commission_count"`
+		TotalCommission int64  `json:"total_commission"`
+	}
+
+	out := []item{}
+	for rows.Next() {
+		var it item
+		var subExpires *string
+		if err := rows.Scan(&it.ID, &it.Phone, &it.Name, &it.RegisteredAt,
+			&it.ReferrerUserID, &it.ReferrerName, &it.ReferrerPhone, &it.ReferrerCode,
+			&it.SubStatus, &subExpires, &it.CommissionCount, &it.TotalCommission); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "scan failed: " + err.Error()})
+			return
+		}
+		if subExpires != nil {
+			it.SubExpiresAt = *subExpires
+		}
+		if !canSeeFull {
+			it.Phone = maskPhone(it.Phone)
+			it.Name = maskName(it.Name)
+			it.ID = ""
+			// Don't mask referrer info — it's the aff's own data
+		}
+		out = append(out, it)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":  out,
+		"total": total,
+		"page":  page,
+		"limit": limit,
+	})
+}
+
 // MarkPayoutSent — gated by referrals.create_payout. Transitions pending → sent.
 func (h *AdminReferralHandler) MarkPayoutSent(c *gin.Context) {
 	role := c.GetString("user_role")

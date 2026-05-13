@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
-import { LayoutDashboard, Users, ShoppingBasket, Flag, CreditCard, LogOut, Wheat, Megaphone, MessageSquareText, Menu, Activity, Package, GripVertical, TrendingUp, Bell, Mail, MessageCircle, Type, FileText, HandCoins } from "lucide-react";
+import { LayoutDashboard, Users, ShoppingBasket, Flag, CreditCard, LogOut, Wheat, Megaphone, MessageSquareText, Menu, Activity, Package, GripVertical, TrendingUp, Bell, Mail, MessageCircle, Type, FileText, HandCoins, UserCheck } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,7 @@ const defaultNavItems: NavItem[] = [
   { href: "/feedbacks", label: "Góp ý", icon: MessageSquareText, adminOnly: false },
   { href: "/revenue", label: "Doanh thu", icon: TrendingUp, adminOnly: true },
   { href: "/referrals", label: "Hoa hồng giới thiệu", icon: HandCoins, adminOnly: false, affAllowed: true },
+  { href: "/referrals-detail", label: "Chi tiết người được giới thiệu", icon: UserCheck, adminOnly: false, affAllowed: true },
   { href: "/inbox", label: "Hộp thư", icon: Mail, adminOnly: false },
   { href: "/notifications", label: "Thông báo", icon: Bell, adminOnly: true },
   { href: "/zalo-zns", label: "OTP Zalo ZNS", icon: MessageCircle, adminOnly: true },

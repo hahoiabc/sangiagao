@@ -9,7 +9,7 @@ import { AdminHeader } from "@/components/admin-header";
 const allowedRoles = ["owner", "admin", "editor", "aff"];
 const adminOnlyPaths = ["/users", "/revenue", "/notifications", "/zalo-zns"];
 // aff role: only allowed to access /referrals/*. Redirect away otherwise.
-const affAllowedPaths = ["/referrals"];
+const affAllowedPaths = ["/referrals", "/referrals-detail"];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
