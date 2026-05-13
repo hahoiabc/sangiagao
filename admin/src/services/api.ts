@@ -78,7 +78,9 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     if (csrf) headers["X-CSRF-Token"] = csrf;
   }
 
-  const fetchOpts: RequestInit = { ...init, headers, credentials: "include" };
+  // Admin app must never serve stale data. Disable browser cache so GET
+  // requests always hit backend (matters after PUT/POST mutations).
+  const fetchOpts: RequestInit = { cache: "no-store", ...init, headers, credentials: "include" };
   const res = await fetchWithRetry(`${API_BASE}${path}`, fetchOpts, timeout ?? DEFAULT_TIMEOUT);
 
   if (res.status === 401) {
