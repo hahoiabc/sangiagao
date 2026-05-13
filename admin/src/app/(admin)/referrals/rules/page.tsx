@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { listCommissionRules, upsertCommissionRule, type CommissionRule } from "@/services/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -73,6 +75,12 @@ export default function CommissionRulesPage() {
 
   return (
     <div className="space-y-4 max-w-3xl">
+      <Link
+        href="/referrals"
+        className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-primary"
+      >
+        <ArrowLeft className="h-4 w-4" /> Quay lại
+      </Link>
       <h1 className="text-2xl font-bold">Cài đặt quy tắc hoa hồng</h1>
       <p className="text-sm text-gray-600">
         Quy tắc mặc định áp dụng cho mọi đối tác chưa có thỏa thuận riêng. Per-partner override có thể tạo sau (chưa hỗ trợ UI).

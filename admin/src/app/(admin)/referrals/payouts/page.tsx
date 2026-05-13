@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import {
   getPayableForReferrer,
   createPayout,
@@ -96,6 +98,14 @@ export default function PayoutsPage() {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <Link
+          href="/referrals"
+          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-primary"
+        >
+          <ArrowLeft className="h-4 w-4" /> Quay lại
+        </Link>
+      </div>
       <h1 className="text-2xl font-bold">Quản lý payout</h1>
 
       {referrerId ? (

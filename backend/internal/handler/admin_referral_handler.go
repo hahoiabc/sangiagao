@@ -187,12 +187,14 @@ func (h *AdminReferralHandler) ListPayablePerReferrer(c *gin.Context) {
 		return
 	}
 	rows, err := h.repo.Pool().Query(c.Request.Context(),
-		`SELECT id, referee_user_id, commission_amount, stage, rate, payable_after, created_at
+		`SELECT id, referee_user_id, commission_amount, stage, rate,
+		        to_char(payable_after AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS payable_after,
+		        to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at
 		   FROM commission_records
 		  WHERE referrer_user_id = $1 AND status = 'payable'
 		  ORDER BY created_at ASC`, referrerID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "query failed"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "query failed: " + err.Error()})
 		return
 	}
 	defer rows.Close()
@@ -205,17 +207,15 @@ func (h *AdminReferralHandler) ListPayablePerReferrer(c *gin.Context) {
 		PayableAfter     string  `json:"payable_after"`
 		CreatedAt        string  `json:"created_at"`
 	}
-	var out []item
+	out := []item{}
 	var totalAmount int64
 	for rows.Next() {
 		var it item
-		var payableAfter, createdAt string
 		if err := rows.Scan(&it.ID, &it.RefereeUserID, &it.CommissionAmount,
-			&it.Stage, &it.Rate, &payableAfter, &createdAt); err != nil {
-			continue
+			&it.Stage, &it.Rate, &it.PayableAfter, &it.CreatedAt); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "scan failed: " + err.Error()})
+			return
 		}
-		it.PayableAfter = payableAfter
-		it.CreatedAt = createdAt
 		totalAmount += it.CommissionAmount
 		out = append(out, it)
 	}
