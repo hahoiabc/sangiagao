@@ -8,7 +8,7 @@ const API_BASE =
 // redirect to /dang-ky?ref={code}. Lives at /r/[code]/route.ts because
 // Server Components can't set cookies in Next.js 16 — only Route Handlers can.
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ code: string }> },
 ) {
   const { code: rawCode } = await params;
@@ -26,8 +26,16 @@ export async function GET(
     }
   }
 
-  const target = valid ? `/dang-ky?ref=${code}` : "/dang-ky";
-  const res = NextResponse.redirect(new URL(target, _req.url));
+  // Build absolute URL from forwarded headers (nginx upstream). req.url uses
+  // the internal container URL (0.0.0.0:3001) which is not what we want to
+  // redirect the browser to.
+  const host =
+    req.headers.get("x-forwarded-host") ||
+    req.headers.get("host") ||
+    "sangiagao.vn";
+  const proto = req.headers.get("x-forwarded-proto") || "https";
+  const path = valid ? `/dang-ky?ref=${code}` : "/dang-ky";
+  const res = NextResponse.redirect(`${proto}://${host}${path}`);
   if (valid) {
     res.cookies.set("ref_code", code, {
       maxAge: 60 * 60 * 24 * 30, // 30 days
