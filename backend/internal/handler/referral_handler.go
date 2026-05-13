@@ -121,7 +121,7 @@ func (h *ReferralHandler) GetMyPayouts(c *gin.Context) {
 		return
 	}
 	rows, err := h.svc.Pool().Query(c.Request.Context(),
-		`SELECT id, total_amount, record_count, method, status,
+		`SELECT id, total_amount, transfer_fee, record_count, method, status,
 		        to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at,
 		        to_char(sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS sent_at
 		   FROM payouts WHERE referrer_user_id = $1 ORDER BY created_at DESC LIMIT 100`, userID)
@@ -133,6 +133,7 @@ func (h *ReferralHandler) GetMyPayouts(c *gin.Context) {
 	type item struct {
 		ID          string `json:"id"`
 		TotalAmount int64  `json:"total_amount"`
+		TransferFee int64  `json:"transfer_fee"`
 		RecordCount int    `json:"record_count"`
 		Method      string `json:"method"`
 		Status      string `json:"status"`
@@ -143,7 +144,7 @@ func (h *ReferralHandler) GetMyPayouts(c *gin.Context) {
 	for rows.Next() {
 		var it item
 		var sentAt *string
-		if err := rows.Scan(&it.ID, &it.TotalAmount, &it.RecordCount, &it.Method, &it.Status, &it.CreatedAt, &sentAt); err != nil {
+		if err := rows.Scan(&it.ID, &it.TotalAmount, &it.TransferFee, &it.RecordCount, &it.Method, &it.Status, &it.CreatedAt, &sentAt); err != nil {
 			continue
 		}
 		if sentAt != nil {
@@ -152,6 +153,100 @@ func (h *ReferralHandler) GetMyPayouts(c *gin.Context) {
 		out = append(out, it)
 	}
 	c.JSON(http.StatusOK, gin.H{"data": out})
+}
+
+// GET /api/v1/me/bank-info — current bank info (404 if not set)
+func (h *ReferralHandler) GetBankInfo(c *gin.Context) {
+	userID := c.GetString("user_id")
+	row := h.svc.Pool().QueryRow(c.Request.Context(),
+		`SELECT account_no, bank_name, holder_name, note, created_at, updated_at
+		   FROM aff_bank_info WHERE user_id = $1`, userID)
+	var b struct {
+		AccountNo  string  `json:"account_no"`
+		BankName   string  `json:"bank_name"`
+		HolderName string  `json:"holder_name"`
+		Note       *string `json:"note,omitempty"`
+		CreatedAt  string  `json:"created_at"`
+		UpdatedAt  string  `json:"updated_at"`
+	}
+	if err := row.Scan(&b.AccountNo, &b.BankName, &b.HolderName, &b.Note, &b.CreatedAt, &b.UpdatedAt); err != nil {
+		c.JSON(http.StatusOK, gin.H{"data": nil})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": b})
+}
+
+type upsertBankInfoRequest struct {
+	AccountNo  string `json:"account_no" binding:"required,min=4,max=32"`
+	BankName   string `json:"bank_name" binding:"required,min=2,max=100"`
+	HolderName string `json:"holder_name" binding:"required,min=2,max=120"`
+	Note       string `json:"note"`
+}
+
+// PUT /api/v1/me/bank-info — upsert
+func (h *ReferralHandler) UpsertBankInfo(c *gin.Context) {
+	userID := c.GetString("user_id")
+	var req upsertBankInfoRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Vui lòng nhập đầy đủ thông tin tài khoản"})
+		return
+	}
+	_, err := h.svc.Pool().Exec(c.Request.Context(),
+		`INSERT INTO aff_bank_info (user_id, account_no, bank_name, holder_name, note)
+		 VALUES ($1, $2, $3, $4, NULLIF($5,''))
+		 ON CONFLICT (user_id) DO UPDATE SET
+		   account_no  = EXCLUDED.account_no,
+		   bank_name   = EXCLUDED.bank_name,
+		   holder_name = EXCLUDED.holder_name,
+		   note        = EXCLUDED.note,
+		   updated_at  = NOW()`,
+		userID, req.AccountNo, req.BankName, req.HolderName, req.Note)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không lưu được thông tin"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// GET /api/v1/me/aff-terms — current T&C version + accepted state
+func (h *ReferralHandler) GetTerms(c *gin.Context) {
+	userID := c.GetString("user_id")
+	var acceptedAt *string
+	var acceptedVer *string
+	_ = h.svc.Pool().QueryRow(c.Request.Context(),
+		`SELECT to_char(aff_terms_accepted_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), aff_terms_version
+		   FROM users WHERE id = $1`, userID).Scan(&acceptedAt, &acceptedVer)
+
+	current := "1.0"
+	accepted := acceptedVer != nil && *acceptedVer == current
+	c.JSON(http.StatusOK, gin.H{
+		"current_version":  current,
+		"accepted":         accepted,
+		"accepted_at":      acceptedAt,
+		"accepted_version": acceptedVer,
+	})
+}
+
+// POST /api/v1/me/aff-terms/accept — record acceptance of current version
+type acceptTermsRequest struct {
+	Version string `json:"version" binding:"required"`
+}
+
+func (h *ReferralHandler) AcceptTerms(c *gin.Context) {
+	userID := c.GetString("user_id")
+	var req acceptTermsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing version"})
+		return
+	}
+	_, err := h.svc.Pool().Exec(c.Request.Context(),
+		`UPDATE users SET aff_terms_accepted_at = NOW(), aff_terms_version = $1
+		   WHERE id = $2`, req.Version, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không lưu được"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
 // POST /api/v1/me/become-affiliate

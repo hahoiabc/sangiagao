@@ -624,6 +624,37 @@ class ApiService {
     return ((res.data['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
   }
 
+  /// Bank info for receiving payouts. data == null if not set.
+  Future<Map<String, dynamic>?> getBankInfo() async {
+    final res = await _dio.get('/me/bank-info');
+    final data = res.data['data'];
+    if (data == null) return null;
+    return Map<String, dynamic>.from(data as Map);
+  }
+
+  Future<void> upsertBankInfo({
+    required String accountNo,
+    required String bankName,
+    required String holderName,
+    String? note,
+  }) async {
+    await _dio.put('/me/bank-info', data: {
+      'account_no': accountNo,
+      'bank_name': bankName,
+      'holder_name': holderName,
+      if (note != null) 'note': note,
+    });
+  }
+
+  Future<Map<String, dynamic>> getAffTerms() async {
+    final res = await _dio.get('/me/aff-terms');
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
+  Future<void> acceptAffTerms(String version) async {
+    await _dio.post('/me/aff-terms/accept', data: {'version': version});
+  }
+
   // --- Feedback ---
   Future<void> createFeedback(String content) async {
     await _dio.post('/feedbacks', data: {'content': content});

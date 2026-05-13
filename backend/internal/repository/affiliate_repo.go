@@ -278,10 +278,10 @@ func (r *AffiliateRepo) CreatePayout(ctx context.Context, p *model.Payout, recor
 	now := time.Now().UTC()
 	row := tx.QueryRow(ctx,
 		`INSERT INTO payouts
-		    (referrer_user_id, total_amount, record_count, method, bank_info, note, status, created_by)
-		 VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7)
+		    (referrer_user_id, total_amount, transfer_fee, record_count, method, bank_info, note, status, created_by)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8)
 		 RETURNING id, created_at`,
-		p.ReferrerUserID, p.TotalAmount, p.RecordCount, p.Method, p.BankInfo, p.Note, p.CreatedBy)
+		p.ReferrerUserID, p.TotalAmount, p.TransferFee, p.RecordCount, p.Method, p.BankInfo, p.Note, p.CreatedBy)
 	if err := row.Scan(&p.ID, &p.CreatedAt); err != nil {
 		return err
 	}
@@ -314,7 +314,7 @@ func (r *AffiliateRepo) ListPayouts(ctx context.Context, referrerUserID *string,
 		where = "WHERE referrer_user_id = $3"
 		args = append(args, *referrerUserID)
 	}
-	q := `SELECT id, referrer_user_id, total_amount, record_count, method, bank_info, note,
+	q := `SELECT id, referrer_user_id, total_amount, transfer_fee, record_count, method, bank_info, note,
 	             status, created_by, sent_at, created_at
 	        FROM payouts ` + where + `
 	       ORDER BY created_at DESC
@@ -328,7 +328,7 @@ func (r *AffiliateRepo) ListPayouts(ctx context.Context, referrerUserID *string,
 	for rows.Next() {
 		var p model.Payout
 		if err := rows.Scan(
-			&p.ID, &p.ReferrerUserID, &p.TotalAmount, &p.RecordCount, &p.Method, &p.BankInfo, &p.Note,
+			&p.ID, &p.ReferrerUserID, &p.TotalAmount, &p.TransferFee, &p.RecordCount, &p.Method, &p.BankInfo, &p.Note,
 			&p.Status, &p.CreatedBy, &p.SentAt, &p.CreatedAt,
 		); err != nil {
 			return nil, err

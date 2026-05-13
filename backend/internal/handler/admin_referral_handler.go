@@ -259,6 +259,7 @@ type createPayoutRequest struct {
 	RecordIDs      []string        `json:"record_ids" binding:"required"`
 	Method         string          `json:"method" binding:"oneof=bank momo cash other"`
 	BankInfo       json.RawMessage `json:"bank_info"`
+	TransferFee    int64           `json:"transfer_fee"`
 	Note           string          `json:"note"`
 }
 
@@ -297,6 +298,38 @@ func (h *AdminReferralHandler) CreatePayout(c *gin.Context) {
 		return
 	}
 
+	// Require aff has accepted current T&C
+	var acceptedVer *string
+	_ = h.repo.Pool().QueryRow(c.Request.Context(),
+		`SELECT aff_terms_version FROM users WHERE id = $1`, req.ReferrerUserID).Scan(&acceptedVer)
+	if acceptedVer == nil || *acceptedVer != "1.0" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":        "aff_terms_not_accepted",
+			"message":      "Đối tác chưa đồng ý điều khoản phiên bản hiện hành",
+		})
+		return
+	}
+
+	// Auto-fill bank info from aff_bank_info if not provided in request
+	if req.Method == "bank" && len(req.BankInfo) == 0 {
+		var bi []byte
+		err := h.repo.Pool().QueryRow(c.Request.Context(),
+			`SELECT json_build_object(
+			    'account_no', account_no,
+			    'bank_name', bank_name,
+			    'holder_name', holder_name
+			  )::text::bytea
+			   FROM aff_bank_info WHERE user_id = $1`, req.ReferrerUserID).Scan(&bi)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":   "bank_info_missing",
+				"message": "Đối tác chưa cập nhật thông tin tài khoản ngân hàng",
+			})
+			return
+		}
+		req.BankInfo = json.RawMessage(bi)
+	}
+
 	// Resolve referrer's referral_code_id to find their rule minimum_payout
 	var codeID *string
 	_ = h.repo.Pool().QueryRow(c.Request.Context(),
@@ -314,6 +347,7 @@ func (h *AdminReferralHandler) CreatePayout(c *gin.Context) {
 	p := &model.Payout{
 		ReferrerUserID: req.ReferrerUserID,
 		TotalAmount:    total,
+		TransferFee:    req.TransferFee,
 		RecordCount:    len(req.RecordIDs),
 		Method:         req.Method,
 		BankInfo:       req.BankInfo,

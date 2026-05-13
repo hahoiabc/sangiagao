@@ -62,6 +62,7 @@ type Payout struct {
 	ID             string          `json:"id"`
 	ReferrerUserID string          `json:"referrer_user_id"`
 	TotalAmount    int64           `json:"total_amount"`
+	TransferFee    int64           `json:"transfer_fee"`   // paid by aff, deducted from total
 	RecordCount    int             `json:"record_count"`
 	Method         string          `json:"method"` // bank | momo | cash | other
 	BankInfo       json.RawMessage `json:"bank_info,omitempty"`
@@ -71,6 +72,21 @@ type Payout struct {
 	SentAt         *time.Time      `json:"sent_at,omitempty"`
 	CreatedAt      time.Time       `json:"created_at"`
 }
+
+// AffBankInfo is the bank account where commission payouts are sent.
+type AffBankInfo struct {
+	UserID      string    `json:"user_id"`
+	AccountNo   string    `json:"account_no"`
+	BankName    string    `json:"bank_name"`
+	HolderName  string    `json:"holder_name"`
+	Note        *string   `json:"note,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// CurrentTermsVersion is the live affiliate T&C version. Bump when content changes.
+// Aff must accept the new version before further payouts can be created.
+const CurrentTermsVersion = "1.0"
 
 // ReferralStats is the aggregated view shown to a referrer (mobile + web).
 type ReferralStats struct {

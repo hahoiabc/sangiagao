@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
 import '../../providers/providers.dart';
+import 'aff_terms_screen.dart';
 
 class ReferralScreen extends ConsumerStatefulWidget {
   const ReferralScreen({super.key});
@@ -16,6 +17,7 @@ class ReferralScreen extends ConsumerStatefulWidget {
 class _ReferralScreenState extends ConsumerState<ReferralScreen> {
   Map<String, dynamic>? _stats;
   List<Map<String, dynamic>> _history = const [];
+  Map<String, dynamic>? _bankInfo;
   bool _loading = true;
   String? _error;
 
@@ -30,10 +32,15 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
     try {
       final stats = await api.getReferralStats();
       final hist = await api.getReferralHistory(limit: 20);
+      Map<String, dynamic>? bank;
+      try {
+        bank = await api.getBankInfo();
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
         _stats = stats;
         _history = hist;
+        _bankInfo = bank;
         _loading = false;
         _error = null;
       });
@@ -58,24 +65,11 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
   }
 
   Future<void> _becomeAffiliate() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Trở thành đối tác'),
-        content: const Text(
-          'Khi bạn giới thiệu bạn bè đăng ký + mua gói, bạn nhận hoa hồng theo quy tắc của Sàn Giá Gạo:\n'
-          '\n• Giai đoạn 1 (3 tháng đầu): 50%\n'
-          '• Giai đoạn 2 (6 tháng kế): 30%\n'
-          '• Giai đoạn 3 (vĩnh viễn): 20%\n'
-          '\nTính trên doanh thu ròng (sau phí App Store nếu có). Thanh toán sau 45 ngày kể từ giao dịch.',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Huỷ')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Đồng ý & Kích hoạt')),
-        ],
-      ),
+    // Show T&C page first; user must accept to continue.
+    final accepted = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const AffTermsScreen(requireAccept: true)),
     );
-    if (confirm != true) return;
+    if (accepted != true) return;
     final api = ref.read(apiServiceProvider);
     try {
       await api.becomeAffiliate();
@@ -112,6 +106,8 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
                     children: [
                       if (isMember) _buildBecomeAffiliateBanner(),
                       if (isMember) const SizedBox(height: 12),
+                      if (isAff && _needBankInfoBanner()) _buildBankInfoBanner(),
+                      if (isAff && _needBankInfoBanner()) const SizedBox(height: 12),
                       _buildCodeCard(),
                       const SizedBox(height: 16),
                       _buildStatsCard(),
@@ -286,6 +282,60 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
           Text(label),
           Text(value, style: TextStyle(fontWeight: FontWeight.w600, color: color)),
         ],
+      ),
+    );
+  }
+
+  bool _needBankInfoBanner() {
+    final s = _stats;
+    if (s == null) return false;
+    final payable = (s['payable_amount'] as num?)?.toInt() ?? 0;
+    final min = (s['minimum_payout'] as num?)?.toInt() ?? 100000;
+    final hasInfo = _bankInfo != null && (_bankInfo!['account_no'] ?? '').toString().isNotEmpty;
+    return payable >= min && !hasInfo;
+  }
+
+  Widget _buildBankInfoBanner() {
+    final fmt = NumberFormat('#,###', 'vi_VN');
+    final payable = (_stats?['payable_amount'] as num?)?.toInt() ?? 0;
+    return Card(
+      color: Colors.blue.shade50,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.account_balance, color: Colors.blue, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Bạn có ${fmt.format(payable)} đ có thể nhận!',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Cập nhật thông tin tài khoản ngân hàng để Sàn chuyển hoa hồng cho bạn. '
+              'Phí chuyển khoản (nếu có) sẽ trừ trực tiếp từ số tiền nhận.',
+              style: TextStyle(fontSize: 12, height: 1.4),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () async {
+                  final updated = await context.push<bool>('/referral/bank-info');
+                  if (updated == true && mounted) _load();
+                },
+                child: const Text('Cập nhật tài khoản nhận hoa hồng'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

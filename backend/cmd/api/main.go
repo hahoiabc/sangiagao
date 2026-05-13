@@ -499,6 +499,10 @@ func main() {
 			protected.GET("/me/referees", referralHandler.GetMyReferees)
 			protected.GET("/me/payouts", referralHandler.GetMyPayouts)
 			protected.POST("/me/become-affiliate", referralHandler.BecomeAffiliate)
+			protected.GET("/me/bank-info", referralHandler.GetBankInfo)
+			protected.PUT("/me/bank-info", referralHandler.UpsertBankInfo)
+			protected.GET("/me/aff-terms", referralHandler.GetTerms)
+			protected.POST("/me/aff-terms/accept", referralHandler.AcceptTerms)
 
 			// Notifications
 			notifications := protected.Group("/notifications")
