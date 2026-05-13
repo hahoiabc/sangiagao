@@ -359,6 +359,12 @@ func main() {
 		v1.GET("/site-settings/guide-video", siteSettingsHandler.GetGuideVideo)
 		v1.GET("/site-settings/about-page", siteSettingsHandler.GetAboutPage)
 
+		// SEO landing pages data (public, cached) — powers static blog
+		// pages at sangiagao.vn/bang-gia-gao/...
+		seoHandler := handler.NewSEOHandler(pgPool, listingRepo)
+		v1.GET("/seo/price-board", seoHandler.GetPriceBoard)
+		v1.GET("/seo/listings", seoHandler.GetListingsByProvinceAndRiceType)
+
 		// SePay webhook (public — verified by API key in handler)
 		v1.POST("/webhooks/sepay", paymentHandler.SepayWebhook)
 

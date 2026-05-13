@@ -368,13 +368,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
               const Divider(height: 28),
-              if (!['editor', 'admin', 'owner'].contains(user.role))
-                ListTile(
-                  leading: const Icon(Icons.card_membership),
-                  title: const Text('Gói dịch vụ & Gia hạn'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/subscription'),
-                ),
+              // Always show subscription entry — backend gate bypasses for
+              // owner/admin/editor roles, but Apple reviewer needs to locate
+              // IAP regardless of which demo account they use (they sometimes
+              // ignore review notes and try the first account).
+              ListTile(
+                leading: const Icon(Icons.card_membership),
+                title: const Text('Gói dịch vụ & Gia hạn'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/subscription'),
+              ),
               ListTile(
                 leading: const Icon(Icons.lock_outline),
                 title: const Text('Đổi mật khẩu'),

@@ -271,7 +271,12 @@ class ApiService {
     final key = presignRes.data['key'] as String;
     // Step 2: PUT file directly to MinIO
     final bytes = await file.readAsBytes();
-    final putDio = Dio();
+    final putDio = Dio(BaseOptions(
+      // Default Dio has no timeouts (0). Set generous limits so MinIO uploads
+      // on slow Vietnam wifi/4G don't fail prematurely.
+      sendTimeout: const Duration(seconds: 120),
+      receiveTimeout: const Duration(seconds: 60),
+    ));
     await putDio.put(
       uploadUrl,
       data: Stream.fromIterable([bytes]),
@@ -295,7 +300,16 @@ class ApiService {
     final formData = FormData.fromMap({
       'audio': await MultipartFile.fromFile(filePath, contentType: DioMediaType('audio', 'm4a')),
     });
-    final res = await _dio.post('/upload/audio', data: formData);
+    final res = await _dio.post(
+      '/upload/audio',
+      data: formData,
+      options: Options(
+        // Long voice recordings or slow networks can blow past the default
+        // 10s send timeout. Allow up to 2 minutes for upload to finish.
+        sendTimeout: const Duration(seconds: 120),
+        receiveTimeout: const Duration(seconds: 60),
+      ),
+    );
     return res.data['url'] as String;
   }
 

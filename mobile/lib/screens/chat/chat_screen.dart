@@ -39,7 +39,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _scrollCtrl = ScrollController();
   List<Message> _messages = [];
   bool _loading = true;
-  bool _uploadingImage = false;
   String? _currentUserId;
   PublicProfile? _otherUser;
   WebSocketChannel? _channel;
@@ -440,7 +439,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
     setState(() {
       _messages.add(tempMsg);
-      _uploadingImage = true;
     });
     _scrollToBottom();
 
@@ -450,14 +448,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       if (mounted) {
         setState(() {
           _messages.removeWhere((m) => m.id == tempId);
-          _uploadingImage = false;
         });
       }
     }).catchError((e) {
       if (mounted) {
         setState(() {
           _messages.removeWhere((m) => m.id == tempId);
-          _uploadingImage = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Gửi ảnh thất bại: $e')),
@@ -469,26 +465,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   // --- Audio recording ---
 
   Future<void> _startRecording() async {
-    final current = await Permission.microphone.status;
+    // Apple guideline 2.1(a): show explanation BEFORE triggering the iOS system
+    // permission prompt. We use the `record` plugin's hasPermission() which
+    // calls AVAudioApplication.requestRecordPermission (iOS 17+) under the
+    // hood — more reliable than permission_handler v11 which still uses the
+    // deprecated AVAudioSession API.
 
-    if (current.isPermanentlyDenied) {
-      if (!mounted) return;
-      final shouldOpen = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Cần quyền micro'),
-          content: const Text('Bạn đã từ chối quyền micro. Vui lòng vào Cài đặt để cấp quyền.'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
-            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Mở Cài đặt')),
-          ],
-        ),
-      );
-      if (shouldOpen == true) await openAppSettings();
-      return;
-    }
-
-    if (!current.isGranted) {
+    // Quick path: permission already granted.
+    if (await _recorder.hasPermission()) {
+      // Recorder ready; fall through to start recording below.
+    } else {
+      // Show pre-permission explanation dialog (Apple requirement).
       if (!mounted) return;
       final proceed = await showDialog<bool>(
         context: context,
@@ -508,13 +495,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       );
       if (proceed != true) return;
 
-      final status = await Permission.microphone.request();
-      if (!status.isGranted) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Cần cấp quyền micro để ghi âm tin nhắn thoại')),
-          );
-        }
+      // Trigger iOS system permission prompt via the record plugin.
+      // hasPermission() returns true iff granted; if user denied previously
+      // (permanently), it will return false WITHOUT showing prompt — we
+      // handle that by directing user to Settings.
+      final granted = await _recorder.hasPermission();
+      if (!granted) {
+        if (!mounted) return;
+        // Could be either: just-denied OR previously-permanently-denied.
+        // Either way, the user can fix it in Settings (the Microphone
+        // toggle should now appear there because hasPermission() triggered
+        // a request the first time).
+        final shouldOpen = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Cần quyền micro'),
+            content: const Text(
+              'Vui lòng vào Cài đặt → SanGiaGao.vn → bật toggle "Micro" để gửi tin nhắn thoại.',
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+              TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Mở Cài đặt')),
+            ],
+          ),
+        );
+        if (shouldOpen == true) await openAppSettings();
         return;
       }
     }
@@ -565,21 +570,54 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
     _scrollToBottom();
 
-    // Upload + send in background
+    // Upload + send in background, with one auto-retry for transient errors
+    String? uploadedUrl;
     try {
-      final url = await ref.read(apiServiceProvider).uploadAudio(path);
-      if (mounted) setState(() => _messages.removeWhere((m) => m.id == tempId));
-      await _sendMessage(url, 'audio');
+      uploadedUrl = await ref.read(apiServiceProvider).uploadAudio(path);
     } catch (e) {
+      debugPrint('Audio upload failed (attempt 1): $e');
+      try {
+        await Future.delayed(const Duration(milliseconds: 500));
+        uploadedUrl = await ref.read(apiServiceProvider).uploadAudio(path);
+      } catch (e2) {
+        debugPrint('Audio upload failed (attempt 2): $e2');
+        if (mounted) {
+          setState(() => _messages.removeWhere((m) => m.id == tempId));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Tải lên âm thanh thất bại: ${_briefError(e2)}')),
+          );
+        }
+      }
+    }
+
+    if (uploadedUrl == null || uploadedUrl.isEmpty) {
+      if (mounted) setState(() => _uploadingAudio = false);
+      return;
+    }
+
+    try {
+      if (mounted) setState(() => _messages.removeWhere((m) => m.id == tempId));
+      await _sendMessage(uploadedUrl, 'audio');
+    } catch (e) {
+      debugPrint('Send audio message failed: $e');
       if (mounted) {
-        setState(() => _messages.removeWhere((m) => m.id == tempId));
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gửi âm thanh thất bại: $e')),
+          SnackBar(content: Text('Gửi âm thanh thất bại: ${_briefError(e)}')),
         );
       }
     } finally {
       if (mounted) setState(() => _uploadingAudio = false);
     }
+  }
+
+  /// Extract a short, user-readable error string from an exception.
+  /// Hides verbose Dio stack traces; surfaces backend message when present.
+  String _briefError(Object e) {
+    final s = e.toString();
+    if (s.length > 120) {
+      return s.substring(0, 117) + '...';
+    }
+    return s;
   }
 
   Future<void> _cancelRecording() async {
@@ -1773,19 +1811,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
             Row(
           children: [
-            _uploadingImage
-                ? const Padding(
-                    padding: EdgeInsets.all(8),
-                    child: SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  )
-                : IconButton(
-                    icon: const Icon(Icons.image, color: AppColors.primary),
-                    onPressed: _showImageSourcePicker,
-                  ),
+            // Image attach button — always tappable. Upload progress shown
+            // via the optimistic temp message bubble (file:// preview), not
+            // a blocking spinner here, so user can queue more images.
+            IconButton(
+              icon: const Icon(Icons.image, color: AppColors.primary),
+              onPressed: _showImageSourcePicker,
+            ),
             _uploadingAudio
                 ? const Padding(
                     padding: EdgeInsets.all(8),

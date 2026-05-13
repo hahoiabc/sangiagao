@@ -394,6 +394,49 @@ export async function getPriceBoard() {
   return request<PriceBoardResponse>("/marketplace/price-board");
 }
 
+// --- SEO landing pages (Bảng giá gạo Việt Nam theo tỉnh) ---
+export interface SEOPriceEntry {
+  province: string;
+  province_slug: string;
+  category: string;
+  rice_type: string;
+  rice_type_slug: string;
+  min_price: number;
+  avg_price: number;
+  max_price: number;
+  listing_count: number;
+  last_updated: string;
+}
+
+export interface SEOPriceBoardResponse {
+  data: SEOPriceEntry[];
+  total: number;
+  generated_at: string;
+}
+
+export interface SEOListing {
+  id: string;
+  title: string;
+  price_per_kg: number;
+  quantity_kg: number;
+  province: string | null;
+  ward: string | null;
+  created_at: string;
+  seller_name: string;
+}
+
+export async function getSEOPriceBoard(): Promise<SEOPriceBoardResponse> {
+  return request<SEOPriceBoardResponse>("/seo/price-board");
+}
+
+export async function getSEOListings(
+  provinceSlug: string,
+  riceTypeSlug: string,
+): Promise<{ data: SEOListing[]; total: number }> {
+  const q = new URLSearchParams({ province: provinceSlug, rice_type: riceTypeSlug });
+  return request<{ data: SEOListing[]; total: number }>(`/seo/listings?${q}`);
+}
+
 export async function getSlogan(): Promise<{ key: string; value: string }> {
   return request<{ key: string; value: string }>("/site-settings/slogan");
 }

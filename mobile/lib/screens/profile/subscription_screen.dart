@@ -236,47 +236,57 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   Widget _buildIAPProductCard(ProductDetails product, IAPState state, IAPService notifier) {
     final months = _monthsFromProductId(product.id);
     final isOneMonth = months == 1;
+    // Vertical layout — avoids Expanded-in-Row width collapse where every
+    // Text wraps per character on narrow card widths.
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: Padding(
         padding: const EdgeInsets.all(14),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    product.title.isNotEmpty ? product.title : 'Gói $months tháng',
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    product.price,
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
-                  ),
-                  if (isOneMonth) ...[
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.success.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        '1 tháng dùng thử miễn phí',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.success),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  'Gói $months tháng',
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  product.price,
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
+                ),
+              ],
             ),
-            FilledButton(
-              onPressed: state.processing ? null : () => notifier.buy(product),
-              child: state.processing
-                  ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Mua'),
+            if (isOneMonth) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '1 tháng dùng thử miễn phí',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.success),
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: state.processing ? null : () => notifier.buy(product),
+                child: state.processing
+                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('Mua'),
+              ),
             ),
           ],
         ),

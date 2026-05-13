@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -392,6 +393,60 @@ func (r *ListingRepo) GetPriceBoardData(ctx context.Context) ([]PriceBoardRow, e
 	for rows.Next() {
 		var row PriceBoardRow
 		if err := rows.Scan(&row.Category, &row.RiceType, &row.MinPrice, &row.ListingCount); err != nil {
+			return nil, err
+		}
+		result = append(result, row)
+	}
+	return result, rows.Err()
+}
+
+// SEOPriceRow holds aggregated price data per (province, category, rice_type)
+// for SEO landing pages. Province name is normalized (strip "Tỉnh "/"Thành phố ").
+type SEOPriceRow struct {
+	Province     string  // normalized name, e.g. "Đồng Nai"
+	Category     string
+	RiceType     string
+	MinPrice     float64
+	AvgPrice     float64
+	MaxPrice     float64
+	ListingCount int
+	LastUpdated  time.Time
+}
+
+// GetSEOPriceBoard returns price aggregation grouped by (province, category,
+// rice_type) for static SEO landing pages. Province name is normalized
+// to deduplicate "Tỉnh X" and "X" entries from inconsistent user input.
+func (r *ListingRepo) GetSEOPriceBoard(ctx context.Context) ([]SEOPriceRow, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT
+		    TRIM(regexp_replace(province, '^(Tỉnh|Thành phố|TP\.?|TP|Tỉnh\.?)\s+', '', 'i')) AS province_norm,
+		    category,
+		    rice_type,
+		    MIN(price_per_kg) AS min_price,
+		    ROUND(AVG(price_per_kg))::float8 AS avg_price,
+		    MAX(price_per_kg) AS max_price,
+		    COUNT(*) AS listing_count,
+		    MAX(updated_at) AS last_updated
+		 FROM listings
+		 WHERE status = 'active'
+		   AND category IS NOT NULL
+		   AND province IS NOT NULL
+		   AND TRIM(province) <> ''
+		 GROUP BY province_norm, category, rice_type
+		 ORDER BY province_norm, category, rice_type`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []SEOPriceRow
+	for rows.Next() {
+		var row SEOPriceRow
+		if err := rows.Scan(
+			&row.Province, &row.Category, &row.RiceType,
+			&row.MinPrice, &row.AvgPrice, &row.MaxPrice,
+			&row.ListingCount, &row.LastUpdated,
+		); err != nil {
 			return nil, err
 		}
 		result = append(result, row)
