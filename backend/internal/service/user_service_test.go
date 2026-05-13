@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func strPtr(s string) *string { return &s }
+func testStrPtr(s string) *string { return &s }
 func boolPtr(b bool) *bool   { return &b }
 
 func sellerUser() *model.User {
@@ -49,7 +49,7 @@ func TestGetPublicProfile_Success(t *testing.T) {
 	svc := NewUserService(userRepo, nil)
 
 	u := testUser()
-	u.Name = strPtr("Test User")
+	u.Name = testStrPtr("Test User")
 	userRepo.On("GetByID", mock.Anything, "user-123").Return(u, nil)
 
 	profile, err := svc.GetPublicProfile(context.Background(), "user-123")
@@ -69,12 +69,12 @@ func TestUpdateProfile_UpdateFields(t *testing.T) {
 
 	user := testUser()
 	updatedUser := *user
-	updatedUser.Name = strPtr("New Name")
+	updatedUser.Name = testStrPtr("New Name")
 
 	userRepo.On("GetByID", mock.Anything, "user-123").Return(user, nil)
 	userRepo.On("UpdateProfile", mock.Anything, "user-123", mock.Anything).Return(&updatedUser, nil)
 
-	req := &model.UpdateProfileRequest{Name: strPtr("New Name")}
+	req := &model.UpdateProfileRequest{Name: testStrPtr("New Name")}
 	result, err := svc.UpdateProfile(context.Background(), "user-123", req)
 
 	require.NoError(t, err)
@@ -109,7 +109,7 @@ func TestUpdateProfile_SkipTOSIfAlreadyAccepted(t *testing.T) {
 	userRepo.On("GetByID", mock.Anything, "user-123").Return(user, nil)
 	userRepo.On("UpdateProfile", mock.Anything, "user-123", mock.Anything).Return(user, nil)
 
-	req := &model.UpdateProfileRequest{AcceptTOS: boolPtr(true), Name: strPtr("Updated")}
+	req := &model.UpdateProfileRequest{AcceptTOS: boolPtr(true), Name: testStrPtr("Updated")}
 	_, err := svc.UpdateProfile(context.Background(), "user-123", req)
 
 	require.NoError(t, err)
@@ -124,7 +124,7 @@ func TestUpdateAvatar_Success(t *testing.T) {
 	svc := NewUserService(userRepo, nil)
 
 	user := testUser()
-	user.AvatarURL = strPtr("https://cdn.example.com/avatar.jpg")
+	user.AvatarURL = testStrPtr("https://cdn.example.com/avatar.jpg")
 	userRepo.On("UpdateAvatar", mock.Anything, "user-123", "https://cdn.example.com/avatar.jpg").Return(user, nil)
 
 	result, err := svc.UpdateAvatar(context.Background(), "user-123", "https://cdn.example.com/avatar.jpg")

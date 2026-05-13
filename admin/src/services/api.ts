@@ -870,3 +870,95 @@ export interface PaymentOrder {
 export async function getPaymentOrders(page = 1, limit = 20): Promise<PaginatedResponse<PaymentOrder>> {
   return request<PaginatedResponse<PaymentOrder>>(`/admin/payments?page=${page}&limit=${limit}`);
 }
+
+// --- Affiliate referral admin API ---
+export interface CommissionRule {
+  id: string;
+  referral_code_id: string | null;
+  stage1_days: number;
+  stage1_pct: number;
+  stage2_days: number;
+  stage2_pct: number;
+  stage3_pct: number;
+  base_type: "gross" | "net";
+  minimum_payout: number;
+  active_from: string;
+  active_to: string | null;
+}
+
+export interface LeaderboardRow {
+  referrer_user_id: string;
+  phone: string;
+  name: string;
+  code: string;
+  total_referrals: number;
+  total_earned: number;
+  payable_amount: number;
+  pending_amount: number;
+  paid_amount: number;
+}
+
+export interface PayableRecord {
+  id: string;
+  referee_user_id: string;
+  commission_amount: number;
+  stage: number;
+  rate: number;
+  payable_after: string;
+  created_at: string;
+}
+
+export interface PayoutRow {
+  id: string;
+  referrer_user_id: string;
+  total_amount: number;
+  record_count: number;
+  method: string;
+  bank_info: unknown;
+  note: string | null;
+  status: string;
+  created_at: string;
+  sent_at: string | null;
+}
+
+export async function listCommissionRules() {
+  return request<{ data: CommissionRule[] }>("/admin/referrals/rules");
+}
+
+export async function upsertCommissionRule(body: Partial<CommissionRule>) {
+  return request<CommissionRule>("/admin/referrals/rules", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function getLeaderboard() {
+  return request<{ data: LeaderboardRow[] }>("/admin/referrals/leaderboard");
+}
+
+export async function getPayableForReferrer(referrerId: string) {
+  return request<{ data: PayableRecord[]; total_amount: number; count: number }>(
+    `/admin/referrals/payable?referrer_user_id=${referrerId}`,
+  );
+}
+
+export async function listPayouts() {
+  return request<{ data: PayoutRow[] }>("/admin/referrals/payouts");
+}
+
+export async function createPayout(body: {
+  referrer_user_id: string;
+  record_ids: string[];
+  method: string;
+  bank_info?: unknown;
+  note?: string;
+}) {
+  return request<PayoutRow>("/admin/referrals/payouts", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function markPayoutSent(id: string) {
+  return request<{ ok: boolean }>(`/admin/referrals/payouts/${id}/sent`, { method: "PUT" });
+}

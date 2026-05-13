@@ -33,10 +33,17 @@ const (
 type PaymentService struct {
 	paymentRepo *repository.PaymentRepo
 	subService  *SubscriptionService
+	engine      *CommissionEngine
 }
 
 func NewPaymentService(paymentRepo *repository.PaymentRepo, subService *SubscriptionService) *PaymentService {
 	return &PaymentService{paymentRepo: paymentRepo, subService: subService}
+}
+
+// AttachCommissionEngine wires the affiliate commission engine. Optional —
+// if nil, no commission is recorded on SePay webhook.
+func (s *PaymentService) AttachCommissionEngine(e *CommissionEngine) {
+	s.engine = e
 }
 
 // CreateOrder creates a payment order and returns QR info.
@@ -127,7 +134,7 @@ func (s *PaymentService) HandleSepayWebhook(ctx context.Context, txID int64, con
 
 	// Activate subscription FIRST (before marking paid)
 	// If activation fails, payment stays pending → SePay retries → try again
-	_, err = s.subService.AdminActivate(ctx, order.UserID, order.PlanMonths)
+	sub, err := s.subService.AdminActivate(ctx, order.UserID, order.PlanMonths)
 	if err != nil {
 		log.Printf("[PAYMENT] CRITICAL: Activation failed for order %s: %v", orderCode, err)
 		return fmt.Errorf("activate subscription: %w", err)
@@ -137,6 +144,25 @@ func (s *PaymentService) HandleSepayWebhook(ctx context.Context, txID int64, con
 	if err := s.paymentRepo.MarkPaid(ctx, orderCode, txID); err != nil {
 		// Subscription activated but markPaid failed — not critical, admin can see in SePay dashboard
 		log.Printf("[PAYMENT] Warning: markPaid failed for %s (subscription already activated): %v", orderCode, err)
+	}
+
+	// Record affiliate commission (SePay = 0 platform fee, gross = order.Amount).
+	if s.engine != nil && sub != nil {
+		if err := s.engine.UpdateSubscriptionNet(ctx, sub.ID, order.Amount, 0); err != nil {
+			log.Printf("[PAYMENT] commission update net: %v", err)
+		}
+		_, err := s.engine.RecordForPayment(ctx, PaymentEvent{
+			RefereeUserID:  order.UserID,
+			SubscriptionID: sub.ID,
+			Source:         "sepay",
+			EventID:        fmt.Sprintf("%d", txID),
+			GrossAmount:    order.Amount,
+			PlatformFeePct: 0,
+			OccurredAt:     time.Now().UTC(),
+		})
+		if err != nil {
+			log.Printf("[PAYMENT] commission record: %v", err)
+		}
 	}
 
 	log.Printf("[PAYMENT] Order %s paid, subscription activated for user %s (%d months)", orderCode, order.UserID, order.PlanMonths)

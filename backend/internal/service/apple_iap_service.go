@@ -19,6 +19,7 @@ type AppleIAPService struct {
 	pool        *pgxpool.Pool
 	client      *apple.Client
 	expectedBID string // bundleId we expect transactions to come from
+	engine      *CommissionEngine
 }
 
 func NewAppleIAPService(pool *pgxpool.Pool, client *apple.Client, bundleID string) *AppleIAPService {
@@ -27,6 +28,19 @@ func NewAppleIAPService(pool *pgxpool.Pool, client *apple.Client, bundleID strin
 		client:      client,
 		expectedBID: bundleID,
 	}
+}
+
+// AttachCommissionEngine wires the affiliate commission engine. Optional —
+// if nil, no commission is recorded. Set in main.go after engine construction.
+func (s *AppleIAPService) AttachCommissionEngine(e *CommissionEngine) {
+	s.engine = e
+}
+
+// productInfo is the pricing snapshot used to compute net_amount + commission.
+type productInfo struct {
+	Months         int
+	GrossAmount    int64
+	PlatformFeePct float64
 }
 
 // AppleVerifyResult is returned to mobile after successful verification.
@@ -65,7 +79,7 @@ func (s *AppleIAPService) VerifyTransaction(ctx context.Context, userID, transac
 		return nil, ErrAppleTransactionRevoked
 	}
 
-	months, err := s.lookupMonths(ctx, info.ProductID)
+	prod, err := s.lookupProduct(ctx, info.ProductID)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +88,7 @@ func (s *AppleIAPService) VerifyTransaction(ctx context.Context, userID, transac
 	}
 
 	expiresAt := info.ExpiresTime()
-	res, err := s.upsert(ctx, userID, info, months, expiresAt)
+	res, err := s.upsert(ctx, userID, info, prod, expiresAt)
 	if err != nil {
 		return nil, err
 	}
@@ -83,22 +97,55 @@ func (s *AppleIAPService) VerifyTransaction(ctx context.Context, userID, transac
 		log.Printf("apple_iap: restore listings for %s: %v", userID, err)
 	}
 
+	// Commission engine: record affiliate commission if referee has a referrer.
+	// Best-effort — failures must not block the verify response.
+	s.recordCommission(ctx, userID, res.SubscriptionID, info, prod)
+
 	return res, nil
 }
 
-func (s *AppleIAPService) lookupMonths(ctx context.Context, productID string) (int, error) {
-	var months int
-	err := s.pool.QueryRow(ctx,
-		`SELECT months FROM apple_product_map WHERE product_id = $1 AND is_active = true`,
-		productID,
-	).Scan(&months)
-	if err != nil {
-		return 0, fmt.Errorf("%w: %s", ErrAppleProductUnknown, productID)
+// recordCommission is a best-effort hook to write a commission_record + update
+// subscription net_amount. Errors are logged, not returned.
+func (s *AppleIAPService) recordCommission(ctx context.Context, refereeID, subID string, info *apple.TransactionInfo, prod productInfo) {
+	if s.engine == nil || prod.GrossAmount == 0 {
+		return
 	}
-	return months, nil
+	// Update subscriptions.net_amount + platform_fee_pct for reporting.
+	netAmount := prod.GrossAmount - int64(float64(prod.GrossAmount)*prod.PlatformFeePct)
+	if err := s.engine.UpdateSubscriptionNet(ctx, subID, netAmount, prod.PlatformFeePct); err != nil {
+		log.Printf("apple_iap: update net_amount: %v", err)
+	}
+
+	_, err := s.engine.RecordForPayment(ctx, PaymentEvent{
+		RefereeUserID:  refereeID,
+		SubscriptionID: subID,
+		Source:         "apple",
+		EventID:        info.TransactionID,
+		GrossAmount:    prod.GrossAmount,
+		PlatformFeePct: prod.PlatformFeePct,
+		OccurredAt:     info.PurchaseTime(),
+	})
+	if err != nil {
+		log.Printf("apple_iap: commission record: %v", err)
+	}
 }
 
-func (s *AppleIAPService) upsert(ctx context.Context, userID string, info *apple.TransactionInfo, months int, expiresAt time.Time) (*AppleVerifyResult, error) {
+func (s *AppleIAPService) lookupProduct(ctx context.Context, productID string) (productInfo, error) {
+	var p productInfo
+	err := s.pool.QueryRow(ctx,
+		`SELECT months, gross_amount, platform_fee_pct
+		   FROM apple_product_map WHERE product_id = $1 AND is_active = true`,
+		productID,
+	).Scan(&p.Months, &p.GrossAmount, &p.PlatformFeePct)
+	if err != nil {
+		return productInfo{}, fmt.Errorf("%w: %s", ErrAppleProductUnknown, productID)
+	}
+	return p, nil
+}
+
+func (s *AppleIAPService) upsert(ctx context.Context, userID string, info *apple.TransactionInfo, prod productInfo, expiresAt time.Time) (*AppleVerifyResult, error) {
+	months := prod.Months
+	grossAmount := prod.GrossAmount
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -144,11 +191,11 @@ func (s *AppleIAPService) upsert(ctx context.Context, userID string, info *apple
 				apple_product_id, apple_environment, auto_renew_status
 			 ) VALUES (
 				$1, 'paid', $2, $3, 'active',
-				$4, 0, 'apple',
-				$5, $6, $7, $8, true
+				$4, $5, 'apple',
+				$6, $7, $8, $9, true
 			 ) RETURNING id`,
 			userID, info.PurchaseTime(), expiresAt,
-			months,
+			months, grossAmount,
 			info.TransactionID, info.OriginalTransactionID,
 			info.ProductID, info.Environment,
 		).Scan(&existingID)

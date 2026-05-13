@@ -6,8 +6,10 @@ import { useAuth } from "@/lib/auth";
 import { AdminSidebar } from "@/components/admin-sidebar";
 import { AdminHeader } from "@/components/admin-header";
 
-const allowedRoles = ["owner", "admin", "editor"];
+const allowedRoles = ["owner", "admin", "editor", "aff"];
 const adminOnlyPaths = ["/users", "/revenue", "/notifications", "/zalo-zns"];
+// aff role: only allowed to access /referrals/*. Redirect away otherwise.
+const affAllowedPaths = ["/referrals"];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -24,6 +26,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (!isLoading && user && user.role === "editor" && adminOnlyPaths.some((p) => pathname.startsWith(p))) {
       router.push("/dashboard");
+    }
+  }, [user, isLoading, pathname, router]);
+
+  // Confine aff role to /referrals/* only
+  useEffect(() => {
+    if (!isLoading && user && user.role === "aff" && !affAllowedPaths.some((p) => pathname.startsWith(p))) {
+      router.push("/referrals");
     }
   }, [user, isLoading, pathname, router]);
 

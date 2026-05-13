@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
-import { LayoutDashboard, Users, ShoppingBasket, Flag, CreditCard, LogOut, Wheat, Megaphone, MessageSquareText, Menu, Activity, Package, GripVertical, TrendingUp, Bell, Mail, MessageCircle, Type, FileText } from "lucide-react";
+import { LayoutDashboard, Users, ShoppingBasket, Flag, CreditCard, LogOut, Wheat, Megaphone, MessageSquareText, Menu, Activity, Package, GripVertical, TrendingUp, Bell, Mail, MessageCircle, Type, FileText, HandCoins } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,15 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 
-const defaultNavItems = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  adminOnly: boolean;
+  affAllowed?: boolean; // visible to aff role too (otherwise hidden)
+};
+
+const defaultNavItems: NavItem[] = [
   { href: "/dashboard", label: "Tổng quan", icon: LayoutDashboard, adminOnly: false },
   { href: "/users", label: "Người dùng", icon: Users, adminOnly: true },
   { href: "/listings", label: "Tin đăng", icon: ShoppingBasket, adminOnly: false },
@@ -30,6 +38,7 @@ const defaultNavItems = [
   { href: "/sponsors", label: "Tài trợ", icon: Megaphone, adminOnly: false },
   { href: "/feedbacks", label: "Góp ý", icon: MessageSquareText, adminOnly: false },
   { href: "/revenue", label: "Doanh thu", icon: TrendingUp, adminOnly: true },
+  { href: "/referrals", label: "Hoa hồng giới thiệu", icon: HandCoins, adminOnly: false, affAllowed: true },
   { href: "/inbox", label: "Hộp thư", icon: Mail, adminOnly: false },
   { href: "/notifications", label: "Thông báo", icon: Bell, adminOnly: true },
   { href: "/zalo-zns", label: "OTP Zalo ZNS", icon: MessageCircle, adminOnly: true },
@@ -161,7 +170,10 @@ function SidebarNav({ pathname, unrepliedCount, userRole, onNavigate }: { pathna
     saveNavOrder(reordered);
   }
 
-  const filteredItems = navItems.filter((item) => !item.adminOnly || userRole === "owner" || userRole === "admin");
+  const filteredItems = navItems.filter((item) => {
+    if (userRole === "aff") return item.affAllowed === true;
+    return !item.adminOnly || userRole === "owner" || userRole === "admin";
+  });
 
   return (
     <nav className="flex-1 space-y-1 px-3 py-4">

@@ -162,6 +162,7 @@ export default function UserDetailPage() {
     { value: "owner", label: "Chủ sở hữu", color: "bg-amber-50 text-amber-700 border-amber-200" },
     { value: "admin", label: "Quản trị viên", color: "bg-purple-50 text-purple-700 border-purple-200" },
     { value: "editor", label: "Biên tập viên", color: "bg-cyan-50 text-cyan-700 border-cyan-200" },
+    { value: "aff", label: "Đối tác Affiliate", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
     { value: "member", label: "Thành viên", color: "bg-violet-50 text-violet-700 border-violet-200" },
   ];
 

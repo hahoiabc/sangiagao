@@ -343,6 +343,7 @@ export async function completeRegister(data: {
   province?: string;
   ward?: string;
   address?: string;
+  referral_code?: string;
 }) {
   return request<{
     user: { id: string; phone: string; name?: string; avatar_url?: string; role: string };
@@ -425,6 +426,44 @@ export interface SEOListing {
   ward: string | null;
   created_at: string;
   seller_name: string;
+}
+
+// --- Affiliate / Referral ---
+export interface ReferralStats {
+  code: string;
+  total_referrals: number;
+  active_referees: number;
+  total_earned: number;
+  payable_amount: number;
+  pending_amount: number;
+  paid_amount: number;
+  minimum_payout: number;
+}
+
+export interface CommissionRecord {
+  id: string;
+  referee_user_id: string;
+  payment_source: string;
+  gross_amount: number;
+  net_amount: number;
+  base_amount: number;
+  stage: number;
+  rate: number;
+  commission_amount: number;
+  status: string;
+  payable_after: string;
+  paid_at?: string;
+  created_at: string;
+}
+
+export async function getReferralStats(): Promise<ReferralStats> {
+  return request<ReferralStats>("/me/referral");
+}
+
+export async function getReferralHistory(limit = 20, offset = 0): Promise<{ data: CommissionRecord[] }> {
+  return request<{ data: CommissionRecord[] }>(
+    `/me/referral/history?limit=${limit}&offset=${offset}`,
+  );
 }
 
 export async function getSEOPriceBoard(): Promise<SEOPriceBoardResponse> {

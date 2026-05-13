@@ -160,6 +160,14 @@ func main() {
 	}
 	subService := service.NewSubscriptionService(subRepo, planRepo)
 	paymentService := service.NewPaymentService(paymentRepo, subService)
+
+	// Affiliate / commission engine (referral system)
+	affiliateRepo := repository.NewAffiliateRepo(pgPool)
+	commissionEngine := service.NewCommissionEngine(pgPool, affiliateRepo)
+	referralService := service.NewReferralService(pgPool, affiliateRepo)
+	paymentService.AttachCommissionEngine(commissionEngine)
+	referralHandler := handler.NewReferralHandler(referralService)
+	adminReferralHandler := handler.NewAdminReferralHandler(affiliateRepo)
 	ratingService := service.NewRatingService(ratingRepo)
 	reportService := service.NewReportService(reportRepo)
 	pushSender := firebase.NewFCMSender(cfg.FirebaseCredPath)
@@ -206,6 +214,7 @@ func main() {
 	if appCache != nil {
 		authHandler.SetCache(appCache)
 	}
+	authHandler.SetReferralService(referralService)
 	userHandler := handler.NewUserHandler(userService)
 	listingHandler := handler.NewListingHandler(listingService)
 	catalogHandler := handler.NewCatalogHandler(catalogService)
@@ -223,6 +232,7 @@ func main() {
 	} else {
 		appleClient := apple.NewClient(appleCfg)
 		appleIAPService := service.NewAppleIAPService(pgPool, appleClient, appleCfg.BundleID)
+		appleIAPService.AttachCommissionEngine(commissionEngine)
 		appleIAPHandler = handler.NewAppleIAPHandler(appleIAPService)
 		slog.Info("apple_iap enabled", "bundle", appleCfg.BundleID, "env", appleCfg.Env)
 	}
@@ -257,6 +267,26 @@ func main() {
 		for range ticker.C {
 			subService.RunExpiryCron(context.Background())
 			paymentService.ExpireOverdueOrders(context.Background())
+		}
+	}()
+
+	// --- Commission payable promotion cron (every hour) ---
+	// Moves pending → payable when payable_after has passed (T+45 days default).
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		// Run once on startup so a fresh deploy catches up immediately
+		if n, err := affiliateRepo.PromotePayableRecords(context.Background()); err != nil {
+			slog.Warn("commission: promote payable failed", "err", err)
+		} else if n > 0 {
+			slog.Info("commission: promoted records to payable", "count", n)
+		}
+		for range ticker.C {
+			if n, err := affiliateRepo.PromotePayableRecords(context.Background()); err != nil {
+				slog.Warn("commission: promote payable failed", "err", err)
+			} else if n > 0 {
+				slog.Info("commission: promoted records to payable", "count", n)
+			}
 		}
 	}()
 
@@ -365,6 +395,9 @@ func main() {
 		v1.GET("/seo/price-board", seoHandler.GetPriceBoard)
 		v1.GET("/seo/listings", seoHandler.GetListingsByProvinceAndRiceType)
 
+		// Affiliate referral — public resolve, protected stats
+		v1.GET("/referral/resolve/:code", referralHandler.Resolve)
+
 		// SePay webhook (public — verified by API key in handler)
 		v1.POST("/webhooks/sepay", paymentHandler.SepayWebhook)
 
@@ -454,6 +487,10 @@ func main() {
 			protected.POST("/me/blocks", userBlockHandler.Block)
 			protected.DELETE("/me/blocks/:blocked_id", userBlockHandler.Unblock)
 			protected.GET("/me/blocks", userBlockHandler.List)
+
+			// Affiliate referral
+			protected.GET("/me/referral", referralHandler.GetMyReferral)
+			protected.GET("/me/referral/history", referralHandler.GetMyHistory)
 
 			// Notifications
 			notifications := protected.Group("/notifications")
@@ -585,6 +622,20 @@ func main() {
 					ownerOnly.DELETE("/plans/:id", middleware.RequirePermission(permissionService, "sub.plans"), subHandler.DeletePlan)
 					ownerOnly.POST("/subscriptions/:user_id/reward", subHandler.AdminReward)
 				}
+			}
+
+			// Affiliate referral admin endpoints — owner/admin (full) + aff (read-only).
+			// Wide role list, row-level filtering handled inside each handler.
+			refAdmin := protected.Group("/admin/referrals")
+			refAdmin.Use(middleware.RequireRole("owner", "admin", "aff"))
+			{
+				refAdmin.GET("/rules", adminReferralHandler.ListRules)
+				refAdmin.POST("/rules", adminReferralHandler.UpsertRule) // admin-only check inside
+				refAdmin.GET("/leaderboard", adminReferralHandler.Leaderboard)
+				refAdmin.GET("/payable", adminReferralHandler.ListPayablePerReferrer)
+				refAdmin.GET("/payouts", adminReferralHandler.ListPayouts)
+				refAdmin.POST("/payouts", adminReferralHandler.CreatePayout)
+				refAdmin.PUT("/payouts/:id/sent", adminReferralHandler.MarkPayoutSent)
 			}
 		}
 	}

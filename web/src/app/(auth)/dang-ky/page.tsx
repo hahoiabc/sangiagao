@@ -28,8 +28,22 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [referralCode, setReferralCode] = useState<string>("");
   const { login } = useAuth();
   const router = useRouter();
+
+  // Pick up referral code from ?ref= query OR ref_code cookie (set by /r/{code}).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    const fromQuery = url.searchParams.get("ref")?.trim() || "";
+    if (fromQuery) {
+      setReferralCode(fromQuery.toUpperCase());
+      return;
+    }
+    const m = document.cookie.match(/(?:^|;\s*)ref_code=([A-Z0-9]+)/);
+    if (m) setReferralCode(m[1]);
+  }, []);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -121,6 +135,7 @@ export default function RegisterPage() {
         province: provinceRef.current || undefined,
         ward: wardRef.current || undefined,
         address: trimmedAddress || undefined,
+        referral_code: referralCode || undefined,
       });
       login(result.user, result.tokens.access_token, result.tokens.refresh_token);
       router.push("/bang-gia");

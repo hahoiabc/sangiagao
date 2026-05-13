@@ -18,6 +18,7 @@ import '../screens/profile/profile_screen.dart';
 import '../screens/profile/seller_profile_screen.dart';
 import '../screens/profile/subscription_screen.dart';
 import '../screens/profile/change_password_screen.dart';
+import '../screens/profile/referral_screen.dart';
 import '../screens/profile/change_phone_screen.dart';
 import '../screens/profile/privacy_policy_screen.dart';
 import '../screens/profile/user_guide_screen.dart';
@@ -114,6 +115,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (_, state) => SellerProfileScreen(sellerId: state.pathParameters['id']!),
           ),
           GoRoute(path: '/subscription', builder: (_, __) => const SubscriptionScreen()),
+          GoRoute(path: '/referral', builder: (_, __) => const ReferralScreen()),
           GoRoute(path: '/change-password', builder: (_, __) => const ChangePasswordScreen()),
           GoRoute(path: '/change-phone', builder: (_, __) => const ChangePhoneScreen()),
           GoRoute(path: '/system-inbox', builder: (_, __) => const SystemInboxScreen()),

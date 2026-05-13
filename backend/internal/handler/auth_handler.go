@@ -13,11 +13,12 @@ import (
 )
 
 type AuthHandler struct {
-	authService  AuthServiceInterface
-	spamService  *service.SpamService
-	cache        cache.Cache
-	cookieDomain string
-	cookieSecure bool
+	authService     AuthServiceInterface
+	spamService     *service.SpamService
+	referralService *service.ReferralService
+	cache           cache.Cache
+	cookieDomain    string
+	cookieSecure    bool
 }
 
 func NewAuthHandler(authService AuthServiceInterface, spamService *service.SpamService, cookieDomain string, cookieSecure bool) *AuthHandler {
@@ -30,6 +31,9 @@ func NewAuthHandler(authService AuthServiceInterface, spamService *service.SpamS
 }
 
 func (h *AuthHandler) SetCache(c cache.Cache) { h.cache = c }
+
+// SetReferralService wires the optional referral attribution service.
+func (h *AuthHandler) SetReferralService(s *service.ReferralService) { h.referralService = s }
 
 // setAuthCookies sets httpOnly cookies for web clients + CSRF token.
 func (h *AuthHandler) setAuthCookies(c *gin.Context, accessToken, refreshToken string) {
@@ -182,13 +186,14 @@ func (h *AuthHandler) Register(c *gin.Context) {
 }
 
 type completeRegisterRequest struct {
-	Phone    string `json:"phone" binding:"required"`
-	Code     string `json:"code" binding:"required"`
-	Name     string `json:"name" binding:"required"`
-	Password string `json:"password" binding:"required,min=6"`
-	Province string `json:"province"`
-	Ward     string `json:"ward"`
-	Address  string `json:"address"`
+	Phone        string `json:"phone" binding:"required"`
+	Code         string `json:"code" binding:"required"`
+	Name         string `json:"name" binding:"required"`
+	Password     string `json:"password" binding:"required,min=6"`
+	Province     string `json:"province"`
+	Ward         string `json:"ward"`
+	Address      string `json:"address"`
+	ReferralCode string `json:"referral_code"`
 }
 
 func (h *AuthHandler) CompleteRegister(c *gin.Context) {
@@ -225,6 +230,14 @@ func (h *AuthHandler) CompleteRegister(c *gin.Context) {
 	ip := c.ClientIP()
 	deviceID := c.GetHeader("X-Device-ID")
 	h.spamService.LogAttempt(c.Request.Context(), ip, deviceID, req.Phone, "register", true)
+
+	// Attribute referral if a code was supplied (best-effort, errors logged
+	// but don't fail signup).
+	if h.referralService != nil && req.ReferralCode != "" && result.User != nil {
+		if attrErr := h.referralService.AttributeReferral(c.Request.Context(), req.ReferralCode, result.User.ID); attrErr != nil {
+			// Self-refer or other validation: ignore silently
+		}
+	}
 
 	if result.Tokens != nil {
 		h.setAuthCookies(c, result.Tokens.AccessToken, result.Tokens.RefreshToken)

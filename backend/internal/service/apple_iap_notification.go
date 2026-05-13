@@ -151,16 +151,29 @@ func (s *AppleIAPService) applyActiveTransaction(ctx context.Context, t *apple.T
 		slog.Info("apple_iap: no matching subscription for original_tx", "original_tx", t.OriginalTransactionID)
 	}
 
-	// Restore listings for the user owning this subscription.
-	var userID string
+	// Look up user + subscription_id for downstream operations.
+	var userID, subID string
 	row := s.pool.QueryRow(ctx,
-		`SELECT user_id FROM subscriptions WHERE apple_original_transaction_id = $1`,
+		`SELECT user_id, id FROM subscriptions WHERE apple_original_transaction_id = $1`,
 		t.OriginalTransactionID,
 	)
-	if err := row.Scan(&userID); err == nil {
-		_, _ = s.restoreListings(ctx, userID)
-	} else if !errors.Is(err, pgx.ErrNoRows) {
-		slog.Warn("apple_iap: lookup user for renewal", "err", err)
+	if err := row.Scan(&userID, &subID); err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			slog.Warn("apple_iap: lookup user for renewal", "err", err)
+		}
+		return nil
+	}
+
+	_, _ = s.restoreListings(ctx, userID)
+
+	// Record affiliate commission for renewal. Best-effort, errors logged.
+	if s.engine != nil {
+		prod, err := s.lookupProduct(ctx, t.ProductID)
+		if err == nil && prod.GrossAmount > 0 {
+			s.recordCommission(ctx, userID, subID, t, prod)
+		} else if err != nil {
+			slog.Info("apple_iap: skip commission on renewal (product unknown)", "product_id", t.ProductID)
+		}
 	}
 	return nil
 }

@@ -187,6 +187,7 @@ class ApiService {
     String? province,
     String? ward,
     String? address,
+    String? referralCode,
   }) async {
     final res = await _dio.post('/auth/complete-register', data: {
       'phone': phone,
@@ -196,6 +197,7 @@ class ApiService {
       if (province != null) 'province': province,
       if (ward != null) 'ward': ward,
       if (address != null) 'address': address,
+      if (referralCode != null && referralCode.isNotEmpty) 'referral_code': referralCode,
     });
     final data = res.data;
     await _storage.write(key: 'access_token', value: data['tokens']['access_token']);
@@ -594,6 +596,17 @@ class ApiService {
   Future<List<Map<String, dynamic>>> listBlocks() async {
     final res = await _dio.get('/me/blocks');
     return (res.data['data'] as List? ?? const []).cast<Map<String, dynamic>>();
+  }
+
+  // --- Affiliate referral ---
+  Future<Map<String, dynamic>> getReferralStats() async {
+    final res = await _dio.get('/me/referral');
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
+  Future<List<Map<String, dynamic>>> getReferralHistory({int limit = 20, int offset = 0}) async {
+    final res = await _dio.get('/me/referral/history', queryParameters: {'limit': limit, 'offset': offset});
+    return ((res.data['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
   }
 
   // --- Feedback ---

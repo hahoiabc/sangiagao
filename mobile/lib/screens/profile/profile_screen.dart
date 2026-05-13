@@ -379,6 +379,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 onTap: () => context.push('/subscription'),
               ),
               ListTile(
+                leading: const Icon(Icons.people_alt_outlined),
+                title: const Text('Giới thiệu bạn bè'),
+                subtitle: const Text('Nhận hoa hồng khi bạn bè mua gói'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/referral'),
+              ),
+              ListTile(
                 leading: const Icon(Icons.lock_outline),
                 title: const Text('Đổi mật khẩu'),
                 trailing: const Icon(Icons.chevron_right),
