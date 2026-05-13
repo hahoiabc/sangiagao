@@ -208,11 +208,11 @@ export default function PayoutsPage() {
             </div>
           )}
         </Card>
-      ) : (
+      ) : canManage ? (
         <Card className="p-4">
           <p className="text-sm text-gray-600">Chọn 1 đối tác từ trang <a href="/referrals" className="text-primary underline">Hoa hồng giới thiệu</a> để tạo payout mới.</p>
         </Card>
-      )}
+      ) : null}
 
       <Card className="overflow-hidden">
         <div className="p-4 border-b font-semibold">Lịch sử payout</div>
