@@ -609,6 +609,11 @@ class ApiService {
     return ((res.data['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
   }
 
+  /// Self-activate affiliate role. Member → aff. Idempotent.
+  Future<void> becomeAffiliate() async {
+    await _dio.post('/me/become-affiliate');
+  }
+
   // --- Feedback ---
   Future<void> createFeedback(String content) async {
     await _dio.post('/feedbacks', data: {'content': content});

@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Copy, Share2, Users, CheckCircle2, Clock, Banknote } from "lucide-react";
+import { Copy, Share2, Users, CheckCircle2, Clock, Banknote, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth";
 import {
   getReferralStats,
   getReferralHistory,
+  becomeAffiliate,
   type ReferralStats,
   type CommissionRecord,
 } from "@/services/api";
@@ -31,9 +33,33 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
 };
 
 export default function GioiThieuBanPage() {
+  const { user } = useAuth();
+  const isMember = user?.role === "member";
+  const isAff = user?.role === "aff";
   const [stats, setStats] = useState<ReferralStats | null>(null);
   const [history, setHistory] = useState<CommissionRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activating, setActivating] = useState(false);
+
+  const handleActivate = async () => {
+    if (!confirm(
+      "Khi bạn giới thiệu bạn bè đăng ký + mua gói, bạn nhận hoa hồng:\n\n" +
+      "• Giai đoạn 1 (3 tháng đầu): 50%\n" +
+      "• Giai đoạn 2 (6 tháng kế): 30%\n" +
+      "• Giai đoạn 3 (vĩnh viễn): 20%\n\n" +
+      "Tính trên doanh thu ròng. Thanh toán sau 45 ngày từ giao dịch.\n\nĐồng ý kích hoạt?",
+    )) return;
+    setActivating(true);
+    try {
+      await becomeAffiliate();
+      toast.success("Đã kích hoạt vai trò đối tác. Tải lại trang…");
+      setTimeout(() => window.location.reload(), 1200);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Không thể kích hoạt");
+    } finally {
+      setActivating(false);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -86,6 +112,28 @@ export default function GioiThieuBanPage() {
         </p>
       </div>
 
+      {isMember && (
+        <Card className="bg-amber-50 border-amber-200">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Star className="h-5 w-5 text-amber-600" />
+              <h2 className="font-semibold">Trở thành đối tác chính thức</h2>
+            </div>
+            <p className="text-sm text-gray-700">
+              Kích hoạt vai trò Đối tác để xem chi tiết người bạn giới thiệu, theo dõi hoa hồng theo từng giai đoạn,
+              và nhận tiền khi đạt ngưỡng tối thiểu.
+            </p>
+            <Button
+              onClick={handleActivate}
+              disabled={activating}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {activating ? "Đang kích hoạt…" : "Kích hoạt làm đối tác"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Code + Share */}
       <Card>
         <CardHeader>
@@ -133,7 +181,8 @@ export default function GioiThieuBanPage() {
         </CardContent>
       </Card>
 
-      {/* History */}
+      {/* History — only meaningful for aff */}
+      {isAff && (
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Lịch sử hoa hồng</CardTitle>
@@ -176,6 +225,7 @@ export default function GioiThieuBanPage() {
           )}
         </CardContent>
       </Card>
+      )}
     </main>
   );
 }

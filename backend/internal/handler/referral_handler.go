@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -48,6 +49,25 @@ func (h *ReferralHandler) GetMyHistory(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"data": records})
+}
+
+// POST /api/v1/me/become-affiliate
+// Self-service: member → aff. Idempotent. Other roles return 403.
+func (h *ReferralHandler) BecomeAffiliate(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	if err := h.svc.BecomeAffiliate(c.Request.Context(), userID); err != nil {
+		if errors.Is(err, service.ErrRoleNotEligible) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Tài khoản admin/editor không thể tự đổi vai trò"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không thể kích hoạt vai trò đối tác"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"role": "aff"})
 }
 
 // GET /api/v1/referral/resolve/:code

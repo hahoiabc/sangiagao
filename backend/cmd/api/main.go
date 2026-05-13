@@ -496,6 +496,7 @@ func main() {
 			// Affiliate referral
 			protected.GET("/me/referral", referralHandler.GetMyReferral)
 			protected.GET("/me/referral/history", referralHandler.GetMyHistory)
+			protected.POST("/me/become-affiliate", referralHandler.BecomeAffiliate)
 
 			// Notifications
 			notifications := protected.Group("/notifications")

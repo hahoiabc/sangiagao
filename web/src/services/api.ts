@@ -467,6 +467,10 @@ export async function getReferralHistory(limit = 20, offset = 0): Promise<{ data
   );
 }
 
+export async function becomeAffiliate(): Promise<{ role: string }> {
+  return request<{ role: string }>("/me/become-affiliate", { method: "POST" });
+}
+
 export async function getSEOPriceBoard(): Promise<SEOPriceBoardResponse> {
   return request<SEOPriceBoardResponse>("/seo/price-board");
 }

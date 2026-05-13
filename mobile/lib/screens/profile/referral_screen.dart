@@ -56,8 +56,48 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
         'và kết nối trực tiếp với thương lái:\n\n$_shareLink\n\nMã giới thiệu: $code';
   }
 
+  Future<void> _becomeAffiliate() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Trở thành đối tác'),
+        content: const Text(
+          'Khi bạn giới thiệu bạn bè đăng ký + mua gói, bạn nhận hoa hồng theo quy tắc của Sàn Giá Gạo:\n'
+          '\n• Giai đoạn 1 (3 tháng đầu): 50%\n'
+          '• Giai đoạn 2 (6 tháng kế): 30%\n'
+          '• Giai đoạn 3 (vĩnh viễn): 20%\n'
+          '\nTính trên doanh thu ròng (sau phí App Store nếu có). Thanh toán sau 45 ngày kể từ giao dịch.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Huỷ')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Đồng ý & Kích hoạt')),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    final api = ref.read(apiServiceProvider);
+    try {
+      await api.becomeAffiliate();
+      await ref.read(authProvider.notifier).refreshUser();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã kích hoạt vai trò đối tác. Chúc may mắn!')),
+      );
+      _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể kích hoạt. Vui lòng thử lại.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(authProvider).user;
+    final isAff = user?.role == 'aff';
+    final isMember = user?.role == 'member';
+
     return Scaffold(
       appBar: AppBar(title: const Text('Giới thiệu bạn bè')),
       body: RefreshIndicator(
@@ -69,13 +109,15 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
                 : ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
+                      if (isMember) _buildBecomeAffiliateBanner(),
+                      if (isMember) const SizedBox(height: 12),
                       _buildCodeCard(),
                       const SizedBox(height: 16),
                       _buildStatsCard(),
-                      const SizedBox(height: 16),
-                      _buildHistoryHeader(),
-                      ..._history.map(_buildHistoryItem),
-                      if (_history.isEmpty)
+                      if (isAff) const SizedBox(height: 16),
+                      if (isAff) _buildHistoryHeader(),
+                      if (isAff) ..._history.map(_buildHistoryItem),
+                      if (isAff && _history.isEmpty)
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 24),
                           child: Text(
@@ -86,6 +128,42 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
                         ),
                     ],
                   ),
+      ),
+    );
+  }
+
+  Widget _buildBecomeAffiliateBanner() {
+    return Card(
+      color: Colors.amber.shade50,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.star, color: Colors.amber),
+                SizedBox(width: 8),
+                Text('Trở thành đối tác chính thức', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Kích hoạt vai trò Đối tác Aff để xem thống kê chi tiết người bạn giới thiệu, '
+              'theo dõi hoa hồng theo từng giai đoạn, và rút tiền khi đạt ngưỡng.',
+              style: TextStyle(fontSize: 13, height: 1.4),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: Colors.amber.shade700),
+                onPressed: _becomeAffiliate,
+                child: const Text('Kích hoạt làm đối tác'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

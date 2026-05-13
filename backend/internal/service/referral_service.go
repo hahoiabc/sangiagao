@@ -29,7 +29,34 @@ var (
 	ErrReferralSelfRefer    = errors.New("không thể tự dùng mã giới thiệu của mình")
 	ErrReferralAlreadySet   = errors.New("tài khoản này đã có người giới thiệu")
 	ErrReferralCodeNotFound = errors.New("mã giới thiệu không hợp lệ")
+	ErrRoleNotEligible      = errors.New("vai trò hiện tại không thể tự nâng cấp")
 )
+
+// BecomeAffiliate self-activates the affiliate role for a 'member' user.
+// Other roles (admin/editor/owner/aff) are no-ops or rejected.
+// Idempotent: returns success if user is already 'aff'.
+func (s *ReferralService) BecomeAffiliate(ctx context.Context, userID string) error {
+	var currentRole string
+	if err := s.pool.QueryRow(ctx, `SELECT role FROM users WHERE id = $1`, userID).Scan(&currentRole); err != nil {
+		return err
+	}
+	if currentRole == "aff" {
+		// idempotent — ensure code exists then return
+		_, _ = s.GetOrCreateCode(ctx, userID)
+		return nil
+	}
+	if currentRole != "member" {
+		return ErrRoleNotEligible
+	}
+	_, err := s.pool.Exec(ctx,
+		`UPDATE users SET role = 'aff', updated_at = NOW() WHERE id = $1 AND role = 'member'`, userID)
+	if err != nil {
+		return err
+	}
+	// Ensure referral_code exists right after upgrade
+	_, _ = s.GetOrCreateCode(ctx, userID)
+	return nil
+}
 
 // codeCharset excludes 0/O/1/I/L to avoid handwriting confusion.
 const codeCharset = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
