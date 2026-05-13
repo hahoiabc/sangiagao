@@ -119,6 +119,15 @@ const permissionGroups: PermissionGroup[] = [
       { key: "feedback.reply", label: "Trả lời góp ý", defaults: { owner: true, admin: true, editor: true, aff: false, member: false, expired: false, guest: false } },
     ],
   },
+  {
+    group: "Hoa hồng giới thiệu",
+    permissions: [
+      { key: "referrals.view_own", label: "Xem hoa hồng của mình", defaults: { owner: true, admin: true, editor: false, aff: true, member: true, expired: false, guest: false } },
+      { key: "referrals.view_all", label: "Xem tất cả đối tác", defaults: { owner: true, admin: true, editor: false, aff: false, member: false, expired: false, guest: false } },
+      { key: "referrals.manage_rules", label: "Cài đặt quy tắc hoa hồng", defaults: { owner: true, admin: true, editor: false, aff: false, member: false, expired: false, guest: false } },
+      { key: "referrals.create_payout", label: "Tạo + duyệt payout", defaults: { owner: true, admin: true, editor: false, aff: false, member: false, expired: false, guest: false } },
+    ],
+  },
 ];
 
 // ── Role Permission Tab component ──
