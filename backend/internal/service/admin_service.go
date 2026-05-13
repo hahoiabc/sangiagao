@@ -98,7 +98,7 @@ func (s *AdminService) ListUserSubscriptions(ctx context.Context, userID string,
 }
 
 func (s *AdminService) ChangeUserRole(ctx context.Context, userID, role, callerRole string) (*model.User, error) {
-	validRoles := map[string]bool{"owner": true, "admin": true, "editor": true, "member": true}
+	validRoles := map[string]bool{"owner": true, "admin": true, "editor": true, "aff": true, "member": true}
 	if !validRoles[role] {
 		return nil, ErrInvalidAdminRole
 	}
