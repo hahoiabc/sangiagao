@@ -4,10 +4,13 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { getLeaderboard, type LeaderboardRow } from "@/services/api";
 import { Card } from "@/components/ui/card";
+import { useAuth } from "@/lib/auth";
 
 const fmt = (n: number) => new Intl.NumberFormat("vi-VN").format(n) + " đ";
 
 export default function ReferralsOverviewPage() {
+  const { user } = useAuth();
+  const canManage = user?.role === "owner" || user?.role === "admin";
   const [rows, setRows] = useState<LeaderboardRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -38,10 +41,10 @@ export default function ReferralsOverviewPage() {
         </div>
         <div className="flex gap-2">
           <Link href="/referrals/rules" className="px-3 py-1.5 border rounded text-sm hover:bg-gray-50">
-            Cài đặt quy tắc
+            {canManage ? "Cài đặt quy tắc" : "Xem quy tắc"}
           </Link>
           <Link href="/referrals/payouts" className="px-3 py-1.5 bg-primary text-primary-foreground rounded text-sm">
-            Quản lý payout
+            {canManage ? "Quản lý payout" : "Lịch sử payout"}
           </Link>
         </div>
       </div>
@@ -85,7 +88,7 @@ export default function ReferralsOverviewPage() {
                     <td className="px-4 py-2 text-right text-orange-600">{fmt(r.pending_amount)}</td>
                     <td className="px-4 py-2 text-right text-blue-700">{fmt(r.paid_amount)}</td>
                     <td className="px-4 py-2 text-right">
-                      {r.payable_amount > 0 && (
+                      {canManage && r.payable_amount > 0 && (
                         <Link
                           href={`/referrals/payouts?referrer=${r.referrer_user_id}`}
                           className="text-xs text-primary hover:underline"

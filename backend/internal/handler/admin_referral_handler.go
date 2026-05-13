@@ -69,16 +69,21 @@ func (h *AdminReferralHandler) ListRules(c *gin.Context) {
 		return
 	}
 	if !h.can(role, permViewAll) {
-		// aff: filter to their own rule (need to look up their referral_code_id)
-		myCode, err := h.repo.GetCodeByUser(c.Request.Context(), userID)
-		if err != nil {
-			c.JSON(http.StatusOK, gin.H{"data": []any{}})
-			return
-		}
+		// Without view_all: include the default rule (applies to user when no
+		// per-partner override exists) + their own override if any. Always
+		// filter out other partners' rules + historical (active_to != null).
+		myCode, _ := h.repo.GetCodeByUser(c.Request.Context(), userID)
 		filtered := []*model.CommissionRule{}
 		for _, r := range rules {
-			if r.ReferralCodeID != nil && *r.ReferralCodeID == myCode.ID {
-				filtered = append(filtered, r)
+			if r.ActiveTo != nil {
+				continue // skip expired rule versions
+			}
+			if r.ReferralCodeID == nil {
+				filtered = append(filtered, r) // default rule
+				continue
+			}
+			if myCode != nil && *r.ReferralCodeID == myCode.ID {
+				filtered = append(filtered, r) // own per-partner override
 			}
 		}
 		c.JSON(http.StatusOK, gin.H{"data": filtered})

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { useAuth } from "@/lib/auth";
 import {
   getPayableForReferrer,
   createPayout,
@@ -22,6 +23,8 @@ const fmt = (n: number) => new Intl.NumberFormat("vi-VN").format(n) + " đ";
 export default function PayoutsPage() {
   const search = useSearchParams();
   const referrerId = search.get("referrer") || "";
+  const { user } = useAuth();
+  const canManage = user?.role === "owner" || user?.role === "admin";
 
   const [payable, setPayable] = useState<PayableRecord[]>([]);
   const [totalPayable, setTotalPayable] = useState(0);
@@ -108,7 +111,7 @@ export default function PayoutsPage() {
       </div>
       <h1 className="text-2xl font-bold">Quản lý payout</h1>
 
-      {referrerId ? (
+      {canManage && referrerId ? (
         <Card className="p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -242,7 +245,7 @@ export default function PayoutsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-2">
-                    {p.status === "pending" && (
+                    {canManage && p.status === "pending" && (
                       <Button size="sm" variant="outline" onClick={() => markSent(p.id)}>
                         Đánh dấu đã chuyển
                       </Button>

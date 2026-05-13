@@ -8,10 +8,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth";
 
 const fmt = (n: number) => new Intl.NumberFormat("vi-VN").format(n);
 
 export default function CommissionRulesPage() {
+  const { user } = useAuth();
+  const canManage = user?.role === "owner" || user?.role === "admin";
   const [rules, setRules] = useState<CommissionRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -92,7 +95,7 @@ export default function CommissionRulesPage() {
         <Card className="p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Quy tắc mặc định</h2>
-            {editingId !== "default" && (
+            {canManage && editingId !== "default" && (
               <Button size="sm" onClick={startEditDefault}>
                 Chỉnh sửa
               </Button>
