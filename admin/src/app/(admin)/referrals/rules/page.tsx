@@ -42,7 +42,7 @@ export default function CommissionRulesPage() {
     load();
   }, [load]);
 
-  const defaultRule = rules.find((r) => r.referral_code_id === null);
+  const defaultRule = rules.find((r) => !r.referral_code_id);
 
   function startEditDefault() {
     if (defaultRule) {

@@ -18,7 +18,7 @@ type ReferralCode struct {
 // is the global default. Per-partner override created when admin negotiates.
 type CommissionRule struct {
 	ID             string     `json:"id"`
-	ReferralCodeID *string    `json:"referral_code_id,omitempty"` // nil = default
+	ReferralCodeID *string    `json:"referral_code_id"` // nil = default
 	Stage1Days     int        `json:"stage1_days"`
 	Stage1Pct      float64    `json:"stage1_pct"`
 	Stage2Days     int        `json:"stage2_days"`
