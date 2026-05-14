@@ -268,6 +268,11 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         : 0;
     final isOneMonth = months == 1;
 
+    // Use store-localized formatter so tester accounts in non-VN regions
+    // (e.g. US Apple ID) see prices in their own currency instead of having
+    // USD raw values forced into a VND template (1.99 USD → "2 đ" bug).
+    final storeFmt = NumberFormat.simpleCurrency(name: product.currencyCode);
+
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: Stack(
@@ -281,7 +286,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                 if (discount > 0) ...[
                   const SizedBox(height: 4),
                   Text(
-                    _currencyFormat.format(originalPrice),
+                    storeFmt.format(originalPrice),
                     style: TextStyle(
                       fontSize: 12,
                       color: AppColors.textHint,
@@ -291,13 +296,13 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                 ],
                 const SizedBox(height: 2),
                 Text(
-                  _currencyFormat.format(amount),
+                  product.price,
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primary),
                 ),
                 if (months > 1) ...[
                   const SizedBox(height: 2),
                   Text(
-                    '${_currencyFormat.format((amount / months).round())}/tháng',
+                    '${storeFmt.format((amount / months))}/tháng',
                     style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                   ),
                 ],
