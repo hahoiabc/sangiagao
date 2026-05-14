@@ -593,6 +593,17 @@ class ApiService {
     return res.data;
   }
 
+  Future<Map<String, dynamic>> verifyGoogleIAP({
+    required String productId,
+    required String purchaseToken,
+  }) async {
+    final res = await _dio.post('/subscription/iap/google/verify', data: {
+      'product_id': productId,
+      'purchase_token': purchaseToken,
+    });
+    return res.data;
+  }
+
   // --- User Block (Apple Guideline 1.2) ---
   Future<void> blockUser(String userId, {String? reason}) async {
     await _dio.post('/me/blocks', data: {'blocked_id': userId, if (reason != null) 'reason': reason});

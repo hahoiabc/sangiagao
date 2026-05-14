@@ -14,6 +14,7 @@ import (
 	"github.com/sangiagao/rice-marketplace/internal/config"
 	"github.com/sangiagao/rice-marketplace/internal/database"
 	"github.com/sangiagao/rice-marketplace/internal/apple"
+	googleiap "github.com/sangiagao/rice-marketplace/internal/google"
 	"github.com/sangiagao/rice-marketplace/internal/handler"
 	"github.com/sangiagao/rice-marketplace/internal/middleware"
 	"github.com/sangiagao/rice-marketplace/internal/repository"
@@ -240,6 +241,22 @@ func main() {
 		appleIAPHandler = handler.NewAppleIAPHandler(appleIAPService)
 		slog.Info("apple_iap enabled", "bundle", appleCfg.BundleID, "env", appleCfg.Env)
 	}
+
+	// Google Play In-App Billing (optional — only wire if env vars set)
+	var googleIAPHandler *handler.GoogleIAPHandler
+	if googleCfg, err := googleiap.LoadConfig(); err != nil {
+		slog.Info("google_iap disabled", "reason", err.Error())
+	} else {
+		googleClient, gerr := googleiap.NewClient(googleCfg)
+		if gerr != nil {
+			slog.Warn("google_iap init failed", "err", gerr)
+		} else {
+			googleIAPService := service.NewGoogleIAPService(pgPool, googleClient, googleCfg.PackageName)
+			googleIAPService.AttachCommissionEngine(commissionEngine)
+			googleIAPHandler = handler.NewGoogleIAPHandler(googleIAPService)
+			slog.Info("google_iap enabled", "package", googleCfg.PackageName)
+		}
+	}
 	ratingHandler := handler.NewRatingHandler(ratingService)
 	reportHandler := handler.NewReportHandler(reportService, notifService, listingService, adminService)
 	notifHandler := handler.NewNotificationHandler(notifService)
@@ -410,6 +427,11 @@ func main() {
 		if appleIAPHandler != nil {
 			v1.POST("/webhooks/apple/notifications", appleIAPHandler.Webhook)
 		}
+		if googleIAPHandler != nil {
+			// Google Pub/Sub HTTP push endpoint. Public — Google authenticates
+			// via OIDC token; we accept all POSTs and trust Pub/Sub.
+			v1.POST("/webhooks/google/notifications", googleIAPHandler.Webhook)
+		}
 
 		// User (public — permission-controlled)
 		v1.GET("/users/:id/profile", middleware.OptionalJWTAuth(jwtManager), middleware.RequirePermission(permissionService, "marketplace.seller_profile"), userHandler.GetProfile)
@@ -486,6 +508,9 @@ func main() {
 			protected.GET("/subscription/history", subHandler.GetMyHistory)
 			if appleIAPHandler != nil {
 				protected.POST("/subscription/iap/verify", appleIAPHandler.Verify)
+			}
+			if googleIAPHandler != nil {
+				protected.POST("/subscription/iap/google/verify", googleIAPHandler.Verify)
 			}
 
 			// User block (Apple Guideline 1.2 UGC)

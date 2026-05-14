@@ -8,14 +8,17 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 import 'api_service.dart';
 import '../providers/providers.dart';
 
-/// Apple subscription product IDs registered in App Store Connect.
-/// Must exactly match Product IDs created in ASC subscriptions group.
+/// IAP subscription product IDs registered in both App Store Connect (iOS)
+/// and Play Console (Android). Same IDs across stores for consistency.
 const Set<String> kAppleSubscriptionIds = {
   'com.sangiagao.premium.1m',
   'com.sangiagao.premium.3m',
   'com.sangiagao.premium.6m',
   'com.sangiagao.premium.12m',
 };
+
+/// Alias for clarity — same IDs reused for Google Play.
+const Set<String> kIAPSubscriptionIds = kAppleSubscriptionIds;
 
 class IAPState {
   final bool available;
@@ -84,7 +87,7 @@ class IAPService extends StateNotifier<IAPState> {
 
   Future<void> loadProducts() async {
     state = state.copyWith(loading: true, clearError: true);
-    final response = await _iap.queryProductDetails(kAppleSubscriptionIds);
+    final response = await _iap.queryProductDetails(kIAPSubscriptionIds);
     if (response.notFoundIDs.isNotEmpty) {
       debugPrint('IAP product IDs not found: ${response.notFoundIDs}');
     }
@@ -159,13 +162,27 @@ class IAPService extends StateNotifier<IAPState> {
   }
 
   Future<void> _verifyAndComplete(PurchaseDetails purchase) async {
-    final txID = _extractTransactionId(purchase);
-    if (txID == null) {
-      state = state.copyWith(processing: false, error: 'Thiếu transaction id');
-      return;
-    }
     try {
-      lastVerifyResult = await _api.verifyAppleIAP(txID);
+      if (Platform.isAndroid) {
+        // Google: serverVerificationData = purchase token
+        final token = purchase.verificationData.serverVerificationData;
+        if (token.isEmpty) {
+          state = state.copyWith(processing: false, error: 'Thiếu purchase token');
+          return;
+        }
+        lastVerifyResult = await _api.verifyGoogleIAP(
+          productId: purchase.productID,
+          purchaseToken: token,
+        );
+      } else {
+        // Apple: use StoreKit transaction id
+        final txID = purchase.purchaseID;
+        if (txID == null || txID.isEmpty) {
+          state = state.copyWith(processing: false, error: 'Thiếu transaction id');
+          return;
+        }
+        lastVerifyResult = await _api.verifyAppleIAP(txID);
+      }
       state = state.copyWith(processing: false, clearError: true);
     } catch (e) {
       state = state.copyWith(
@@ -177,12 +194,6 @@ class IAPService extends StateNotifier<IAPState> {
         await _iap.completePurchase(purchase);
       }
     }
-  }
-
-  String? _extractTransactionId(PurchaseDetails p) {
-    final id = p.purchaseID;
-    if (id != null && id.isNotEmpty) return id;
-    return null;
   }
 
   @override

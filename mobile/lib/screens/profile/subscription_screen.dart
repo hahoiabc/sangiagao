@@ -97,10 +97,11 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         _buildStatusCard(sub, isActive, daysLeft),
         const SizedBox(height: 24),
 
-        // Plans section — iOS uses StoreKit IAP, Android uses web/Zalo flow
+        // Plans section — iOS + Android use IAP (StoreKit / Play Billing).
+        // Web/SePay is still available via /goi-thanh-vien on web.
         const Text('Bảng giá gia hạn', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
-        if (Platform.isIOS) ...[
+        if (Platform.isIOS || Platform.isAndroid) ...[
           _buildIAPSection(),
         ] else ...[
           _buildPlansGrid(),
@@ -138,11 +139,12 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       );
     }
     if (!iap.available) {
+      final storeName = Platform.isAndroid ? 'Google Play' : 'App Store';
       return Card(
         color: AppColors.warning.withValues(alpha: 0.08),
-        child: const Padding(
-          padding: EdgeInsets.all(16),
-          child: Text('Không thể kết nối App Store. Vui lòng kiểm tra Apple ID và thử lại.'),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text('Không thể kết nối $storeName. Vui lòng kiểm tra tài khoản và thử lại.'),
         ),
       );
     }
@@ -208,8 +210,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
             borderRadius: BorderRadius.circular(10),
           ),
           child: Text(
-            'Gói tự động gia hạn cho đến khi bạn hủy. Phí gia hạn được tính 24 giờ trước ngày hết hạn. '
-            'Bạn có thể quản lý hoặc hủy gói trong Cài đặt iOS → Apple ID → Gói đăng ký.\n\n'
+            'Gói tự động gia hạn cho đến khi bạn hủy. Phí gia hạn được tính 24 giờ trước ngày hết hạn.\n\n'
+            '${Platform.isAndroid
+                ? "Bạn có thể quản lý hoặc hủy gói trong Google Play → Tài khoản → Đăng ký."
+                : "Bạn có thể quản lý hoặc hủy gói trong Cài đặt iOS → Apple ID → Gói đăng ký."}\n\n'
             'Bằng việc đăng ký, bạn đồng ý với Điều khoản sử dụng và Chính sách bảo mật của Sàn Giá Gạo.',
             style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.5),
           ),
