@@ -166,14 +166,36 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       );
     }
 
+    // Base monthly price from 1-month product (used to compute discount %).
+    // Use loop instead of firstWhere — Android InAppPurchase returns
+    // GooglePlayProductDetails subclass which trips Dart type-inference on
+    // the orElse closure.
+    double basePerMonth = iap.products.first.rawPrice;
+    for (final p in iap.products) {
+      if (p.id.endsWith('.1m')) {
+        basePerMonth = p.rawPrice;
+        break;
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ...iap.products.map((p) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _buildIAPProductCard(p, iap, iapNotifier),
-            )),
-        const SizedBox(height: 4),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 0.78,
+          ),
+          itemCount: iap.products.length,
+          itemBuilder: (context, index) {
+            return _buildIAPProductCard(iap.products[index], iap, iapNotifier, basePerMonth);
+          },
+        ),
+        const SizedBox(height: 12),
 
         // Restore Purchases — Apple bắt buộc cho mọi app có IAP
         OutlinedButton.icon(
@@ -237,63 +259,96 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     );
   }
 
-  Widget _buildIAPProductCard(ProductDetails product, IAPState state, IAPService notifier) {
+  Widget _buildIAPProductCard(ProductDetails product, IAPState state, IAPService notifier, double basePerMonth) {
     final months = _monthsFromProductId(product.id);
+    final amount = product.rawPrice;
+    final originalPrice = basePerMonth * months;
+    final discount = originalPrice > 0 && months > 1
+        ? ((1 - amount / originalPrice) * 100).round()
+        : 0;
     final isOneMonth = months == 1;
-    // Vertical layout — avoids Expanded-in-Row width collapse where every
-    // Text wraps per character on narrow card widths.
+
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                Text('Gói $months tháng', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                if (discount > 0) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    _currencyFormat.format(originalPrice),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textHint,
+                      decoration: TextDecoration.lineThrough,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 2),
                 Text(
-                  'Gói $months tháng',
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  _currencyFormat.format(amount),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primary),
                 ),
-                Text(
-                  product.price,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
+                if (months > 1) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    '${_currencyFormat.format((amount / months).round())}/tháng',
+                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                  ),
+                ],
+                if (isOneMonth) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Dùng thử miễn phí',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.success),
+                    ),
+                  ),
+                ],
+                const Spacer(),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: state.processing ? null : () => notifier.buy(product),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: state.processing
+                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('Mua', style: TextStyle(fontSize: 14)),
+                  ),
                 ),
               ],
             ),
-            if (isOneMonth) ...[
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    '1 tháng dùng thử miễn phí',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.success),
-                  ),
+          ),
+          if (discount > 0)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.error,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '-$discount%',
+                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                 ),
               ),
-            ],
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: state.processing ? null : () => notifier.buy(product),
-                child: state.processing
-                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Text('Mua'),
-              ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
