@@ -381,10 +381,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ListTile(
                 leading: const Icon(Icons.people_alt_outlined),
                 title: const Text('Giới thiệu bạn bè'),
-                subtitle: const Text('Nhận hoa hồng khi bạn bè mua gói'),
+                subtitle: const Text('Mời bạn bè dùng Sàn Giá Gạo'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => context.push('/referral'),
+                onTap: () => context.push('/share-app'),
               ),
+              if (ref.watch(authProvider).user?.role == 'aff')
+                ListTile(
+                  leading: const Icon(Icons.handshake_outlined, color: Colors.amber),
+                  title: const Text('Hoa hồng giới thiệu'),
+                  subtitle: const Text('Theo dõi mã, hoa hồng, payout'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/referral'),
+                ),
               ListTile(
                 leading: const Icon(Icons.lock_outline),
                 title: const Text('Đổi mật khẩu'),
@@ -443,6 +451,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => context.push('/user-guide'),
               ),
+              if (ref.watch(authProvider).user?.role == 'member')
+                ListTile(
+                  leading: const Icon(Icons.star_outline, color: Colors.amber),
+                  title: const Text('Đăng ký làm Đối tác Affiliate'),
+                  subtitle: const Text('Nhận hoa hồng khi giới thiệu bạn bè'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.push('/referral/join'),
+                ),
               ListTile(
                 leading: const Icon(Icons.logout, color: AppColors.error),
                 title: const Text('Đăng xuất', style: TextStyle(color: AppColors.error)),

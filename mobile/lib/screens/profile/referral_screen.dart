@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
 import '../../providers/providers.dart';
-import 'aff_terms_screen.dart';
 
 class ReferralScreen extends ConsumerStatefulWidget {
   const ReferralScreen({super.key});
@@ -64,29 +63,6 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
         'và kết nối trực tiếp với thương lái:\n\n$_shareLink\n\nMã giới thiệu: $code';
   }
 
-  Future<void> _becomeAffiliate() async {
-    // Show T&C page first; user must accept to continue.
-    final accepted = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const AffTermsScreen(requireAccept: true)),
-    );
-    if (accepted != true) return;
-    final api = ref.read(apiServiceProvider);
-    try {
-      await api.becomeAffiliate();
-      await ref.read(authProvider.notifier).refreshUser();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã kích hoạt vai trò đối tác. Chúc may mắn!')),
-      );
-      _load();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không thể kích hoạt. Vui lòng thử lại.')),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
@@ -104,13 +80,34 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
                 : ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
-                      if (isMember) _buildBecomeAffiliateBanner(),
-                      if (isMember) const SizedBox(height: 12),
+                      // Aff-only dashboard. Members are redirected to /referral/join
+                      // from the Profile menu instead (see profile_screen.dart).
+                      if (!isAff)
+                        Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            children: [
+                              const Icon(Icons.lock_outline, size: 48, color: Colors.grey),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'Cần đăng ký làm Đối tác Affiliate để xem thông tin hoa hồng.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                              const SizedBox(height: 12),
+                              if (isMember)
+                                FilledButton(
+                                  onPressed: () => context.push('/referral/join'),
+                                  child: const Text('Đăng ký làm Đối tác'),
+                                ),
+                            ],
+                          ),
+                        ),
                       if (isAff && _needBankInfoBanner()) _buildBankInfoBanner(),
                       if (isAff && _needBankInfoBanner()) const SizedBox(height: 12),
-                      _buildCodeCard(),
-                      const SizedBox(height: 16),
-                      _buildStatsCard(),
+                      if (isAff) _buildCodeCard(),
+                      if (isAff) const SizedBox(height: 16),
+                      if (isAff) _buildStatsCard(),
                       if (isAff) const SizedBox(height: 16),
                       if (isAff) _buildQuickNav(),
                       if (isAff) const SizedBox(height: 16),
@@ -127,42 +124,6 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
                         ),
                     ],
                   ),
-      ),
-    );
-  }
-
-  Widget _buildBecomeAffiliateBanner() {
-    return Card(
-      color: Colors.amber.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.star, color: Colors.amber),
-                SizedBox(width: 8),
-                Text('Trở thành đối tác chính thức', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Kích hoạt vai trò Đối tác Aff để xem thống kê chi tiết người bạn giới thiệu, '
-              'theo dõi hoa hồng theo từng giai đoạn, và rút tiền khi đạt ngưỡng.',
-              style: TextStyle(fontSize: 13, height: 1.4),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: Colors.amber.shade700),
-                onPressed: _becomeAffiliate,
-                child: const Text('Kích hoạt làm đối tác'),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

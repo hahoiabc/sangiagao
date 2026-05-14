@@ -23,6 +23,8 @@ import '../screens/profile/my_referees_screen.dart';
 import '../screens/profile/my_payouts_screen.dart';
 import '../screens/profile/bank_info_screen.dart';
 import '../screens/profile/aff_terms_screen.dart';
+import '../screens/profile/share_app_screen.dart';
+import '../screens/profile/join_aff_screen.dart';
 import '../screens/profile/change_phone_screen.dart';
 import '../screens/profile/privacy_policy_screen.dart';
 import '../screens/profile/user_guide_screen.dart';
@@ -124,6 +126,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/referral/payouts', builder: (_, __) => const MyPayoutsScreen()),
           GoRoute(path: '/referral/bank-info', builder: (_, __) => const BankInfoScreen()),
           GoRoute(path: '/referral/terms', builder: (_, __) => const AffTermsScreen()),
+          GoRoute(path: '/referral/join', builder: (_, __) => const JoinAffScreen()),
+          GoRoute(path: '/share-app', builder: (_, __) => const ShareAppScreen()),
           GoRoute(path: '/change-password', builder: (_, __) => const ChangePasswordScreen()),
           GoRoute(path: '/change-phone', builder: (_, __) => const ChangePhoneScreen()),
           GoRoute(path: '/system-inbox', builder: (_, __) => const SystemInboxScreen()),
