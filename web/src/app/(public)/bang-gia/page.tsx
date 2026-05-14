@@ -63,6 +63,28 @@ export default function PriceBoardPage() {
               </Link>
             )}
           </div>
+
+          {/* Mobile install CTAs */}
+          <div className="mt-6 max-w-md mx-auto grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <a
+              href="https://play.google.com/store/apps/details?id=com.sangiagao.rice_marketplace"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full text-center rounded-lg bg-green-700 hover:bg-green-600 text-white px-4 py-3 shadow-lg backdrop-blur-sm transition-colors"
+            >
+              <div className="text-[10px] uppercase opacity-80 tracking-wide">Android</div>
+              <div className="text-base font-semibold">📱 Tải Google Play</div>
+            </a>
+            <a
+              href="https://apps.apple.com/vn/app/sangiagao-vn/id6761744869"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full text-center rounded-lg bg-gray-900/80 hover:bg-gray-800 text-white px-4 py-3 shadow-lg backdrop-blur-sm transition-colors"
+            >
+              <div className="text-[10px] uppercase opacity-80 tracking-wide">iOS / iPhone</div>
+              <div className="text-base font-semibold">🍎 Tải App Store</div>
+            </a>
+          </div>
         </div>
       </section>
 
