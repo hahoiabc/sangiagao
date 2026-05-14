@@ -56,6 +56,27 @@ class AffiliateAttributionService {
     }
   }
 
+  /// Parse an incoming Universal Link / deep link URI and save the code if
+  /// it matches /r/{code}. Returns the extracted code or null.
+  ///
+  /// Examples that match:
+  ///   https://sangiagao.vn/r/HF9D37
+  ///   https://sangiagao.vn/cai-app?ref=HF9D37
+  static Future<String?> handleDeepLink(Uri uri) async {
+    String? candidate;
+    final segs = uri.pathSegments;
+    if (segs.length >= 2 && segs[0] == 'r') {
+      candidate = segs[1];
+    } else if (uri.path.contains('cai-app')) {
+      candidate = uri.queryParameters['ref'];
+    }
+    if (candidate == null) return null;
+    final code = _extractCode(candidate);
+    if (code == null) return null;
+    await _storage.write(key: _storageKey, value: code);
+    return code;
+  }
+
   /// Parse code from raw referrer string. Accepts:
   ///   - bare code: "HF9D37"
   ///   - querystring: "referrer=HF9D37&utm_source=..."

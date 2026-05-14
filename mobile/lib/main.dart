@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:app_links/app_links.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -37,6 +38,36 @@ class SanGaoApp extends ConsumerStatefulWidget {
 
 class _SanGaoAppState extends ConsumerState<SanGaoApp> {
   bool _pushInitialized = false;
+  final _appLinks = AppLinks();
+  StreamSubscription<Uri>? _linkSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _initDeepLinks();
+  }
+
+  @override
+  void dispose() {
+    _linkSub?.cancel();
+    super.dispose();
+  }
+
+  /// Listen for Universal Links (iOS) + App Links (Android). Used to
+  /// capture affiliate referrer codes when user clicks /r/{code} or
+  /// /cai-app?ref={code} and either opens the app fresh or returns to it.
+  Future<void> _initDeepLinks() async {
+    // Cold start
+    try {
+      final initial = await _appLinks.getInitialLink();
+      if (initial != null) await AffiliateAttributionService.handleDeepLink(initial);
+    } catch (_) {}
+
+    // Warm/background open
+    _linkSub = _appLinks.uriLinkStream.listen((uri) {
+      AffiliateAttributionService.handleDeepLink(uri);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
