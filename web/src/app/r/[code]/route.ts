@@ -4,9 +4,13 @@ const API_BASE =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ||
   "http://localhost:8080/api/v1";
 
-// Route handler /r/{code}: validate code with backend, set 30-day cookie,
-// redirect to /dang-ky?ref={code}. Lives at /r/[code]/route.ts because
-// Server Components can't set cookies in Next.js 16 — only Route Handlers can.
+// Route handler /r/{code}:
+// 1. Validate code (must belong to an active aff user)
+// 2. Set 30-day cookie for web register fallback
+// 3. Detect OS via User-Agent → redirect:
+//    - Android → Play Store with ?referrer={code} (Install Referrer API)
+//    - iOS     → App Store + try Universal Link if app installed
+//    - Other   → /cai-app?ref={code} landing page (manual choice)
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ code: string }> },
@@ -26,23 +30,26 @@ export async function GET(
     }
   }
 
-  // Build absolute URL from forwarded headers (nginx upstream). req.url uses
-  // the internal container URL (0.0.0.0:3001) which is not what we want to
-  // redirect the browser to.
+  // Build absolute base URL from forwarded headers (nginx upstream sets these).
   const host =
     req.headers.get("x-forwarded-host") ||
     req.headers.get("host") ||
     "sangiagao.vn";
   const proto = req.headers.get("x-forwarded-proto") || "https";
-  const path = valid ? `/dang-ky?ref=${code}` : "/dang-ky";
-  const res = NextResponse.redirect(`${proto}://${host}${path}`);
+  const base = `${proto}://${host}`;
+
+  // Show landing page for all (no auto-redirect). User picks platform.
+  // The landing page itself contains the OS-aware install buttons.
+  const target = valid ? `${base}/cai-app?ref=${code}` : `${base}/cai-app`;
+  const res = NextResponse.redirect(target);
   if (valid) {
     res.cookies.set("ref_code", code, {
       maxAge: 60 * 60 * 24 * 30, // 30 days
       path: "/",
       sameSite: "lax",
-      httpOnly: false, // signup form reads this client-side as fallback
+      httpOnly: false,
     });
   }
   return res;
 }
+

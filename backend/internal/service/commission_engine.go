@@ -139,6 +139,18 @@ func (e *CommissionEngine) RecordForPayment(ctx context.Context, ev PaymentEvent
 		return nil, nil
 	}
 
+	// Guard: only credit commission while referrer is currently 'aff' role.
+	// If they downgraded back to member, stop earning on future payments.
+	var referrerRole string
+	if err := e.pool.QueryRow(ctx, `SELECT role FROM users WHERE id = $1`, *referrerUserID).Scan(&referrerRole); err != nil {
+		return nil, err
+	}
+	if referrerRole != "aff" {
+		slog.Info("commission: referrer not aff, skip",
+			"referrer", *referrerUserID, "role", referrerRole, "event", ev.EventID)
+		return nil, nil
+	}
+
 	// Get referrer's referral_code_id (for per-partner rule lookup)
 	var referralCodeID *string
 	err = e.pool.QueryRow(ctx,

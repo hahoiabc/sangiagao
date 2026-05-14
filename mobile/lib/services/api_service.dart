@@ -9,6 +9,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/env.dart';
 import '../models/user.dart';
 import '../models/listing.dart';
+import 'affiliate_attribution_service.dart';
 import '../models/conversation.dart';
 import '../models/rating.dart';
 import '../models/inbox.dart';
@@ -189,6 +190,9 @@ class ApiService {
     String? address,
     String? referralCode,
   }) async {
+    // Auto-fill referralCode from Play Install Referrer if caller didn't pass one.
+    referralCode ??= await AffiliateAttributionService.getCode();
+
     final res = await _dio.post('/auth/complete-register', data: {
       'phone': phone,
       'code': code,
@@ -199,6 +203,11 @@ class ApiService {
       if (address != null) 'address': address,
       if (referralCode != null && referralCode.isNotEmpty) 'referral_code': referralCode,
     });
+    // Clear referrer so subsequent fresh registrations on the same device
+    // (e.g. shared phone) don't re-attribute to the same partner.
+    if (referralCode != null && referralCode.isNotEmpty) {
+      await AffiliateAttributionService.clear();
+    }
     final data = res.data;
     await _storage.write(key: 'access_token', value: data['tokens']['access_token']);
     await _storage.write(key: 'refresh_token', value: data['tokens']['refresh_token']);

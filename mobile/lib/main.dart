@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'theme/app_theme.dart';
 import 'providers/theme_provider.dart';
 import 'providers/providers.dart';
 import 'services/push_notification_service.dart';
+import 'services/affiliate_attribution_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,6 +19,11 @@ void main() async {
     debugPrint('Firebase init failed: $e');
     // App vẫn chạy, chỉ mất push notification
   }
+
+  // Read Play Install Referrer once after fresh install so the code is
+  // captured before Google's referrer service expires it. Best-effort; safe
+  // to await briefly. Result is cached in secure storage for later use.
+  unawaited(AffiliateAttributionService.getCode());
 
   runApp(const ProviderScope(child: SanGaoApp()));
 }

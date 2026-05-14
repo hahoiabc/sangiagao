@@ -68,11 +68,22 @@ const codeLen = 6
 const maxCodeGenAttempts = 10
 
 // GetOrCreateCode returns the user's referral code, generating it lazily.
+// Only creates a code for users currently in 'aff' role. Other roles get
+// ErrReferralCodeNotFound (consumers should hide aff UI when this errors).
 func (s *ReferralService) GetOrCreateCode(ctx context.Context, userID string) (*model.ReferralCode, error) {
 	if rc, err := s.affRepo.GetCodeByUser(ctx, userID); err == nil {
 		return rc, nil
 	} else if !errors.Is(err, repository.ErrReferralCodeNotFound) {
 		return nil, err
+	}
+
+	// Only create code for aff role (defense — caller should check too)
+	var role string
+	if err := s.pool.QueryRow(ctx, `SELECT role FROM users WHERE id = $1`, userID).Scan(&role); err != nil {
+		return nil, err
+	}
+	if role != "aff" {
+		return nil, repository.ErrReferralCodeNotFound
 	}
 
 	// Generate a unique 6-char code. Retry on collision (very unlikely).
@@ -102,6 +113,8 @@ func (s *ReferralService) GetOrCreateCode(ctx context.Context, userID string) (*
 // AttributeReferral records that refereeID was referred by the owner of
 // referralCode. Idempotent + defensive: ignores empty code, self-referral,
 // already-attributed.
+// CRITICAL: only attributes if the code owner is currently an active 'aff'
+// role. Member users do not earn commission even if they somehow have a code.
 func (s *ReferralService) AttributeReferral(ctx context.Context, referralCode, refereeID string) error {
 	if referralCode == "" {
 		return nil
@@ -116,6 +129,17 @@ func (s *ReferralService) AttributeReferral(ctx context.Context, referralCode, r
 	}
 	if rc.UserID == refereeID {
 		return ErrReferralSelfRefer
+	}
+
+	// Guard: code owner must currently be 'aff' role to attribute.
+	var ownerRole string
+	if err := s.pool.QueryRow(ctx, `SELECT role FROM users WHERE id = $1`, rc.UserID).Scan(&ownerRole); err != nil {
+		return err
+	}
+	if ownerRole != "aff" {
+		slog.Info("referral: code owner not aff, skip attribution",
+			"code", referralCode, "owner", rc.UserID, "owner_role", ownerRole)
+		return nil
 	}
 
 	// Atomic update: only set if currently NULL (don't overwrite existing referrer)
