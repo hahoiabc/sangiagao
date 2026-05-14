@@ -139,6 +139,28 @@ export function AboutPageClient() {
             Xem bảng giá
           </a>
         </div>
+
+        {/* Mobile install CTAs — full-width stacked buttons */}
+        <div className="mt-6 max-w-md mx-auto space-y-3">
+          <a
+            href="https://play.google.com/store/apps/details?id=com.sangiagao.rice_marketplace"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block w-full text-center rounded-lg bg-green-700 hover:bg-green-800 text-white px-6 py-4 shadow-md transition-colors"
+          >
+            <div className="text-xs opacity-80">Android</div>
+            <div className="text-lg font-semibold">📱 Tải Google Play</div>
+          </a>
+          <a
+            href="https://apps.apple.com/vn/app/sangiagao-vn/id6761744869"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block w-full text-center rounded-lg bg-gray-800 hover:bg-gray-900 text-white px-6 py-4 shadow-md transition-colors"
+          >
+            <div className="text-xs opacity-80">iOS / iPhone</div>
+            <div className="text-lg font-semibold">🍎 Tải App Store</div>
+          </a>
+        </div>
       </section>
 
       {/* Liên hệ */}
