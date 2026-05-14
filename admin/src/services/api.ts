@@ -344,6 +344,7 @@ export interface SubscriptionPlan {
   id: string;
   months: number;
   amount: number;
+  list_amount: number;
   label: string;
   is_active: boolean;
   sort_order: number;
@@ -376,11 +377,11 @@ export async function listAllPlans(token: string) {
   return request<{ plans: SubscriptionPlan[] }>("/admin/plans", { token });
 }
 
-export async function createPlan(token: string, data: { months: number; amount: number; label: string }) {
+export async function createPlan(token: string, data: { months: number; amount: number; list_amount?: number; label: string }) {
   return request<SubscriptionPlan>("/admin/plans", { token, method: "POST", body: JSON.stringify(data) });
 }
 
-export async function updatePlan(token: string, id: string, data: { months?: number; amount?: number; label?: string; is_active?: boolean }) {
+export async function updatePlan(token: string, id: string, data: { months?: number; amount?: number; list_amount?: number; label?: string; is_active?: boolean }) {
   return request<SubscriptionPlan>(`/admin/plans/${id}`, { token, method: "PUT", body: JSON.stringify(data) });
 }
 

@@ -20,12 +20,12 @@ func NewPlanRepo(pool *pgxpool.Pool) *PlanRepo {
 	return &PlanRepo{pool: pool}
 }
 
-const planCols = `id, months, amount, label, is_active, sort_order, created_at, updated_at`
+const planCols = `id, months, amount, list_amount, label, is_active, sort_order, created_at, updated_at`
 
 func scanPlan(row pgx.Row) (*model.SubscriptionPlan, error) {
 	var p model.SubscriptionPlan
 	var createdAt, updatedAt time.Time
-	err := row.Scan(&p.ID, &p.Months, &p.Amount, &p.Label, &p.IsActive, &p.SortOrder, &createdAt, &updatedAt)
+	err := row.Scan(&p.ID, &p.Months, &p.Amount, &p.ListAmount, &p.Label, &p.IsActive, &p.SortOrder, &createdAt, &updatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +39,7 @@ func scanPlans(rows pgx.Rows) ([]model.SubscriptionPlan, error) {
 	for rows.Next() {
 		var p model.SubscriptionPlan
 		var createdAt, updatedAt time.Time
-		if err := rows.Scan(&p.ID, &p.Months, &p.Amount, &p.Label, &p.IsActive, &p.SortOrder, &createdAt, &updatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.Months, &p.Amount, &p.ListAmount, &p.Label, &p.IsActive, &p.SortOrder, &createdAt, &updatedAt); err != nil {
 			return nil, err
 		}
 		p.CreatedAt = createdAt.Format(time.RFC3339)
@@ -84,10 +84,10 @@ func (r *PlanRepo) GetByMonths(ctx context.Context, months int) (*model.Subscrip
 
 func (r *PlanRepo) Create(ctx context.Context, req *model.CreatePlanRequest) (*model.SubscriptionPlan, error) {
 	row := r.pool.QueryRow(ctx,
-		`INSERT INTO subscription_plans (months, amount, label, sort_order)
-		 VALUES ($1, $2, $3, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM subscription_plans))
+		`INSERT INTO subscription_plans (months, amount, list_amount, label, sort_order)
+		 VALUES ($1, $2, $3, $4, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM subscription_plans))
 		 RETURNING `+planCols,
-		req.Months, req.Amount, req.Label)
+		req.Months, req.Amount, req.ListAmount, req.Label)
 	return scanPlan(row)
 }
 
@@ -96,11 +96,12 @@ func (r *PlanRepo) Update(ctx context.Context, id string, req *model.UpdatePlanR
 		`UPDATE subscription_plans SET
 			months = COALESCE($2, months),
 			amount = COALESCE($3, amount),
-			label = COALESCE($4, label),
-			is_active = COALESCE($5, is_active)
+			list_amount = COALESCE($4, list_amount),
+			label = COALESCE($5, label),
+			is_active = COALESCE($6, is_active)
 		 WHERE id = $1
 		 RETURNING `+planCols,
-		id, req.Months, req.Amount, req.Label, req.IsActive)
+		id, req.Months, req.Amount, req.ListAmount, req.Label, req.IsActive)
 	p, err := scanPlan(row)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrPlanNotFound

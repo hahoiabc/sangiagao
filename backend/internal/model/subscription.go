@@ -15,28 +15,34 @@ type Subscription struct {
 }
 
 // SubscriptionPlan defines a pricing tier stored in the database.
+// Amount is what the user pays. ListAmount is an optional "giá niêm yết"
+// shown crossed-out next to Amount on the pricing page; when ListAmount > 0
+// the frontend derives a discount % from the ratio.
 type SubscriptionPlan struct {
-	ID        string `json:"id"`
-	Months    int    `json:"months"`
-	Amount    int64  `json:"amount"` // VND
-	Label     string `json:"label"`
-	IsActive  bool   `json:"is_active"`
-	SortOrder int    `json:"sort_order"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
+	ID         string `json:"id"`
+	Months     int    `json:"months"`
+	Amount     int64  `json:"amount"`      // VND — actual charge
+	ListAmount int64  `json:"list_amount"` // VND — strike-through reference, 0 = hide
+	Label      string `json:"label"`
+	IsActive   bool   `json:"is_active"`
+	SortOrder  int    `json:"sort_order"`
+	CreatedAt  string `json:"created_at"`
+	UpdatedAt  string `json:"updated_at"`
 }
 
 type UpdatePlanRequest struct {
-	Months   *int    `json:"months"`
-	Amount   *int64  `json:"amount"`
-	Label    *string `json:"label"`
-	IsActive *bool   `json:"is_active"`
+	Months     *int    `json:"months"`
+	Amount     *int64  `json:"amount"`
+	ListAmount *int64  `json:"list_amount"`
+	Label      *string `json:"label"`
+	IsActive   *bool   `json:"is_active"`
 }
 
 type CreatePlanRequest struct {
-	Months int    `json:"months"`
-	Amount int64  `json:"amount"`
-	Label  string `json:"label"`
+	Months     int    `json:"months"`
+	Amount     int64  `json:"amount"`
+	ListAmount int64  `json:"list_amount"`
+	Label      string `json:"label"`
 }
 
 // SubscriptionPlans is the fallback list of available plans (used if DB is empty).

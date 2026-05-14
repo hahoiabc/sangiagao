@@ -27,6 +27,7 @@ function formatVND(amount: number) {
 type PlanFormData = {
   months: number;
   amount: number;
+  list_amount: number;
   label: string;
   is_active?: boolean;
 };
@@ -58,7 +59,7 @@ export default function SubscriptionsPage() {
   const [plansLoading, setPlansLoading] = useState(false);
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null);
-  const [planForm, setPlanForm] = useState<PlanFormData>({ months: 1, amount: 0, label: "" });
+  const [planForm, setPlanForm] = useState<PlanFormData>({ months: 1, amount: 0, list_amount: 0, label: "" });
   const [planSaving, setPlanSaving] = useState(false);
   const [planError, setPlanError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<SubscriptionPlan | null>(null);
@@ -149,14 +150,14 @@ export default function SubscriptionsPage() {
   // Plan CRUD handlers
   function openCreatePlan() {
     setEditingPlan(null);
-    setPlanForm({ months: 1, amount: 0, label: "" });
+    setPlanForm({ months: 1, amount: 0, list_amount: 0, label: "" });
     setPlanError("");
     setPlanDialogOpen(true);
   }
 
   function openEditPlan(plan: SubscriptionPlan) {
     setEditingPlan(plan);
-    setPlanForm({ months: plan.months, amount: plan.amount, label: plan.label, is_active: plan.is_active });
+    setPlanForm({ months: plan.months, amount: plan.amount, list_amount: plan.list_amount ?? 0, label: plan.label, is_active: plan.is_active });
     setPlanError("");
     setPlanDialogOpen(true);
   }
@@ -174,6 +175,7 @@ export default function SubscriptionsPage() {
         await updatePlan("", editingPlan.id, {
           months: planForm.months,
           amount: planForm.amount,
+          list_amount: planForm.list_amount,
           label: planForm.label,
           is_active: planForm.is_active,
         });
@@ -182,6 +184,7 @@ export default function SubscriptionsPage() {
         await createPlan("", {
           months: planForm.months,
           amount: planForm.amount,
+          list_amount: planForm.list_amount,
           label: planForm.label,
         });
         toast.success("Đã tạo gói dịch vụ mới");
@@ -517,7 +520,7 @@ export default function SubscriptionsPage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium mb-1 block">Giá (VNĐ)</label>
+                <label className="text-sm font-medium mb-1 block">Giá thanh toán (VNĐ)</label>
                 <Input
                   type="number"
                   min={0}
@@ -525,6 +528,18 @@ export default function SubscriptionsPage() {
                   onChange={(e) => setPlanForm({ ...planForm, amount: parseInt(e.target.value) || 0 })}
                 />
               </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">
+                Giá niêm yết (VNĐ) <span className="text-xs text-muted-foreground">— để 0 nếu không hiển thị gạch ngang</span>
+              </label>
+              <Input
+                type="number"
+                min={0}
+                value={planForm.list_amount}
+                onChange={(e) => setPlanForm({ ...planForm, list_amount: parseInt(e.target.value) || 0 })}
+                placeholder="VD: 49000 (giá Apple/Google) để hiển thị giảm giá"
+              />
             </div>
             {editingPlan && (
               <div className="flex items-center gap-2">
@@ -539,8 +554,15 @@ export default function SubscriptionsPage() {
               </div>
             )}
             {planForm.months > 0 && planForm.amount > 0 && (
-              <div className="rounded-lg bg-muted/50 p-3 text-sm">
+              <div className="rounded-lg bg-muted/50 p-3 text-sm space-y-1">
                 <p>Giá mỗi tháng: <strong className="text-emerald-600">{formatVND(Math.round(planForm.amount / planForm.months))}</strong></p>
+                {planForm.list_amount > planForm.amount && (
+                  <p>
+                    Giảm giá hiển thị: <strong className="text-rose-600">
+                      -{Math.round((1 - planForm.amount / planForm.list_amount) * 100)}%
+                    </strong> (giá niêm yết {formatVND(planForm.list_amount)} gạch ngang)
+                  </p>
+                )}
               </div>
             )}
             {planError && <p className="text-sm text-destructive">{planError}</p>}

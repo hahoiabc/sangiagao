@@ -124,8 +124,8 @@ export default function SubscriptionPage() {
     );
   }
 
-  // Calculate discount based on 1-month plan price (like mobile)
   const activePlans = plans.filter((p) => p.is_active);
+  // Fallback list price (1m × months) used only if backend doesn't supply list_amount.
   const oneMonthPlan = activePlans.find((p) => p.months === 1);
   const baseMonthlyPrice = oneMonthPlan ? oneMonthPlan.amount : 0;
 
@@ -185,8 +185,13 @@ export default function SubscriptionPage() {
           <div className="grid grid-cols-2 gap-4">
             {activePlans.map((plan) => {
               const pricePerMonth = Math.round(plan.amount / plan.months);
-              const discount = baseMonthlyPrice > 0 && plan.months > 1
-                ? Math.round((1 - pricePerMonth / baseMonthlyPrice) * 100)
+              // Prefer list_amount from backend ("Giá niêm yết"). Fall back to
+              // 1-month base × months for older plans without the column set.
+              const listPrice = plan.list_amount && plan.list_amount > plan.amount
+                ? plan.list_amount
+                : baseMonthlyPrice * plan.months;
+              const discount = listPrice > plan.amount
+                ? Math.round((1 - plan.amount / listPrice) * 100)
                 : 0;
               return (
                 <div key={plan.id} className="relative rounded-xl border-2 p-4 text-center hover:border-primary transition-colors">
@@ -200,7 +205,7 @@ export default function SubscriptionPage() {
                   {/* Original price crossed out (if discount) */}
                   {discount > 0 && (
                     <p className="text-sm text-muted-foreground line-through">
-                      {formatCurrency(baseMonthlyPrice * plan.months)}
+                      {formatCurrency(listPrice)}
                     </p>
                   )}
                   <p className="text-2xl font-bold text-primary mb-1">

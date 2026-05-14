@@ -285,6 +285,7 @@ export interface SubscriptionPlan {
   id: string;
   months: number;
   amount: number;
+  list_amount: number;
   label: string;
   is_active: boolean;
 }
