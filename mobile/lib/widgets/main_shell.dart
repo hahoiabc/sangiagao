@@ -130,6 +130,10 @@ class _MainShellState extends ConsumerState<MainShell> with WidgetsBindingObserv
     if (location.startsWith('/system-inbox')) return true;
     if (location.startsWith('/feedback')) return true;
     if (location.startsWith('/seller')) return true;
+    // Affiliate-related screens are NOT gated by subscription status.
+    // Aff role + sharing/joining should work regardless of own sub.
+    if (location.startsWith('/referral')) return true;
+    if (location.startsWith('/share-app')) return true;
     return false;
   }
 
