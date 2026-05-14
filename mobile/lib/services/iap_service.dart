@@ -56,7 +56,7 @@ class IAPState {
 
 class IAPService extends StateNotifier<IAPState> {
   IAPService(this._api) : super(IAPState.initial) {
-    if (Platform.isIOS) {
+    if (Platform.isIOS || Platform.isAndroid) {
       _init();
     } else {
       state = state.copyWith(loading: false, available: false);

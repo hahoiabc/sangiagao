@@ -2,6 +2,7 @@ package handler
 
 import (
 	"io"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -38,6 +39,11 @@ func (h *GoogleIAPHandler) Verify(c *gin.Context) {
 	}
 	res, err := h.svc.VerifyPurchase(c.Request.Context(), userID, req.ProductID, req.PurchaseToken)
 	if err != nil {
+		slog.Error("google_iap: verify failed",
+			"user_id", userID,
+			"product_id", req.ProductID,
+			"token_prefix", safePrefix(req.PurchaseToken, 16),
+			"err", err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -61,10 +67,18 @@ func (h *GoogleIAPHandler) Webhook(c *gin.Context) {
 		return
 	}
 	if err := h.svc.HandleNotification(c.Request.Context(), payload, raw); err != nil {
+		slog.Error("google_iap: webhook handle failed", "err", err.Error())
 		// Return 500 so Pub/Sub retries
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	// 2xx tells Pub/Sub to ack the message
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func safePrefix(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "..."
 }
