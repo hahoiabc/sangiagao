@@ -18,6 +18,13 @@ class _AffTermsScreenState extends ConsumerState<AffTermsScreen> {
   bool _saving = false;
   String _currentVersion = '1.0';
   bool _alreadyAccepted = false;
+  // Rule values pulled from backend so T&C reflects current admin settings.
+  int _stage1Days = 90;
+  double _stage1Pct = 0.5;
+  int _stage2Days = 180;
+  double _stage2Pct = 0.3;
+  double _stage3Pct = 0.2;
+  int _minimumPayout = 100000;
 
   @override
   void initState() {
@@ -29,12 +36,21 @@ class _AffTermsScreenState extends ConsumerState<AffTermsScreen> {
     try {
       final r = await ref.read(apiServiceProvider).getAffTerms();
       if (!mounted) return;
+      final rule = (r['rule'] as Map?) ?? const {};
       setState(() {
         _currentVersion = (r['current_version'] ?? '1.0').toString();
         _alreadyAccepted = r['accepted'] == true;
+        _stage1Days = (rule['stage1_days'] as num?)?.toInt() ?? _stage1Days;
+        _stage1Pct = (rule['stage1_pct'] as num?)?.toDouble() ?? _stage1Pct;
+        _stage2Days = (rule['stage2_days'] as num?)?.toInt() ?? _stage2Days;
+        _stage2Pct = (rule['stage2_pct'] as num?)?.toDouble() ?? _stage2Pct;
+        _stage3Pct = (rule['stage3_pct'] as num?)?.toDouble() ?? _stage3Pct;
+        _minimumPayout = (rule['minimum_payout'] as num?)?.toInt() ?? _minimumPayout;
       });
     } catch (_) {}
   }
+
+  String _pct(double v) => '${(v * 100).toStringAsFixed(0)}%';
 
   Future<void> _accept() async {
     if (!_checked) return;
@@ -74,12 +90,12 @@ class _AffTermsScreenState extends ConsumerState<AffTermsScreen> {
                   const SizedBox(height: 12),
                   _section('1. Quyền lợi',
                       'Đối tác (Aff) nhận hoa hồng theo 3 giai đoạn dựa trên tuổi của người được giới thiệu (Referee):\n'
-                      '• Giai đoạn 1: % của doanh thu ròng (xem dashboard cho rule hiện hành)\n'
-                      '• Giai đoạn 2: %\n'
-                      '• Giai đoạn 3 (vĩnh viễn): %\n\n'
+                      '• Giai đoạn 1 ($_stage1Days ngày đầu): ${_pct(_stage1Pct)} doanh thu ròng\n'
+                      '• Giai đoạn 2 ($_stage2Days ngày kế): ${_pct(_stage2Pct)} doanh thu ròng\n'
+                      '• Giai đoạn 3 (vĩnh viễn): ${_pct(_stage3Pct)} doanh thu ròng\n\n'
                       'Doanh thu ròng = số tiền Sàn thực nhận sau khi trừ phí nền tảng (Apple 30%, SePay 0%).'),
                   _section('2. Thanh toán',
-                      '• Ngưỡng tối thiểu: theo cài đặt hiện tại, tối thiểu 100.000đ. Sàn có thể điều chỉnh theo từng giai đoạn phát triển nền tảng.\n'
+                      '• Ngưỡng tối thiểu hiện hành: ${(_minimumPayout / 1000).toStringAsFixed(0)}.000đ. Sàn có thể điều chỉnh theo từng giai đoạn phát triển nền tảng.\n'
                       '• Thời gian đối soát: T+45 ngày sau khi Referee thanh toán.\n'
                       '• Phí chuyển khoản: do Đối tác chịu, trừ trực tiếp từ số tiền payout (thực tế từng lần, tuỳ ngân hàng).\n'
                       '• Đối tác phải cập nhật chính xác thông tin tài khoản nhận tiền. Sàn không chịu trách nhiệm nếu chuyển sai do thông tin sai.'),

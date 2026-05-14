@@ -9,8 +9,7 @@ class ShareAppScreen extends StatelessWidget {
 
   static const String _link = 'https://sangiagao.vn/cai-app';
   static const String _message =
-      'Mình đang dùng Sàn Giá Gạo để xem giá gạo realtime và mua bán trực tiếp với thương lái. '
-      'Bạn cài thử nhé: $_link';
+      'Tải SanGiaGao để xem giá Gạo và kết nối với thương nhân\n$_link';
 
   @override
   Widget build(BuildContext context) {

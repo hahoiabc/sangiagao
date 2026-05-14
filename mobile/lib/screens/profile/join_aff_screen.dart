@@ -16,6 +16,36 @@ class JoinAffScreen extends ConsumerStatefulWidget {
 
 class _JoinAffScreenState extends ConsumerState<JoinAffScreen> {
   bool _activating = false;
+  int _stage1Days = 90;
+  double _stage1Pct = 0.5;
+  int _stage2Days = 180;
+  double _stage2Pct = 0.3;
+  double _stage3Pct = 0.2;
+  int _minimumPayout = 100000;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRule();
+  }
+
+  Future<void> _loadRule() async {
+    try {
+      final r = await ref.read(apiServiceProvider).getAffTerms();
+      if (!mounted) return;
+      final rule = (r['rule'] as Map?) ?? const {};
+      setState(() {
+        _stage1Days = (rule['stage1_days'] as num?)?.toInt() ?? _stage1Days;
+        _stage1Pct = (rule['stage1_pct'] as num?)?.toDouble() ?? _stage1Pct;
+        _stage2Days = (rule['stage2_days'] as num?)?.toInt() ?? _stage2Days;
+        _stage2Pct = (rule['stage2_pct'] as num?)?.toDouble() ?? _stage2Pct;
+        _stage3Pct = (rule['stage3_pct'] as num?)?.toDouble() ?? _stage3Pct;
+        _minimumPayout = (rule['minimum_payout'] as num?)?.toInt() ?? _minimumPayout;
+      });
+    } catch (_) {}
+  }
+
+  String _pct(double v) => '${(v * 100).toStringAsFixed(0)}%';
 
   Future<void> _activate() async {
     // Show T&C and require explicit accept before activating
@@ -79,15 +109,15 @@ class _JoinAffScreenState extends ConsumerState<JoinAffScreen> {
           ),
           const SizedBox(height: 12),
           _benefit('Hoa hồng 3 giai đoạn',
-              'Giai đoạn 1 (90 ngày đầu): 50% doanh thu ròng\n'
-              'Giai đoạn 2 (180 ngày kế): 30%\n'
-              'Giai đoạn 3 (vĩnh viễn): 20%'),
+              'Giai đoạn 1 ($_stage1Days ngày đầu): ${_pct(_stage1Pct)} doanh thu ròng\n'
+              'Giai đoạn 2 ($_stage2Days ngày kế): ${_pct(_stage2Pct)}\n'
+              'Giai đoạn 3 (vĩnh viễn): ${_pct(_stage3Pct)}'),
           _benefit('Mã giới thiệu riêng',
               'Mỗi đối tác có 1 mã + link riêng. Sàn tự động ghi nhận hoa hồng khi referee đăng ký qua link.'),
           _benefit('Theo dõi minh bạch',
               'Xem danh sách người được giới thiệu, status gói, hoa hồng từng kỳ, lịch sử thanh toán.'),
           _benefit('Rút tiền linh hoạt',
-              'Đạt ngưỡng tối thiểu (mặc định 100.000đ) → Sàn chuyển khoản ngân hàng. Phí CK thực tế trừ trực tiếp từ payout.'),
+              'Đạt ngưỡng tối thiểu (hiện hành ${(_minimumPayout / 1000).toStringAsFixed(0)}.000đ) → Sàn chuyển khoản ngân hàng. Phí CK thực tế trừ trực tiếp từ payout.'),
           const SizedBox(height: 16),
           if (isAlreadyAff)
             const Card(

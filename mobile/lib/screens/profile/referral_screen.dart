@@ -59,8 +59,8 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
 
   String get _shareMessage {
     final code = _stats?['code'] as String? ?? '';
-    return 'Tham gia Sàn Giá Gạo qua link giới thiệu của tôi để xem giá gạo realtime '
-        'và kết nối trực tiếp với thương lái:\n\n$_shareLink\n\nMã giới thiệu: $code';
+    return 'Tải SanGiaGao để xem giá Gạo và kết nối với thương nhân\n'
+        '$_shareLink\nMã giới thiệu: $code';
   }
 
   @override
