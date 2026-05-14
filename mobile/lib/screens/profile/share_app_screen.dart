@@ -7,7 +7,7 @@ import 'package:share_plus/share_plus.dart';
 class ShareAppScreen extends StatelessWidget {
   const ShareAppScreen({super.key});
 
-  static const String _link = 'https://sangiagao.vn';
+  static const String _link = 'https://sangiagao.vn/cai-app';
   static const String _message =
       'Mình đang dùng Sàn Giá Gạo để xem giá gạo realtime và mua bán trực tiếp với thương lái. '
       'Bạn cài thử nhé: $_link';
