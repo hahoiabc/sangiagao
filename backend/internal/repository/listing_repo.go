@@ -31,31 +31,34 @@ const listingColumns = `id, user_id, title, category, rice_type, province, distr
 	quantity_kg, price_per_kg, harvest_season, description, certifications,
 	images, status, view_count, bumped_at, bump_count, created_at, updated_at`
 
-// rankingExpr — score 0-100 cho mỗi tin, dùng làm primary ORDER BY trong marketplace
-// search/browse. Phân tách 3 thành phần:
-//   - completeness 40%: tin có ảnh + description + district + harvest_season + certs + title đủ dài
-//   - freshness 40%: GREATEST(created_at, updated_at, bumped_at) — càng gần now càng cao
-//   - engagement 20%: view_count chuẩn hóa, cap ở 100 view
-//
-// Không tham chiếu user/subscription → công bằng giữa free + premium subscriber, chỉ
-// phân biệt theo NỘI DUNG tin đăng.
-const rankingExpr = `(
+// lastActivityExpr — thời điểm "tin được chạm vào cuối cùng" dùng làm freshness
+// signal. Tin có thể được kéo lên đầu qua 3 hành vi: tạo mới, edit nội dung, hoặc
+// "Làm mới tin đăng" (bump). bumped_at NULL với tin cũ → COALESCE năm 1970 để
+// không ảnh hưởng GREATEST.
+const lastActivityExpr = `GREATEST(created_at, updated_at, COALESCE(bumped_at, '1970-01-01'::timestamptz))`
+
+// contentScore — bổ sung khi nhiều tin cùng mức giá và freshness, ưu tiên tin
+// có nhiều thông tin (ảnh, mô tả, district, vụ thu hoạch, chứng nhận). KHÔNG dùng
+// title vì hệ thống generate title đồng nhất từ rice_type catalog (không phân biệt).
+//   - completeness 0-90 (5 signal × ≤25đ)
+//   - engagement 0-10 (view_count chuẩn hoá, cap ở 100 view)
+// Tổng 0-100.
+const contentScore = `(
 	(CASE WHEN images != '[]'::jsonb THEN 25 ELSE 0 END
 	 + CASE WHEN LENGTH(COALESCE(description, '')) >= 50 THEN 20 ELSE 0 END
 	 + CASE WHEN district IS NOT NULL THEN 15 ELSE 0 END
 	 + CASE WHEN harvest_season IS NOT NULL THEN 15 ELSE 0 END
-	 + CASE WHEN certifications IS NOT NULL THEN 15 ELSE 0 END
-	 + CASE WHEN LENGTH(title) >= 20 THEN 10 ELSE 0 END
-	) * 0.4
-	+ CASE
-		WHEN GREATEST(created_at, updated_at, COALESCE(bumped_at, '1970-01-01'::timestamptz)) > NOW() - INTERVAL '1 day'   THEN 40
-		WHEN GREATEST(created_at, updated_at, COALESCE(bumped_at, '1970-01-01'::timestamptz)) > NOW() - INTERVAL '7 days'  THEN 32
-		WHEN GREATEST(created_at, updated_at, COALESCE(bumped_at, '1970-01-01'::timestamptz)) > NOW() - INTERVAL '30 days' THEN 20
-		WHEN GREATEST(created_at, updated_at, COALESCE(bumped_at, '1970-01-01'::timestamptz)) > NOW() - INTERVAL '60 days' THEN 8
-		ELSE 2
-	END
-	+ LEAST(view_count::float / 100, 1) * 20
+	 + CASE WHEN certifications IS NOT NULL THEN 15 ELSE 0 END)
+	+ LEAST(view_count::float / 100, 1) * 10
 )`
+
+// marketplaceOrderBy — sort mặc định cho /san-giao-dich. Chiến lược "Sàn GIÁ Gạo":
+//   1. Giá thấp nhất trước — buyer đến tìm giá tốt
+//   2. Tin hoạt động gần nhất (created/updated/bumped trong vài phút trước thắng)
+//   3. Content score tiebreaker — tin có ảnh + mô tả xếp trên tin minimal
+//   4. created_at DESC — tin mới nhất khi mọi thứ khác bằng
+// Không tham chiếu user/subscription → công bằng giữa free + premium subscriber.
+const marketplaceOrderBy = `price_per_kg ASC, ` + lastActivityExpr + ` DESC, ` + contentScore + ` DESC, created_at DESC`
 
 func (r *ListingRepo) scanListing(row pgx.Row) (*model.Listing, error) {
 	var l model.Listing
@@ -256,7 +259,7 @@ func (r *ListingRepo) Browse(ctx context.Context, page, limit int) ([]*model.Lis
 	rows, err := r.pool.Query(ctx,
 		`SELECT `+listingColumns+` FROM listings
 		 WHERE status = 'active'
-		 ORDER BY `+rankingExpr+` DESC, created_at DESC
+		 ORDER BY `+marketplaceOrderBy+`
 		 LIMIT $1 OFFSET $2`,
 		limit, offset,
 	)
@@ -350,14 +353,14 @@ func (r *ListingRepo) Search(ctx context.Context, filter *model.ListingFilter) (
 		return nil, 0, err
 	}
 
-	// Data — default ordering uses content_score (relevance ranking), user can
-	// override with explicit sort. quantity_desc & quantity_asc added.
-	orderBy := rankingExpr + " DESC, created_at DESC"
+	// Data — default ordering áp dụng chiến lược price-first marketplace, user có
+	// thể override với explicit sort. quantity_desc & quantity_asc đã wired.
+	orderBy := marketplaceOrderBy
 	switch filter.Sort {
 	case "price_asc":
-		orderBy = "price_per_kg ASC"
+		orderBy = "price_per_kg ASC, " + lastActivityExpr + " DESC"
 	case "price_desc":
-		orderBy = "price_per_kg DESC"
+		orderBy = "price_per_kg DESC, " + lastActivityExpr + " DESC"
 	case "name_asc":
 		orderBy = "rice_type ASC"
 	case "name_desc":
@@ -367,7 +370,7 @@ func (r *ListingRepo) Search(ctx context.Context, filter *model.ListingFilter) (
 	case "quantity_asc":
 		orderBy = "quantity_kg ASC"
 	case "newest":
-		orderBy = "created_at DESC"
+		orderBy = lastActivityExpr + " DESC, created_at DESC"
 	}
 	dataQuery := fmt.Sprintf(
 		"SELECT %s FROM listings WHERE %s ORDER BY %s LIMIT $%d OFFSET $%d",
