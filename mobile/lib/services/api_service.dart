@@ -378,6 +378,8 @@ class ApiService {
     double? minPrice,
     double? maxPrice,
     double? minQty,
+    bool? hasPhoto,
+    int? postedWithinDays,
     String? sort,
     int page = 1,
     int limit = 20,
@@ -391,6 +393,8 @@ class ApiService {
     if (minPrice != null) params['min_price'] = minPrice;
     if (maxPrice != null) params['max_price'] = maxPrice;
     if (minQty != null) params['min_qty'] = minQty;
+    if (hasPhoto == true) params['has_photo'] = 1;
+    if (postedWithinDays != null && postedWithinDays > 0) params['posted_within_days'] = postedWithinDays;
     if (sort != null) params['sort'] = sort;
     final res = await _dio.get('/marketplace/search', queryParameters: params);
     return PaginatedResult.fromJson(res.data, (j) => Listing.fromJson(j));

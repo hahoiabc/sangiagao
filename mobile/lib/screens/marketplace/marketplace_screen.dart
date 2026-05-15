@@ -36,6 +36,10 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
   Province? _selectedProvince;
   Ward? _selectedWard;
 
+  // Content filters — "Chỉ tin có ảnh" và "Tin mới trong X ngày"
+  bool _hasPhotoOnly = false;
+  int _postedWithinDays = 0; // 0 = không lọc; 1 / 7 / 30 ngày
+
   int get _totalPages => (_total / _limit).ceil();
 
   @override
@@ -70,6 +74,8 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
         sort: widget.initialSort,
         province: _selectedProvince?.name,
         ward: _selectedWard?.name,
+        hasPhoto: _hasPhotoOnly,
+        postedWithinDays: _postedWithinDays > 0 ? _postedWithinDays : null,
         page: _page,
       );
       if (!mounted) return;
@@ -354,27 +360,31 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
   }
 
   Future<void> _showFilterSheet() async {
+    final hasAnyFilter = _selectedProvince != null || _hasPhotoOnly || _postedWithinDays > 0;
     await showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       builder: (_) => StatefulBuilder(
         builder: (context, setSheetState) => SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    const Text('Lọc theo địa điểm', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    const Text('Lọc tin đăng', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     const Spacer(),
-                    if (_selectedProvince != null)
+                    if (hasAnyFilter)
                       TextButton(
                         onPressed: () {
                           setState(() {
                             _selectedProvince = null;
                             _selectedWard = null;
                             _wards = [];
+                            _hasPhotoOnly = false;
+                            _postedWithinDays = 0;
                             _page = 1;
                           });
                           _loadListings();
@@ -385,6 +395,10 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
+
+                // Location group
+                Text('Địa điểm', style: TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
                 _FilterChip(
                   label: _selectedProvince?.name ?? 'Chọn Tỉnh/Thành phố',
                   isActive: _selectedProvince != null,
@@ -405,7 +419,64 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                         }
                       : null,
                 ),
+
+                const SizedBox(height: 16),
+                Text('Nội dung tin', style: TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
+
+                // Chỉ tin có ảnh
+                InkWell(
+                  onTap: () {
+                    setSheetState(() => _hasPhotoOnly = !_hasPhotoOnly);
+                    setState(() {});
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      children: [
+                        Icon(
+                          _hasPhotoOnly ? Icons.check_box : Icons.check_box_outline_blank,
+                          color: _hasPhotoOnly ? AppColors.primary : AppColors.textHint,
+                          size: 22,
+                        ),
+                        const SizedBox(width: 12),
+                        const Text('Chỉ hiển thị tin có ảnh', style: TextStyle(fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Thời gian đăng (chip group)
+                Text('Thời gian đăng', style: TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _DayChip(label: 'Tất cả',    value: 0,  selected: _postedWithinDays == 0,
+                      onTap: () { setSheetState(() => _postedWithinDays = 0); setState(() {}); }),
+                    _DayChip(label: 'Trong 24h', value: 1,  selected: _postedWithinDays == 1,
+                      onTap: () { setSheetState(() => _postedWithinDays = 1); setState(() {}); }),
+                    _DayChip(label: 'Trong 7 ngày', value: 7, selected: _postedWithinDays == 7,
+                      onTap: () { setSheetState(() => _postedWithinDays = 7); setState(() {}); }),
+                    _DayChip(label: 'Trong 30 ngày', value: 30, selected: _postedWithinDays == 30,
+                      onTap: () { setSheetState(() => _postedWithinDays = 30); setState(() {}); }),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      setState(() => _page = 1);
+                      _loadListings();
+                    },
+                    child: const Text('Áp dụng'),
+                  ),
+                ),
               ],
             ),
           ),
@@ -538,6 +609,41 @@ class _FilterChip extends StatelessWidget {
             const SizedBox(width: 2),
             Icon(Icons.arrow_drop_down, size: 18, color: enabled ? AppColors.textSecondary : AppColors.textHint),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DayChip extends StatelessWidget {
+  final String label;
+  final int value;
+  final bool selected;
+  final VoidCallback onTap;
+  const _DayChip({required this.label, required this.value, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? theme.colorScheme.primaryContainer : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? theme.colorScheme.primary : AppColors.border,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            color: selected ? theme.colorScheme.primary : AppColors.textSecondary,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+          ),
         ),
       ),
     );
