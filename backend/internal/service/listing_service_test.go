@@ -121,6 +121,14 @@ func (m *mockListingRepo) GetPriceBoardData(ctx context.Context) ([]repository.P
 	return args.Get(0).([]repository.PriceBoardRow), args.Error(1)
 }
 
+func (m *mockListingRepo) Bump(ctx context.Context, listingID, userID string) (*model.Listing, error) {
+	args := m.Called(ctx, listingID, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Listing), args.Error(1)
+}
+
 type mockCatalogRepo struct{ mock.Mock }
 
 func (m *mockCatalogRepo) ListCategories(ctx context.Context) ([]*model.CatalogCategory, error) {

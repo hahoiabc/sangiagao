@@ -57,6 +57,18 @@ func (h *MarketplaceHandler) Search(c *gin.Context) {
 		}
 	}
 
+	// has_photo=1 → chỉ trả tin có ít nhất 1 ảnh.
+	if v := c.Query("has_photo"); v == "1" || v == "true" {
+		filter.HasPhoto = true
+	}
+	// posted_within_days=7 → chỉ tin có hoạt động trong 7 ngày qua
+	// (dùng GREATEST(created_at, updated_at, bumped_at)).
+	if v := c.Query("posted_within_days"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 365 {
+			filter.PostedWithinDays = n
+		}
+	}
+
 	filter.Sort = c.Query("sort")
 	filter.Page, filter.Limit = parsePagination(c, 20)
 

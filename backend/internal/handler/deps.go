@@ -45,6 +45,7 @@ type ListingServiceInterface interface {
 	Search(ctx context.Context, filter *model.ListingFilter) ([]*model.Listing, int, error)
 	GetDetail(ctx context.Context, id string) (*model.ListingDetail, error)
 	GetPriceBoard(ctx context.Context) (*model.PriceBoardResponse, error)
+	BumpListing(ctx context.Context, userID, listingID string) (*service.BumpResult, error)
 }
 
 type SponsorServiceInterface interface {

@@ -3,12 +3,12 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Plus, Package, Edit, Trash2, Eye, Calendar, Zap, ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { Plus, Package, Edit, Trash2, Eye, Calendar, Zap, ChevronLeft, ChevronRight, Check, RefreshCw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getMyListings, deleteListing, batchDeleteOwnListings, type Listing, type PaginatedResponse } from "@/services/api";
+import { getMyListings, deleteListing, batchDeleteOwnListings, bumpListing, BUMP_COOLDOWN_MINUTES, BUMP_LIFETIME_CAP, type Listing, type PaginatedResponse } from "@/services/api";
 import { ListingImage } from "@/components/listing-image";
 import { formatPrice, formatQuantity, timeAgo } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
@@ -55,6 +55,39 @@ export default function MyListingsPage() {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Xóa thất bại");
     }
+  }
+
+  const [bumpingId, setBumpingId] = useState<string | null>(null);
+
+  async function handleBump(id: string) {
+    setBumpingId(id);
+    try {
+      const res = await bumpListing("", id);
+      // Cập nhật optimistic vào state — đẩy tin lên đầu list để UI phản ánh ngay.
+      setResult((prev) => {
+        if (!prev) return prev;
+        const target = prev.data.find((l) => l.id === id);
+        if (!target) return prev;
+        const updated = { ...target, bumped_at: res.bumped_at, bump_count: res.bump_count };
+        const others = prev.data.filter((l) => l.id !== id);
+        return { ...prev, data: [updated, ...others] };
+      });
+      toast.success(`Đã làm mới tin — còn ${res.bump_remaining}/${BUMP_LIFETIME_CAP} lần`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Không thể làm mới tin");
+    } finally {
+      setBumpingId(null);
+    }
+  }
+
+  function bumpRemainingTime(bumpedAt: string | null | undefined): string | null {
+    if (!bumpedAt) return null;
+    const next = new Date(bumpedAt).getTime() + BUMP_COOLDOWN_MINUTES * 60 * 1000;
+    const remaining = next - Date.now();
+    if (remaining <= 0) return null;
+    const hours = Math.floor(remaining / 3600000);
+    const minutes = Math.floor((remaining % 3600000) / 60000);
+    return hours > 0 ? `${hours}h${minutes > 0 ? minutes + "p" : ""}` : `${minutes}p`;
   }
 
   function toggleSelect(id: string) {
@@ -190,6 +223,28 @@ export default function MyListingsPage() {
                     </div>
                     {/* Actions */}
                     <div className="flex items-center gap-1 flex-shrink-0">
+                      {(() => {
+                        const remaining = bumpRemainingTime(listing.bumped_at);
+                        const quotaExhausted = listing.bump_count >= BUMP_LIFETIME_CAP;
+                        const disabled = !!remaining || quotaExhausted || bumpingId === listing.id || listing.status !== "active";
+                        const title = quotaExhausted
+                          ? `Tin đã đạt giới hạn ${BUMP_LIFETIME_CAP} lần làm mới`
+                          : remaining
+                            ? `Có thể làm mới sau ${remaining}`
+                            : `Làm mới tin đăng (đã dùng ${listing.bump_count}/${BUMP_LIFETIME_CAP})`;
+                        return (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-primary"
+                            onClick={() => handleBump(listing.id)}
+                            disabled={disabled}
+                            title={title}
+                          >
+                            <RefreshCw className={`h-4 w-4 ${bumpingId === listing.id ? "animate-spin" : ""}`} />
+                          </Button>
+                        );
+                      })()}
                       <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
                         <Link href={`/tin-dang/sua/${listing.id}`}>
                           <Edit className="h-4 w-4" />

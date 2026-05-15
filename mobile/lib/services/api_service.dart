@@ -426,6 +426,15 @@ class ApiService {
     await _dio.delete('/listings/$id');
   }
 
+  /// "Làm mới tin đăng" — đẩy tin lên top mà không cần edit nội dung.
+  /// Backend trả 429 nếu cooldown chưa hết, 410 nếu hết quota lifetime.
+  /// Throws DioException — UI tự catch + map e.response?.statusCode để hiển thị
+  /// message phù hợp.
+  Future<Map<String, dynamic>> bumpListing(String id) async {
+    final res = await _dio.post('/listings/$id/bump');
+    return res.data as Map<String, dynamic>;
+  }
+
   Future<Listing> addListingImage(String listingId, String imageUrl) async {
     final res = await _dio.post('/listings/$listingId/images', data: {'url': imageUrl});
     return Listing.fromJson(res.data);

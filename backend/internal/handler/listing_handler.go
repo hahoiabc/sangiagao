@@ -154,6 +154,42 @@ func (h *ListingHandler) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "listing deleted"})
 }
 
+// Bump — "Làm mới tin đăng" (POST /api/v1/listings/:id/bump).
+// Trả 200 + BumpResult nếu thành công. 429 nếu đang cooldown. 410 (Gone) nếu hết
+// quota lifetime. 404 nếu không tìm thấy hoặc không phải chủ tin.
+func (h *ListingHandler) Bump(c *gin.Context) {
+	userID := requireUserID(c)
+	if c.IsAborted() {
+		return
+	}
+	id := c.Param("id")
+
+	result, err := h.listingService.BumpListing(c.Request.Context(), userID, id)
+	if err != nil {
+		switch {
+		case errors.Is(err, repository.ErrListingNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": "tin đăng không tồn tại"})
+		case errors.Is(err, service.ErrNotListingOwner):
+			c.JSON(http.StatusForbidden, gin.H{"error": "bạn không phải chủ tin đăng này"})
+		case errors.Is(err, service.ErrBumpCooldown):
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"error":               err.Error(),
+				"cooldown_minutes":    model.BumpCooldownMinutes,
+			})
+		case errors.Is(err, service.ErrBumpQuotaExhausted):
+			c.JSON(http.StatusGone, gin.H{
+				"error":          err.Error(),
+				"lifetime_cap":   model.BumpLifetimeCap,
+			})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "không thể làm mới tin đăng"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
 func (h *ListingHandler) BatchDeleteOwn(c *gin.Context) {
 	userID := requireUserID(c)
 	if c.IsAborted() {

@@ -30,6 +30,8 @@ class Listing {
   final List<String> images;
   final String status;
   final int viewCount;
+  final String? bumpedAt;
+  final int bumpCount;
   final String createdAt;
 
   Listing({
@@ -48,6 +50,8 @@ class Listing {
     this.images = const [],
     required this.status,
     this.viewCount = 0,
+    this.bumpedAt,
+    this.bumpCount = 0,
     required this.createdAt,
   });
 
@@ -67,11 +71,39 @@ class Listing {
         images: (json['images'] as List<dynamic>?)?.cast<String>() ?? [],
         status: json['status'] as String,
         viewCount: json['view_count'] as int? ?? 0,
+        bumpedAt: json['bumped_at'] as String?,
+        bumpCount: json['bump_count'] as int? ?? 0,
         createdAt: json['created_at'] as String,
+      );
+
+  Listing copyWith({String? bumpedAt, int? bumpCount}) => Listing(
+        id: id,
+        userId: userId,
+        title: title,
+        category: category,
+        riceType: riceType,
+        province: province,
+        ward: ward,
+        quantityKg: quantityKg,
+        pricePerKg: pricePerKg,
+        harvestSeason: harvestSeason,
+        description: description,
+        certifications: certifications,
+        images: images,
+        status: status,
+        viewCount: viewCount,
+        bumpedAt: bumpedAt ?? this.bumpedAt,
+        bumpCount: bumpCount ?? this.bumpCount,
+        createdAt: createdAt,
       );
 
   bool get isActive => status == 'active';
 }
+
+/// Số phút phải đợi giữa 2 lần "Làm mới tin đăng".
+const int bumpCooldownMinutes = 354; // 5h54m
+/// Tổng số lần "Làm mới" tối đa cho 1 tin (60 ngày × 4/ngày).
+const int bumpLifetimeCap = 240;
 
 class ListingDetail {
   final Listing listing;

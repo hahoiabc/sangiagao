@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/sangiagao/rice-marketplace/internal/model"
+	"github.com/sangiagao/rice-marketplace/internal/repository"
 	"github.com/sangiagao/rice-marketplace/pkg/cache"
 )
 
@@ -18,7 +19,16 @@ var (
 	ErrMaxImages            = errors.New("maximum 1 image per listing")
 	ErrListingDeleted       = errors.New("listing has been deleted")
 	ErrSubscriptionRequired = errors.New("bạn cần có gói đăng ký còn hiệu lực để đăng tin")
+	ErrBumpCooldown         = errors.New("vui lòng đợi trước khi làm mới tin lần nữa")
+	ErrBumpQuotaExhausted   = errors.New("tin đã đạt giới hạn làm mới — vui lòng đăng tin mới")
 )
+
+// BumpResult — payload trả về cho client sau khi làm mới tin thành công.
+type BumpResult struct {
+	BumpedAt      time.Time `json:"bumped_at"`
+	BumpCount     int       `json:"bump_count"`
+	BumpRemaining int       `json:"bump_remaining"` // = LifetimeCap - BumpCount
+}
 
 const (
 	marketplaceCacheTTL = 5 * time.Minute
@@ -235,6 +245,37 @@ func (s *ListingService) Delete(ctx context.Context, userID, id string) error {
 	}
 	s.InvalidateMarketplaceCache(ctx)
 	return nil
+}
+
+// BumpListing — "Làm mới tin đăng": user bấm để đẩy tin lên top mà không cần edit
+// nội dung. Cooldown 5h54m giữa 2 lần, lifetime cap 240 lần/tin. Trả về error rõ
+// ràng để client phân biệt cooldown chưa hết vs quota đã hết.
+func (s *ListingService) BumpListing(ctx context.Context, userID, listingID string) (*BumpResult, error) {
+	listing, err := s.listingRepo.Bump(ctx, listingID, userID)
+	if err != nil {
+		switch {
+		case errors.Is(err, repository.ErrBumpCooldown):
+			return nil, ErrBumpCooldown
+		case errors.Is(err, repository.ErrBumpQuotaExhausted):
+			return nil, ErrBumpQuotaExhausted
+		case errors.Is(err, repository.ErrListingNotFound):
+			return nil, err
+		default:
+			return nil, err
+		}
+	}
+	// Invalidate marketplace cache — ranking signal vừa thay đổi.
+	s.InvalidateMarketplaceCache(ctx)
+	if listing.BumpedAt == nil {
+		// Defensive: vừa update bumped_at = NOW(), không thể nil.
+		now := time.Now().UTC()
+		listing.BumpedAt = &now
+	}
+	return &BumpResult{
+		BumpedAt:      *listing.BumpedAt,
+		BumpCount:     listing.BumpCount,
+		BumpRemaining: model.BumpLifetimeCap - listing.BumpCount,
+	}, nil
 }
 
 func (s *ListingService) BatchDeleteOwn(ctx context.Context, userID string, ids []string) (int, error) {

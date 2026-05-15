@@ -1,4 +1,5 @@
 import '../../widgets/thumbnail_image.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -38,6 +39,58 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _bump(Listing listing) async {
+    try {
+      final res = await ref.read(apiServiceProvider).bumpListing(listing.id);
+      if (!mounted) return;
+      final newBumpedAt = res['bumped_at'] as String?;
+      final newBumpCount = (res['bump_count'] as int?) ?? listing.bumpCount + 1;
+      final remaining = (res['bump_remaining'] as int?) ?? (bumpLifetimeCap - newBumpCount);
+      setState(() {
+        // Đưa tin lên đầu list để phản ánh ranking mới ngay lập tức.
+        final idx = _listings.indexWhere((l) => l.id == listing.id);
+        if (idx >= 0) {
+          final updated = _listings[idx].copyWith(bumpedAt: newBumpedAt, bumpCount: newBumpCount);
+          _listings.removeAt(idx);
+          _listings.insert(0, updated);
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Đã làm mới tin — còn $remaining/$bumpLifetimeCap lần')),
+      );
+    } on DioException catch (e) {
+      if (!mounted) return;
+      String msg = 'Không thể làm mới tin';
+      if (e.response?.statusCode == 429) {
+        msg = 'Vui lòng đợi trước khi làm mới lần nữa';
+      } else if (e.response?.statusCode == 410) {
+        msg = 'Tin đã đạt giới hạn $bumpLifetimeCap lần làm mới — vui lòng đăng tin mới';
+      } else if (e.response?.data is Map && (e.response!.data as Map)['error'] != null) {
+        msg = (e.response!.data as Map)['error'].toString();
+      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi: $e')),
+      );
+    }
+  }
+
+  /// Tính số phút còn lại tới lần được phép bump tiếp.
+  /// Trả null nếu đủ điều kiện bump (chưa từng hoặc đã đủ 5h54m).
+  String? _bumpRemaining(Listing l) {
+    if (l.bumpedAt == null) return null;
+    final last = DateTime.tryParse(l.bumpedAt!);
+    if (last == null) return null;
+    final nextAllowed = last.add(const Duration(minutes: bumpCooldownMinutes));
+    final diff = nextAllowed.difference(DateTime.now());
+    if (diff.isNegative) return null;
+    final hours = diff.inHours;
+    final minutes = diff.inMinutes % 60;
+    return hours > 0 ? '${hours}h${minutes > 0 ? "${minutes}p" : ""}' : '${minutes}p';
   }
 
   Future<void> _delete(String id) async {
@@ -242,13 +295,36 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
                     ),
                   ),
                   PopupMenuButton(
-                    itemBuilder: (_) => [
-                      const PopupMenuItem(value: 'edit', child: Text('Sửa')),
-                      const PopupMenuItem(value: 'delete', child: Text('Xóa', style: TextStyle(color: AppColors.error))),
-                    ],
+                    itemBuilder: (_) {
+                      final remaining = _bumpRemaining(l);
+                      final quotaExhausted = l.bumpCount >= bumpLifetimeCap;
+                      final canBump = l.status == 'active' && remaining == null && !quotaExhausted;
+                      final bumpLabel = quotaExhausted
+                          ? 'Hết lượt làm mới'
+                          : remaining != null
+                              ? 'Làm mới sau $remaining'
+                              : 'Làm mới tin đăng';
+                      return [
+                        PopupMenuItem(
+                          value: 'bump',
+                          enabled: canBump,
+                          child: Row(
+                            children: [
+                              Icon(Icons.refresh, size: 18, color: canBump ? AppColors.primary : AppColors.textHint),
+                              const SizedBox(width: 8),
+                              Text(bumpLabel, style: TextStyle(color: canBump ? AppColors.primary : AppColors.textHint)),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(value: 'edit', child: Text('Sửa')),
+                        const PopupMenuItem(value: 'delete', child: Text('Xóa', style: TextStyle(color: AppColors.error))),
+                      ];
+                    },
                     onSelected: (v) {
                       WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (v == 'edit') {
+                        if (v == 'bump') {
+                          _bump(l);
+                        } else if (v == 'edit') {
                           context.push('/edit-listing/${l.id}').then((result) {
                             if (result == true) _load();
                           });

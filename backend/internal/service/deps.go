@@ -94,6 +94,7 @@ type ListingRepository interface {
 	GetDetailWithSeller(ctx context.Context, id string) (*model.ListingDetail, error)
 	IncrementViewCount(ctx context.Context, id string) error
 	GetPriceBoardData(ctx context.Context) ([]repository.PriceBoardRow, error)
+	Bump(ctx context.Context, listingID, userID string) (*model.Listing, error)
 }
 
 type RatingRepository interface {

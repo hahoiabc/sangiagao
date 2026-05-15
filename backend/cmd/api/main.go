@@ -478,6 +478,8 @@ func main() {
 				listings.PUT("/:id", middleware.RequirePermission(permissionService, "listings.edit_own"), listingHandler.Update)
 				listings.DELETE("/:id", listingHandler.Delete)
 				listings.POST("/batch-delete", listingHandler.BatchDeleteOwn)
+				// "Làm mới tin đăng" — cooldown 5h54m, lifetime cap 240 lần/tin.
+				listings.POST("/:id/bump", middleware.RequirePermission(permissionService, "listings.edit_own"), listingHandler.Bump)
 				listings.POST("/:id/images", middleware.RequirePermission(permissionService, "listings.edit_own"), listingHandler.AddImage)
 				listings.DELETE("/:id/images", middleware.RequirePermission(permissionService, "listings.edit_own"), listingHandler.RemoveImage)
 			}

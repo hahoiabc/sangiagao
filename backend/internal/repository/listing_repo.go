@@ -13,7 +13,11 @@ import (
 	"github.com/sangiagao/rice-marketplace/internal/model"
 )
 
-var ErrListingNotFound = errors.New("listing not found")
+var (
+	ErrListingNotFound     = errors.New("listing not found")
+	ErrBumpCooldown        = errors.New("bump cooldown not elapsed")
+	ErrBumpQuotaExhausted  = errors.New("bump quota exhausted")
+)
 
 type ListingRepo struct {
 	pool *pgxpool.Pool
@@ -25,7 +29,33 @@ func NewListingRepo(pool *pgxpool.Pool) *ListingRepo {
 
 const listingColumns = `id, user_id, title, category, rice_type, province, district,
 	quantity_kg, price_per_kg, harvest_season, description, certifications,
-	images, status, view_count, created_at, updated_at`
+	images, status, view_count, bumped_at, bump_count, created_at, updated_at`
+
+// rankingExpr — score 0-100 cho mỗi tin, dùng làm primary ORDER BY trong marketplace
+// search/browse. Phân tách 3 thành phần:
+//   - completeness 40%: tin có ảnh + description + district + harvest_season + certs + title đủ dài
+//   - freshness 40%: GREATEST(created_at, updated_at, bumped_at) — càng gần now càng cao
+//   - engagement 20%: view_count chuẩn hóa, cap ở 100 view
+//
+// Không tham chiếu user/subscription → công bằng giữa free + premium subscriber, chỉ
+// phân biệt theo NỘI DUNG tin đăng.
+const rankingExpr = `(
+	(CASE WHEN images != '[]'::jsonb THEN 25 ELSE 0 END
+	 + CASE WHEN LENGTH(COALESCE(description, '')) >= 50 THEN 20 ELSE 0 END
+	 + CASE WHEN district IS NOT NULL THEN 15 ELSE 0 END
+	 + CASE WHEN harvest_season IS NOT NULL THEN 15 ELSE 0 END
+	 + CASE WHEN certifications IS NOT NULL THEN 15 ELSE 0 END
+	 + CASE WHEN LENGTH(title) >= 20 THEN 10 ELSE 0 END
+	) * 0.4
+	+ CASE
+		WHEN GREATEST(created_at, updated_at, COALESCE(bumped_at, '1970-01-01'::timestamptz)) > NOW() - INTERVAL '1 day'   THEN 40
+		WHEN GREATEST(created_at, updated_at, COALESCE(bumped_at, '1970-01-01'::timestamptz)) > NOW() - INTERVAL '7 days'  THEN 32
+		WHEN GREATEST(created_at, updated_at, COALESCE(bumped_at, '1970-01-01'::timestamptz)) > NOW() - INTERVAL '30 days' THEN 20
+		WHEN GREATEST(created_at, updated_at, COALESCE(bumped_at, '1970-01-01'::timestamptz)) > NOW() - INTERVAL '60 days' THEN 8
+		ELSE 2
+	END
+	+ LEAST(view_count::float / 100, 1) * 20
+)`
 
 func (r *ListingRepo) scanListing(row pgx.Row) (*model.Listing, error) {
 	var l model.Listing
@@ -33,7 +63,7 @@ func (r *ListingRepo) scanListing(row pgx.Row) (*model.Listing, error) {
 	err := row.Scan(
 		&l.ID, &l.UserID, &l.Title, &l.Category, &l.RiceType, &l.Province, &l.Ward,
 		&l.QuantityKG, &l.PricePerKG, &l.HarvestSeason, &l.Description, &l.Certifications,
-		&imagesJSON, &l.Status, &l.ViewCount, &l.CreatedAt, &l.UpdatedAt,
+		&imagesJSON, &l.Status, &l.ViewCount, &l.BumpedAt, &l.BumpCount, &l.CreatedAt, &l.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrListingNotFound
@@ -55,7 +85,7 @@ func (r *ListingRepo) scanListings(rows pgx.Rows) ([]*model.Listing, error) {
 		err := rows.Scan(
 			&l.ID, &l.UserID, &l.Title, &l.Category, &l.RiceType, &l.Province, &l.Ward,
 			&l.QuantityKG, &l.PricePerKG, &l.HarvestSeason, &l.Description, &l.Certifications,
-			&imagesJSON, &l.Status, &l.ViewCount, &l.CreatedAt, &l.UpdatedAt,
+			&imagesJSON, &l.Status, &l.ViewCount, &l.BumpedAt, &l.BumpCount, &l.CreatedAt, &l.UpdatedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -226,7 +256,8 @@ func (r *ListingRepo) Browse(ctx context.Context, page, limit int) ([]*model.Lis
 	rows, err := r.pool.Query(ctx,
 		`SELECT `+listingColumns+` FROM listings
 		 WHERE status = 'active'
-		 ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+		 ORDER BY `+rankingExpr+` DESC, created_at DESC
+		 LIMIT $1 OFFSET $2`,
 		limit, offset,
 	)
 	if err != nil {
@@ -246,7 +277,11 @@ func (r *ListingRepo) Search(ctx context.Context, filter *model.ListingFilter) (
 	argIdx := 1
 
 	if filter.Query != "" {
-		where = append(where, fmt.Sprintf("search_vector @@ plainto_tsquery('simple', $%d)", argIdx))
+		// search_vector được rebuild với unaccent ở mig 032 → match cả "gao st"
+		// (không dấu) lẫn "Gạo ST25" (có dấu). Apply unaccent lên user query cho
+		// đối xứng.
+		where = append(where, fmt.Sprintf(
+			"search_vector @@ plainto_tsquery('simple', unaccent($%d))", argIdx))
 		args = append(args, filter.Query)
 		argIdx++
 	}
@@ -293,6 +328,18 @@ func (r *ListingRepo) Search(ctx context.Context, filter *model.ListingFilter) (
 		argIdx++
 	}
 
+	if filter.HasPhoto {
+		where = append(where, "images != '[]'::jsonb")
+	}
+
+	if filter.PostedWithinDays > 0 {
+		where = append(where, fmt.Sprintf(
+			"GREATEST(created_at, updated_at, COALESCE(bumped_at, '1970-01-01'::timestamptz)) > NOW() - ($%d::text || ' days')::interval",
+			argIdx))
+		args = append(args, fmt.Sprintf("%d", filter.PostedWithinDays))
+		argIdx++
+	}
+
 	whereClause := strings.Join(where, " AND ")
 
 	// Count
@@ -303,16 +350,24 @@ func (r *ListingRepo) Search(ctx context.Context, filter *model.ListingFilter) (
 		return nil, 0, err
 	}
 
-	// Data
-	orderBy := "created_at DESC"
-	if filter.Sort == "price_asc" {
+	// Data — default ordering uses content_score (relevance ranking), user can
+	// override with explicit sort. quantity_desc & quantity_asc added.
+	orderBy := rankingExpr + " DESC, created_at DESC"
+	switch filter.Sort {
+	case "price_asc":
 		orderBy = "price_per_kg ASC"
-	} else if filter.Sort == "price_desc" {
+	case "price_desc":
 		orderBy = "price_per_kg DESC"
-	} else if filter.Sort == "name_asc" {
+	case "name_asc":
 		orderBy = "rice_type ASC"
-	} else if filter.Sort == "name_desc" {
+	case "name_desc":
 		orderBy = "rice_type DESC"
+	case "quantity_desc":
+		orderBy = "quantity_kg DESC"
+	case "quantity_asc":
+		orderBy = "quantity_kg ASC"
+	case "newest":
+		orderBy = "created_at DESC"
 	}
 	dataQuery := fmt.Sprintf(
 		"SELECT %s FROM listings WHERE %s ORDER BY %s LIMIT $%d OFFSET $%d",
@@ -338,7 +393,7 @@ func (r *ListingRepo) GetDetailWithSeller(ctx context.Context, id string) (*mode
 	err := r.pool.QueryRow(ctx,
 		`SELECT l.id, l.user_id, l.title, l.category, l.rice_type, l.province, l.district,
 			l.quantity_kg, l.price_per_kg, l.harvest_season, l.description, l.certifications,
-			l.images, l.status, l.view_count, l.created_at, l.updated_at,
+			l.images, l.status, l.view_count, l.bumped_at, l.bump_count, l.created_at, l.updated_at,
 			u.id, u.phone, u.role, u.name, u.avatar_url, u.province, u.district, u.ward, u.description, u.org_name, u.created_at
 		 FROM listings l
 		 JOIN users u ON u.id = l.user_id
@@ -346,7 +401,7 @@ func (r *ListingRepo) GetDetailWithSeller(ctx context.Context, id string) (*mode
 	).Scan(
 		&d.ID, &d.UserID, &d.Title, &d.Category, &d.RiceType, &d.Province, &d.Ward,
 		&d.QuantityKG, &d.PricePerKG, &d.HarvestSeason, &d.Description, &d.Certifications,
-		&imagesJSON, &d.Status, &d.ViewCount, &d.CreatedAt, &d.UpdatedAt,
+		&imagesJSON, &d.Status, &d.ViewCount, &d.BumpedAt, &d.BumpCount, &d.CreatedAt, &d.UpdatedAt,
 		&d.Seller.ID, &d.Seller.Phone, &d.Seller.Role, &d.Seller.Name, &d.Seller.AvatarURL,
 		&d.Seller.Province, &discardUserDistrict, &d.Seller.Ward, &d.Seller.Description, &d.Seller.OrgName, &d.Seller.CreatedAt,
 	)
@@ -367,6 +422,48 @@ func (r *ListingRepo) IncrementViewCount(ctx context.Context, id string) error {
 		`UPDATE listings SET view_count = view_count + 1 WHERE id = $1`, id,
 	)
 	return err
+}
+
+// Bump — atomic "Làm mới tin đăng". Trả về row mới NẾU thoả mãn cooldown
+// (bumped_at NULL hoặc > 5h54m trước) VÀ chưa hết lifetime quota (bump_count < 240).
+// Trả ErrBumpCooldown hoặc ErrBumpQuotaExhausted tuỳ nguyên nhân fail. Tiếp tục
+// chạy 1 query GetByID sau đó để service biết tin có tồn tại không.
+func (r *ListingRepo) Bump(ctx context.Context, listingID, userID string) (*model.Listing, error) {
+	cooldownInterval := fmt.Sprintf("%d minutes", model.BumpCooldownMinutes)
+	row := r.pool.QueryRow(ctx,
+		`UPDATE listings
+		    SET bumped_at = NOW(),
+		        bump_count = bump_count + 1
+		  WHERE id = $1
+		    AND user_id = $2
+		    AND status = 'active'
+		    AND bump_count < $3
+		    AND (bumped_at IS NULL OR bumped_at < NOW() - ($4::text)::interval)
+		  RETURNING `+listingColumns,
+		listingID, userID, model.BumpLifetimeCap, cooldownInterval,
+	)
+	updated, err := r.scanListing(row)
+	if err == nil {
+		return updated, nil
+	}
+	if !errors.Is(err, ErrListingNotFound) {
+		return nil, err
+	}
+	// UPDATE didn't match — distinguish reasons.
+	current, getErr := r.GetByID(ctx, listingID)
+	if getErr != nil {
+		return nil, getErr
+	}
+	if current.UserID != userID {
+		return nil, ErrListingNotFound
+	}
+	if current.Status != "active" {
+		return nil, ErrListingNotFound
+	}
+	if current.BumpCount >= model.BumpLifetimeCap {
+		return nil, ErrBumpQuotaExhausted
+	}
+	return nil, ErrBumpCooldown
 }
 
 // PriceBoardRow holds aggregated price data for one product.

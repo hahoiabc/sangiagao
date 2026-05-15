@@ -44,9 +44,11 @@ function MarketplaceContent() {
   const [riceType, setRiceType] = useState(searchParams.get("rice_type") || "");
   const [province, setProvince] = useState(searchParams.get("province") || "");
   const [ward, setWard] = useState(searchParams.get("ward") || "");
-  const [sort, setSort] = useState(searchParams.get("sort") || "price_asc");
+  const [sort, setSort] = useState(searchParams.get("sort") || "");
   const [minPrice, setMinPrice] = useState(searchParams.get("min_price") || "");
   const [maxPrice, setMaxPrice] = useState(searchParams.get("max_price") || "");
+  const [hasPhoto, setHasPhoto] = useState(searchParams.get("has_photo") === "1");
+  const [postedWithin, setPostedWithin] = useState(searchParams.get("posted_within_days") || "");
   const [showFilter, setShowFilter] = useState(false);
   const [categories, setCategories] = useState<RiceCategory[]>([]);
   const [result, setResult] = useState<PaginatedResponse<Listing> | null>(null);
@@ -113,6 +115,8 @@ function MarketplaceContent() {
           sort: sort || undefined,
           min_price: minPrice ? Number(minPrice) : undefined,
           max_price: maxPrice ? Number(maxPrice) : undefined,
+          has_photo: hasPhoto || undefined,
+          posted_within_days: postedWithin ? Number(postedWithin) : undefined,
           page: p,
           limit: 50,
         });
@@ -144,11 +148,13 @@ function MarketplaceContent() {
     setSort("");
     setMinPrice("");
     setMaxPrice("");
+    setHasPhoto(false);
+    setPostedWithin("");
     setQuery("");
     setPage(1);
   }
 
-  const hasFilters = category || riceType || province || ward || sort || minPrice || maxPrice;
+  const hasFilters = category || riceType || province || ward || sort || minPrice || maxPrice || hasPhoto || postedWithin;
   const totalPages = result ? Math.ceil(result.total / 20) : 0;
 
   return (
@@ -258,6 +264,30 @@ function MarketplaceContent() {
                 />
               </div>
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="text-xs font-medium mb-1 block text-muted-foreground">Thời gian đăng</label>
+                <select
+                  value={postedWithin}
+                  onChange={(e) => setPostedWithin(e.target.value)}
+                  className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
+                >
+                  <option value="">Tất cả</option>
+                  <option value="1">Trong 24 giờ</option>
+                  <option value="7">Trong 7 ngày</option>
+                  <option value="30">Trong 30 ngày</option>
+                </select>
+              </div>
+              <label className="flex items-center gap-2 mt-5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hasPhoto}
+                  onChange={(e) => setHasPhoto(e.target.checked)}
+                  className="h-4 w-4 rounded border-input"
+                />
+                <span className="text-sm">Chỉ hiển thị tin có ảnh</span>
+              </label>
+            </div>
             <div className="flex items-center gap-2">
               <label className="text-xs font-medium text-muted-foreground">Sắp xếp:</label>
               <select
@@ -265,7 +295,8 @@ function MarketplaceContent() {
                 onChange={(e) => setSort(e.target.value)}
                 className="h-9 rounded-md border border-input bg-background px-2 text-sm"
               >
-                <option value="">Mới nhất</option>
+                <option value="">Phù hợp nhất</option>
+                <option value="newest">Mới nhất</option>
                 <option value="name_asc">Tên gạo (A-Z)</option>
                 <option value="name_desc">Tên gạo (Z-A)</option>
                 <option value="price_asc">Giá tăng dần</option>
@@ -304,7 +335,9 @@ function MarketplaceContent() {
               Giá: {minPrice || "0"} - {maxPrice || "..."}đ/kg
             </Badge>
           )}
-          {sort && <Badge variant="secondary"><ArrowUpDown className="h-3 w-3 mr-1" />{sort === "price_asc" ? "Giá tăng" : sort === "price_desc" ? "Giá giảm" : sort === "name_asc" ? "Tên A-Z" : sort === "name_desc" ? "Tên Z-A" : "SL nhiều"}</Badge>}
+          {hasPhoto && <Badge variant="secondary">Có ảnh</Badge>}
+          {postedWithin && <Badge variant="secondary">{postedWithin === "1" ? "Trong 24h" : `Trong ${postedWithin} ngày`}</Badge>}
+          {sort && <Badge variant="secondary"><ArrowUpDown className="h-3 w-3 mr-1" />{sort === "price_asc" ? "Giá tăng" : sort === "price_desc" ? "Giá giảm" : sort === "name_asc" ? "Tên A-Z" : sort === "name_desc" ? "Tên Z-A" : sort === "newest" ? "Mới nhất" : "SL nhiều"}</Badge>}
           <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={clearFilters}>
             Xóa bộ lọc
           </Button>

@@ -186,8 +186,19 @@ export interface Listing {
   images: string[];
   status: string;
   view_count: number;
+  bumped_at?: string | null;
+  bump_count: number;
   created_at: string;
   updated_at: string;
+}
+
+export const BUMP_COOLDOWN_MINUTES = 354;
+export const BUMP_LIFETIME_CAP = 240;
+
+export interface BumpResult {
+  bumped_at: string;
+  bump_count: number;
+  bump_remaining: number;
 }
 
 export interface ListingDetail extends Listing {
@@ -514,6 +525,8 @@ export async function searchMarketplace(params: {
   ward?: string;
   min_price?: number;
   max_price?: number;
+  has_photo?: boolean;
+  posted_within_days?: number;
   sort?: string;
   page?: number;
   limit?: number;
@@ -741,6 +754,13 @@ export async function batchDeleteOwnListings(token: string, ids: string[]): Prom
     method: "POST",
     body: JSON.stringify({ ids }),
   });
+}
+
+// "Làm mới tin đăng" — đẩy tin lên top mà không cần edit. Cooldown 5h54m
+// giữa 2 lần, lifetime cap 240 lần/tin.
+// Backend trả 429 nếu cooldown chưa hết, 410 nếu hết quota lifetime.
+export async function bumpListing(token: string, id: string): Promise<BumpResult> {
+  return request<BumpResult>(`/listings/${id}/bump`, { token, method: "POST" });
 }
 
 export async function addListingImage(token: string, listingId: string, url: string) {

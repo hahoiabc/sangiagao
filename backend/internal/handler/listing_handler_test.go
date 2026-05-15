@@ -106,6 +106,13 @@ func (m *mockListingService) BatchDeleteOwn(ctx context.Context, userID string, 
 	args := m.Called(ctx, userID, ids)
 	return args.Int(0), args.Error(1)
 }
+func (m *mockListingService) BumpListing(ctx context.Context, userID, listingID string) (*service.BumpResult, error) {
+	args := m.Called(ctx, userID, listingID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*service.BumpResult), args.Error(1)
+}
 
 // --- Helpers ---
 

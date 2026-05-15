@@ -210,6 +210,14 @@ func (m *mockAdminListingRepo) GetPriceBoardData(ctx context.Context) ([]reposit
 	return args.Get(0).([]repository.PriceBoardRow), args.Error(1)
 }
 
+func (m *mockAdminListingRepo) Bump(ctx context.Context, listingID, userID string) (*model.Listing, error) {
+	args := m.Called(ctx, listingID, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Listing), args.Error(1)
+}
+
 // mockAdminSubRepo for admin subscription operations
 type mockAdminSubRepo struct{ mock.Mock }
 
