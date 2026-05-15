@@ -25,6 +25,9 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Backfill: trigger UPDATE để regenerate search_vector cho tin cũ.
--- WHERE clause vô hại — chỉ trigger BEFORE UPDATE OF (title, rice_type, description, province)
--- nên cần UPDATE 1 trong 4 cột đó. Set title = title là no-op nhưng kích hoạt trigger.
+-- CRITICAL: phải DISABLE trigger `listings_updated_at` trước khi UPDATE, nếu không
+-- 85 tin sẽ bị reset updated_at = NOW() cùng lúc → phá vỡ marketplace ranking
+-- (last_activity = GREATEST(created_at, updated_at, bumped_at) trở nên tuyến tính).
+ALTER TABLE listings DISABLE TRIGGER listings_updated_at;
 UPDATE listings SET title = title WHERE status != 'deleted';
+ALTER TABLE listings ENABLE TRIGGER listings_updated_at;
