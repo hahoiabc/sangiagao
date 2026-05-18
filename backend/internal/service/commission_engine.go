@@ -139,17 +139,11 @@ func (e *CommissionEngine) RecordForPayment(ctx context.Context, ev PaymentEvent
 		return nil, nil
 	}
 
-	// Guard: only credit commission while referrer is currently 'aff' role.
-	// If they downgraded back to member, stop earning on future payments.
-	var referrerRole string
-	if err := e.pool.QueryRow(ctx, `SELECT role FROM users WHERE id = $1`, *referrerUserID).Scan(&referrerRole); err != nil {
-		return nil, err
-	}
-	if referrerRole != "aff" {
-		slog.Info("commission: referrer not aff, skip",
-			"referrer", *referrerUserID, "role", referrerRole, "event", ev.EventID)
-		return nil, nil
-	}
+	// Phương án C (2026-05-18): bỏ guard "aff-only". Mọi role có code đều earn
+	// (owner/admin/editor/aff). Vector gian lận tự bơm tiền KHÔNG có lời vì
+	// commission < amount paid; vector duy nhất khả thi là Apple/Google refund
+	// abuse — xử lý bằng CancelCommissionsForSubscription khi nhận REFUND
+	// webhook (clawback pending/payable records).
 
 	// Get referrer's referral_code_id (for per-partner rule lookup)
 	var referralCodeID *string
@@ -214,4 +208,29 @@ func (e *CommissionEngine) UpdateSubscriptionNet(ctx context.Context, subscripti
 		    SET net_amount = $1, platform_fee_pct = $2, updated_at = NOW()
 		  WHERE id = $3`, netAmount, platformFeePct, subscriptionID)
 	return err
+}
+
+// CancelCommissionsForSubscription — clawback hoa hồng cho 1 subscription bị
+// refund / revoke. Chỉ cancel records ở trạng thái pending/payable (chưa rút).
+// Records đã paid giữ nguyên (không thể clawback tiền đã chuyển ngân hàng).
+//
+// Gọi từ Apple/Google REFUND webhook handler. Trả về số records cancel để
+// log + admin báo cáo.
+func (e *CommissionEngine) CancelCommissionsForSubscription(ctx context.Context, subscriptionID string) (int64, error) {
+	tag, err := e.pool.Exec(ctx,
+		`UPDATE commissions
+		    SET status = 'cancelled', updated_at = NOW()
+		  WHERE subscription_id = $1
+		    AND status IN ('pending', 'payable')`,
+		subscriptionID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	count := tag.RowsAffected()
+	if count > 0 {
+		slog.Info("commission: cancelled records for refunded subscription",
+			"subscription_id", subscriptionID, "cancelled_count", count)
+	}
+	return count, nil
 }

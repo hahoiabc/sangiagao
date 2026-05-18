@@ -197,14 +197,14 @@ func (s *AppleIAPService) applyRevoked(ctx context.Context, t *apple.Transaction
 	}
 	defer tx.Rollback(ctx)
 
-	var userID string
+	var userID, subID string
 	err = tx.QueryRow(ctx,
 		`UPDATE subscriptions
 		    SET status = 'expired', auto_renew_status = false, updated_at = NOW()
 		  WHERE apple_original_transaction_id = $1
-		  RETURNING user_id`,
+		  RETURNING user_id, id`,
 		t.OriginalTransactionID,
-	).Scan(&userID)
+	).Scan(&userID, &subID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
@@ -220,7 +220,19 @@ func (s *AppleIAPService) applyRevoked(ctx context.Context, t *apple.Transaction
 	if err != nil {
 		return err
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	// Refund/revoke = clawback hoa hồng pending/payable. Records đã paid không
+	// rollback được (tiền đã chuyển ngân hàng). Chạy ngoài tx vì cross-table
+	// và nếu fail cũng không nên rollback việc mark expired.
+	if s.engine != nil {
+		if _, err := s.engine.CancelCommissionsForSubscription(ctx, subID); err != nil {
+			slog.Warn("commission clawback failed on Apple revoke", "sub_id", subID, "err", err)
+		}
+	}
+	return nil
 }
 
 func strPtr(s string) *string {

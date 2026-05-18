@@ -329,11 +329,11 @@ func (s *GoogleIAPService) applyRevoked(ctx context.Context, purchaseToken strin
 		return err
 	}
 	defer tx.Rollback(ctx)
-	var userID string
+	var userID, subID string
 	err = tx.QueryRow(ctx,
 		`UPDATE subscriptions SET status = 'expired', updated_at = NOW()
-		  WHERE google_purchase_token = $1 RETURNING user_id`, purchaseToken).
-		Scan(&userID)
+		  WHERE google_purchase_token = $1 RETURNING user_id, id`, purchaseToken).
+		Scan(&userID, &subID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
@@ -346,7 +346,17 @@ func (s *GoogleIAPService) applyRevoked(ctx context.Context, purchaseToken strin
 	if err != nil {
 		return err
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	// Refund/revoke = clawback hoa hồng pending/payable (paid không rollback được).
+	if s.engine != nil {
+		if _, err := s.engine.CancelCommissionsForSubscription(ctx, subID); err != nil {
+			slog.Warn("commission clawback failed on Google revoke", "sub_id", subID, "err", err)
+		}
+	}
+	return nil
 }
 
 func parseMillisStr(s string) int64 {

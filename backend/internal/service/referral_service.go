@@ -122,8 +122,14 @@ func (s *ReferralService) GetOrCreateCode(ctx context.Context, userID string) (*
 // AttributeReferral records that refereeID was referred by the owner of
 // referralCode. Idempotent + defensive: ignores empty code, self-referral,
 // already-attributed.
-// CRITICAL: only attributes if the code owner is currently an active 'aff'
-// role. Member users do not earn commission even if they somehow have a code.
+//
+// Phương án C (2026-05-18): mở hoa hồng cho mọi role có code (owner, admin,
+// editor, member, aff đều earn). Vector gian lận tự bơm tiền KHÔNG có lời
+// vì commission < amount paid; vector duy nhất khả thi là refund Apple/Google
+// abuse — handle qua CancelCommissionsForSubscription khi receive REFUND
+// webhook.
+//
+// Vẫn block 2 thứ: code rỗng + self-referral cùng userID.
 func (s *ReferralService) AttributeReferral(ctx context.Context, referralCode, refereeID string) error {
 	if referralCode == "" {
 		return nil
@@ -138,17 +144,6 @@ func (s *ReferralService) AttributeReferral(ctx context.Context, referralCode, r
 	}
 	if rc.UserID == refereeID {
 		return ErrReferralSelfRefer
-	}
-
-	// Guard: code owner must currently be 'aff' role to attribute.
-	var ownerRole string
-	if err := s.pool.QueryRow(ctx, `SELECT role FROM users WHERE id = $1`, rc.UserID).Scan(&ownerRole); err != nil {
-		return err
-	}
-	if ownerRole != "aff" {
-		slog.Info("referral: code owner not aff, skip attribution",
-			"code", referralCode, "owner", rc.UserID, "owner_role", ownerRole)
-		return nil
 	}
 
 	// Atomic update: only set if currently NULL (don't overwrite existing referrer)
