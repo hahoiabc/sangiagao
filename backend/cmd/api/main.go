@@ -469,18 +469,23 @@ func main() {
 			protected.GET("/permissions/me", permissionHandler.GetMyPermissions)
 
 			// Listing routes
+			// requireSub — gate user-action routes (tạo/sửa/bump/upload ảnh tin)
+			// theo subscription active. Read-only routes (GET /my, GET /:id)
+			// KHÔNG bị gate để user hết hạn vẫn xem được tin của mình.
+			requireSub := middleware.RequireActiveSubscription(userRepo)
+
 			listings := protected.Group("/listings")
 			{
-				listings.POST("", middleware.RequirePermission(permissionService, "listings.create"), listingHandler.Create)
-				listings.POST("/batch", middleware.RequirePermission(permissionService, "listings.create"), listingHandler.BatchCreate)
+				listings.POST("", requireSub, middleware.RequirePermission(permissionService, "listings.create"), listingHandler.Create)
+				listings.POST("/batch", requireSub, middleware.RequirePermission(permissionService, "listings.create"), listingHandler.BatchCreate)
 				listings.GET("/my", listingHandler.ListMy)
 				listings.GET("/:id", listingHandler.Get)
-				listings.PUT("/:id", middleware.RequirePermission(permissionService, "listings.edit_own"), listingHandler.Update)
+				listings.PUT("/:id", requireSub, middleware.RequirePermission(permissionService, "listings.edit_own"), listingHandler.Update)
 				listings.DELETE("/:id", listingHandler.Delete)
 				listings.POST("/batch-delete", listingHandler.BatchDeleteOwn)
 				// "Làm mới tin đăng" — cooldown 5h54m, lifetime cap 240 lần/tin.
-				listings.POST("/:id/bump", middleware.RequirePermission(permissionService, "listings.edit_own"), listingHandler.Bump)
-				listings.POST("/:id/images", middleware.RequirePermission(permissionService, "listings.edit_own"), listingHandler.AddImage)
+				listings.POST("/:id/bump", requireSub, middleware.RequirePermission(permissionService, "listings.edit_own"), listingHandler.Bump)
+				listings.POST("/:id/images", requireSub, middleware.RequirePermission(permissionService, "listings.edit_own"), listingHandler.AddImage)
 				listings.DELETE("/:id/images", middleware.RequirePermission(permissionService, "listings.edit_own"), listingHandler.RemoveImage)
 			}
 
@@ -491,11 +496,11 @@ func main() {
 				conversations.GET("", convHandler.List)
 				conversations.GET("/unread-total", convHandler.UnreadTotal)
 				conversations.GET("/search-user", convHandler.SearchByPhone)
-				conversations.POST("", middleware.UserRateLimit(appCache, "ratelimit:conv", 20, 24*time.Hour), convHandler.Create)
+				conversations.POST("", requireSub, middleware.UserRateLimit(appCache, "ratelimit:conv", 20, 24*time.Hour), convHandler.Create)
 				conversations.DELETE("/:id", convHandler.DeleteConversation)
 				conversations.PUT("/:id/read", convHandler.MarkRead)
 				conversations.GET("/:id/messages", convHandler.GetMessages)
-				conversations.POST("/:id/messages", middleware.UserRateLimit(appCache, "ratelimit:msg", 30, 1*time.Minute), convHandler.SendMessage)
+				conversations.POST("/:id/messages", requireSub, middleware.UserRateLimit(appCache, "ratelimit:msg", 30, 1*time.Minute), convHandler.SendMessage)
 				conversations.DELETE("/:id/messages/:msgId", convHandler.DeleteMessage)
 				conversations.PUT("/:id/messages/:msgId/recall", convHandler.RecallMessage)
 				conversations.POST("/:id/messages/batch-delete", convHandler.BatchDeleteMessages)

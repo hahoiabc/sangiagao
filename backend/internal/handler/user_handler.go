@@ -42,10 +42,6 @@ func (h *UserHandler) UpdateMe(c *gin.Context) {
 	user, err := h.userService.UpdateProfile(c.Request.Context(), userID, &req)
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrInvalidRole):
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		case errors.Is(err, service.ErrRoleAlreadySet):
-			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		case errors.Is(err, service.ErrInvalidName):
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		case errors.Is(err, service.ErrInvalidAddress):

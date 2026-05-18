@@ -73,9 +73,12 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
+// UpdateProfileRequest — payload cho PUT /me.
+// KHÔNG bao gồm `role` — đổi role chỉ qua admin endpoint (`/admin/users/:id/role`)
+// hoặc service riêng (vd BecomeAffiliate). Repo `UpdateProfile` cũng chỉ update
+// 6 cột dưới — defense in depth.
 type UpdateProfileRequest struct {
 	Name        *string `json:"name" binding:"omitempty,max=100"`
-	Role        *string `json:"role" binding:"omitempty,max=20"`
 	Address     *string `json:"address" binding:"omitempty,max=200"`
 	Province    *string `json:"province" binding:"omitempty,max=100"`
 	Ward        *string `json:"ward" binding:"omitempty,max=100"`

@@ -10,7 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sangiagao/rice-marketplace/internal/model"
 	"github.com/sangiagao/rice-marketplace/internal/repository"
-	"github.com/sangiagao/rice-marketplace/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -159,36 +158,26 @@ func TestUpdateMe_InvalidBody(t *testing.T) {
 	assert.Equal(t, 400, w.Code)
 }
 
-func TestUpdateMe_InvalidRole(t *testing.T) {
+// Role field is intentionally absent from UpdateProfileRequest — repo's
+// UPDATE statement also doesn't touch the role column. Any `role` key in
+// the body is silently dropped at JSON binding (defense in depth).
+func TestUpdateMe_RoleFieldIgnored(t *testing.T) {
 	svc := new(mockUserService)
 	h := NewUserHandler(svc)
 	r := userRouter(h)
 
-	svc.On("UpdateProfile", mock.Anything, "user-123", mock.Anything).Return(nil, service.ErrInvalidRole)
+	updated := &model.User{ID: "user-123", Role: "member"}
+	svc.On("UpdateProfile", mock.Anything, "user-123", mock.Anything).Return(updated, nil)
 
-	body := `{"role":"admin"}`
+	body := `{"role":"owner","name":"Test User"}`
 	req := httptest.NewRequest("PUT", "/users/me", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, 400, w.Code)
-}
-
-func TestUpdateMe_RoleAlreadySet(t *testing.T) {
-	svc := new(mockUserService)
-	h := NewUserHandler(svc)
-	r := userRouter(h)
-
-	svc.On("UpdateProfile", mock.Anything, "user-123", mock.Anything).Return(nil, service.ErrRoleAlreadySet)
-
-	body := `{"role":"member"}`
-	req := httptest.NewRequest("PUT", "/users/me", strings.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	assert.Equal(t, 409, w.Code)
+	assert.Equal(t, 200, w.Code)
+	// Role unchanged in response.
+	assert.Contains(t, w.Body.String(), `"role":"member"`)
 }
 
 func TestUpdateMe_ServerError(t *testing.T) {

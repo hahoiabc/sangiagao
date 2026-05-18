@@ -2,17 +2,13 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/sangiagao/rice-marketplace/internal/model"
 	"golang.org/x/crypto/bcrypt"
 )
 
-var (
-	ErrRoleAlreadySet  = errors.New("role can only be changed during onboarding")
-	ErrInvalidRole     = errors.New("role must be 'member'")
-)
+// ErrInvalidName, ErrInvalidAddress declared in auth_service.go.
 
 type UserService struct {
 	userRepo UserRepository

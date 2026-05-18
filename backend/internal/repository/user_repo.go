@@ -5,6 +5,7 @@ import (
 	"errors"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -171,6 +172,23 @@ func (r *UserRepo) UpdateProfile(ctx context.Context, id string, req *model.Upda
 		id, req.Name, req.Address, req.Province, req.Ward, req.Description, req.OrgName,
 	)
 	return r.scanUser(row)
+}
+
+// GetSubscriptionExpiry — lookup nhẹ chỉ trả về subscription expiry mà không
+// scan full user row. Dùng bởi middleware RequireActiveSubscription để gate
+// các action sau khi user đã authenticate. Trả nil + nil error nếu user chưa
+// từng có sub active.
+func (r *UserRepo) GetSubscriptionExpiry(ctx context.Context, userID string) (*time.Time, error) {
+	var expiry *time.Time
+	err := r.pool.QueryRow(ctx,
+		`SELECT MAX(expires_at) FROM subscriptions
+		  WHERE user_id = $1 AND status = 'active' AND expires_at > NOW()`,
+		userID,
+	).Scan(&expiry)
+	if err != nil {
+		return nil, err
+	}
+	return expiry, nil
 }
 
 func (r *UserRepo) SetRole(ctx context.Context, id, role string) (*model.User, error) {
