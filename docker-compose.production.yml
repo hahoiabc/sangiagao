@@ -161,6 +161,9 @@ services:
       ZALO_APP_SECRET: ${ZALO_APP_SECRET:-}
       ZALO_ZNS_TEMPLATE_ID: ${ZALO_ZNS_TEMPLATE_ID:-}
       ZALO_REFRESH_TOKEN: ${ZALO_REFRESH_TOKEN:-}
+      # Firebase Cloud Messaging — push notification cho chat in-app + thông báo.
+      # Thiếu → FCMSender fall back mock → tin đến nhưng KHÔNG rung chuông.
+      FIREBASE_CRED_PATH: ${FIREBASE_CRED_PATH:-}
     volumes:
       - ./secrets:/secrets:ro
     depends_on:
