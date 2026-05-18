@@ -150,6 +150,19 @@ services:
       COOKIE_SECURE: "true"
       RATE_LIMIT_RPS: "30"
       RATE_LIMIT_BURST: "50"
+      APP_STORE_KEY_ID: ${APP_STORE_KEY_ID:-}
+      APP_STORE_ISSUER_ID: ${APP_STORE_ISSUER_ID:-}
+      APP_STORE_KEY_PATH: ${APP_STORE_KEY_PATH:-}
+      APP_STORE_BUNDLE_ID: ${APP_STORE_BUNDLE_ID:-}
+      APP_STORE_ENV: ${APP_STORE_ENV:-Sandbox}
+      GOOGLE_IAP_PACKAGE_NAME: ${GOOGLE_IAP_PACKAGE_NAME:-}
+      GOOGLE_IAP_SERVICE_ACCOUNT_FILE: ${GOOGLE_IAP_SERVICE_ACCOUNT_FILE:-}
+      ZALO_APP_ID: ${ZALO_APP_ID:-}
+      ZALO_APP_SECRET: ${ZALO_APP_SECRET:-}
+      ZALO_ZNS_TEMPLATE_ID: ${ZALO_ZNS_TEMPLATE_ID:-}
+      ZALO_REFRESH_TOKEN: ${ZALO_REFRESH_TOKEN:-}
+    volumes:
+      - ./secrets:/secrets:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -226,6 +239,7 @@ services:
     container_name: rice_web
     environment:
       NODE_ENV: production
+      NEXT_PUBLIC_API_URL: http://rice_backend:8080/api/v1
     depends_on:
       - backend
     networks:
