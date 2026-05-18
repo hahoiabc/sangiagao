@@ -36,30 +36,41 @@ var (
 	ErrRoleNotEligible      = errors.New("vai trò hiện tại không thể tự nâng cấp")
 )
 
-// BecomeAffiliate self-activates the affiliate role for a 'member' user.
-// Other roles (admin/editor/owner/aff) are no-ops or rejected.
-// Idempotent: returns success if user is already 'aff'.
+// BecomeAffiliate opt-in vào chương trình affiliate. Mọi role có quyền đăng tin
+// (member/aff/owner/admin/editor) đều opt-in được.
+//   - member → đổi role = 'aff' (aff matrix giờ inherit hết permissions của member)
+//   - admin/editor/owner → GIỮ role gốc, chỉ tạo referral code. Không xuống cấp.
+//   - aff → idempotent
+//   - guest / expired → reject
+// Sau khi opt-in, user có referral code để share. Commission tính theo aff role
+// hoặc theo "có referral code". Xem AttributeReferral cho gate cuối.
 func (s *ReferralService) BecomeAffiliate(ctx context.Context, userID string) error {
 	var currentRole string
 	if err := s.pool.QueryRow(ctx, `SELECT role FROM users WHERE id = $1`, userID).Scan(&currentRole); err != nil {
 		return err
 	}
-	if currentRole == "aff" {
-		// idempotent — ensure code exists then return
+	switch currentRole {
+	case "aff":
+		// Đã opt-in rồi — chỉ đảm bảo code tồn tại
 		_, _ = s.GetOrCreateCode(ctx, userID)
 		return nil
-	}
-	if currentRole != "member" {
+	case "member":
+		// Member → upgrade role thành aff (chuyển sang aff matrix có sẵn dashboard + referrals)
+		if _, err := s.pool.Exec(ctx,
+			`UPDATE users SET role = 'aff', updated_at = NOW() WHERE id = $1 AND role = 'member'`,
+			userID,
+		); err != nil {
+			return err
+		}
+		_, _ = s.GetOrCreateCode(ctx, userID)
+		return nil
+	case "owner", "admin", "editor":
+		// Staff giữ role gốc, chỉ tạo code — không hạ cấp xuống aff.
+		_, _ = s.GetOrCreateCode(ctx, userID)
+		return nil
+	default:
 		return ErrRoleNotEligible
 	}
-	_, err := s.pool.Exec(ctx,
-		`UPDATE users SET role = 'aff', updated_at = NOW() WHERE id = $1 AND role = 'member'`, userID)
-	if err != nil {
-		return err
-	}
-	// Ensure referral_code exists right after upgrade
-	_, _ = s.GetOrCreateCode(ctx, userID)
-	return nil
 }
 
 // codeCharset excludes 0/O/1/I/L to avoid handwriting confusion.
@@ -68,8 +79,9 @@ const codeLen = 6
 const maxCodeGenAttempts = 10
 
 // GetOrCreateCode returns the user's referral code, generating it lazily.
-// Only creates a code for users currently in 'aff' role. Other roles get
-// ErrReferralCodeNotFound (consumers should hide aff UI when this errors).
+// Mọi role có thể có code sau khi gọi BecomeAffiliate. Trước đây gate aff-only
+// — giờ relax để staff (owner/admin/editor) cũng có code mà không phải đổi
+// role. Vẫn reject role "guest" (không có user_id).
 func (s *ReferralService) GetOrCreateCode(ctx context.Context, userID string) (*model.ReferralCode, error) {
 	if rc, err := s.affRepo.GetCodeByUser(ctx, userID); err == nil {
 		return rc, nil
@@ -77,13 +89,10 @@ func (s *ReferralService) GetOrCreateCode(ctx context.Context, userID string) (*
 		return nil, err
 	}
 
-	// Only create code for aff role (defense — caller should check too)
+	// Verify user tồn tại (guest sẽ fail Scan).
 	var role string
 	if err := s.pool.QueryRow(ctx, `SELECT role FROM users WHERE id = $1`, userID).Scan(&role); err != nil {
 		return nil, err
-	}
-	if role != "aff" {
-		return nil, repository.ErrReferralCodeNotFound
 	}
 
 	// Generate a unique 6-char code. Retry on collision (very unlikely).
