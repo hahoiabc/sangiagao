@@ -160,6 +160,7 @@ func main() {
 		listingService.SetCache(appCache)
 	}
 	subService := service.NewSubscriptionService(subRepo, planRepo)
+	subService.SetCache(appCache) // invalidate sub-expiry middleware cache on activate/extend
 	paymentService := service.NewPaymentService(paymentRepo, subService)
 
 	// Affiliate / commission engine (referral system)
@@ -472,7 +473,9 @@ func main() {
 			// requireSub — gate user-action routes (tạo/sửa/bump/upload ảnh tin)
 			// theo subscription active. Read-only routes (GET /my, GET /:id)
 			// KHÔNG bị gate để user hết hạn vẫn xem được tin của mình.
-			requireSub := middleware.RequireActiveSubscription(userRepo)
+			// Cache trong Redis 5 phút để giảm DB load (đặc biệt cho chat —
+			// gửi tin nhắn nhiều).
+			requireSub := middleware.RequireActiveSubscription(userRepo, appCache)
 
 			listings := protected.Group("/listings")
 			{

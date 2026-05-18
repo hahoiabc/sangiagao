@@ -11,6 +11,7 @@ import (
 
 	"github.com/sangiagao/rice-marketplace/internal/model"
 	"github.com/sangiagao/rice-marketplace/internal/repository"
+	"github.com/sangiagao/rice-marketplace/pkg/cache"
 )
 
 var ErrNoSubscription = errors.New("no subscription found")
@@ -21,14 +22,29 @@ type NotificationCreator interface {
 }
 
 type SubscriptionService struct {
-	subRepo   SubscriptionRepository
-	planRepo  PlanRepository
-	notifier  NotificationCreator
-	onExpiry  func(ctx context.Context) // called when listings are hidden due to expiry
+	subRepo  SubscriptionRepository
+	planRepo PlanRepository
+	notifier NotificationCreator
+	cache    cache.Cache              // optional — for invalidating sub expiry middleware cache
+	onExpiry func(ctx context.Context) // called when listings are hidden due to expiry
 }
 
 func NewSubscriptionService(subRepo SubscriptionRepository, planRepo PlanRepository) *SubscriptionService {
 	return &SubscriptionService{subRepo: subRepo, planRepo: planRepo}
+}
+
+// SetCache wires the cache layer for sub expiry invalidation. Without cache,
+// middleware will use its 5-min TTL — user gia hạn sẽ phải đợi tối đa 5p
+// trước khi gate cho qua. Set cache → invalidate ngay sau activate/extend.
+func (s *SubscriptionService) SetCache(c cache.Cache) {
+	s.cache = c
+}
+
+func (s *SubscriptionService) invalidateSubExpiryCache(userID string) {
+	if s.cache == nil {
+		return
+	}
+	_ = s.cache.Delete(context.Background(), "sub:expiry:"+userID)
 }
 
 func (s *SubscriptionService) SetNotifier(n NotificationCreator) {
@@ -105,6 +121,7 @@ func (s *SubscriptionService) AdminActivate(ctx context.Context, userID string, 
 		log.Printf("Restored %d listings for user %s", restored, userID)
 	}
 
+	s.invalidateSubExpiryCache(userID)
 	return sub, nil
 }
 
@@ -136,6 +153,7 @@ func (s *SubscriptionService) AdminReward(ctx context.Context, userID string, da
 		log.Printf("Restored %d listings for rewarded user %s", restored, userID)
 	}
 
+	s.invalidateSubExpiryCache(userID)
 	return sub, nil
 }
 

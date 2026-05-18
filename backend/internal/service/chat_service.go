@@ -16,7 +16,17 @@ var (
 	ErrNotMessageOwner = errors.New("bạn không phải chủ tin nhắn này")
 	ErrMessageNotFound = errors.New("tin nhắn không tồn tại")
 	ErrRecallExpired   = errors.New("chỉ được thu hồi tin nhắn trong vòng 24 giờ")
+	ErrSubExpiredChat  = errors.New("Cần gói dịch vụ còn hiệu lực để gửi tin nhắn")
 )
+
+// chatBypassSubRoles — staff platform không bị gate sub khi chat.
+// Cùng list như middleware.RequireActiveSubscription nhưng duplicate ở đây
+// để service-level defense in depth (cover WebSocket path bypass HTTP middleware).
+var chatBypassSubRoles = map[string]bool{
+	"owner":  true,
+	"admin":  true,
+	"editor": true,
+}
 
 type ChatService struct {
 	convRepo ConversationRepository
@@ -83,7 +93,9 @@ func (s *ChatService) ListConversations(ctx context.Context, userID string, page
 }
 
 func (s *ChatService) SendMessage(ctx context.Context, userID, conversationID string, req *model.SendMessageRequest) (*model.Message, error) {
-	// Check if sender is blocked
+	// Check if sender is blocked + subscription gate.
+	// HTTP route đã có middleware RequireActiveSubscription, nhưng WebSocket
+	// path KHÔNG đi qua middleware — service phải tự enforce.
 	if s.userRepo != nil {
 		user, err := s.userRepo.GetByID(ctx, userID)
 		if err != nil {
@@ -91,6 +103,11 @@ func (s *ChatService) SendMessage(ctx context.Context, userID, conversationID st
 		}
 		if user.IsBlocked {
 			return nil, ErrUserBlocked
+		}
+		if !chatBypassSubRoles[user.Role] {
+			if user.SubscriptionExpiresAt == nil || user.SubscriptionExpiresAt.Before(time.Now()) {
+				return nil, ErrSubExpiredChat
+			}
 		}
 	}
 
