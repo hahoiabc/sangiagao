@@ -53,14 +53,21 @@ export default function PriceBoardPage() {
               {slogan}
             </p>
           </div>
-          <div className="flex items-center justify-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-3">
             {!user && (
-              <Link href="/dang-ky">
-                <Button size="lg" className="gap-2 bg-yellow-400 text-gray-900 hover:bg-yellow-300 border-0">
-                  <Users className="h-4 w-4" />
-                  Đăng Ký Miễn Phí
-                </Button>
-              </Link>
+              <>
+                <Link href="/dang-ky">
+                  <Button size="lg" className="gap-2 bg-yellow-400 text-gray-900 hover:bg-yellow-300 border-0">
+                    <Users className="h-4 w-4" />
+                    Đăng Ký Miễn Phí
+                  </Button>
+                </Link>
+                <Link href="/dang-nhap">
+                  <Button size="lg" variant="outline" className="gap-2 bg-white/10 text-white border-white/40 hover:bg-white/20 backdrop-blur-sm">
+                    Đăng Nhập
+                  </Button>
+                </Link>
+              </>
             )}
           </div>
 
