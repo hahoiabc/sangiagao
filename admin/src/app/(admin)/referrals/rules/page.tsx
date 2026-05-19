@@ -105,15 +105,15 @@ export default function CommissionRulesPage() {
           {editingId === "default" ? (
             <div className="space-y-4">
               <div className="grid grid-cols-3 gap-4">
-                <Stage label="Giai đoạn 1" days={form.stage1_days} pct={form.stage1_pct}
+                <Stage label="Lần thanh toán đầu tiên" days={form.stage1_days} pct={form.stage1_pct}
                   onDays={(v) => setForm({ ...form, stage1_days: v })}
                   onPct={(v) => setForm({ ...form, stage1_pct: v })}
                 />
-                <Stage label="Giai đoạn 2" days={form.stage2_days} pct={form.stage2_pct}
+                <Stage label="Lần thanh toán thứ 2" days={form.stage2_days} pct={form.stage2_pct}
                   onDays={(v) => setForm({ ...form, stage2_days: v })}
                   onPct={(v) => setForm({ ...form, stage2_pct: v })}
                 />
-                <Stage label="Giai đoạn 3 (vĩnh viễn)" days={null} pct={form.stage3_pct}
+                <Stage label="Lần thứ 3 trở đi (vĩnh viễn)" days={null} pct={form.stage3_pct}
                   onDays={() => {}}
                   onPct={(v) => setForm({ ...form, stage3_pct: v })}
                 />
@@ -148,9 +148,9 @@ export default function CommissionRulesPage() {
             </div>
           ) : defaultRule ? (
             <div className="grid grid-cols-3 gap-4 text-sm">
-              <Display label="Giai đoạn 1" days={defaultRule.stage1_days} pct={defaultRule.stage1_pct} />
-              <Display label="Giai đoạn 2" days={defaultRule.stage2_days} pct={defaultRule.stage2_pct} />
-              <Display label="Giai đoạn 3 (vĩnh viễn)" days={null} pct={defaultRule.stage3_pct} />
+              <Display label="Lần thanh toán đầu tiên" pct={defaultRule.stage1_pct} />
+              <Display label="Lần thanh toán thứ 2" pct={defaultRule.stage2_pct} />
+              <Display label="Lần thứ 3 trở đi (vĩnh viễn)" pct={defaultRule.stage3_pct} />
               <div className="col-span-3 border-t pt-3 mt-1 text-gray-600">
                 Cơ sở tính: <strong>{defaultRule.base_type === "net" ? "Ròng" : "Gộp"}</strong>
                 {" · "}
@@ -166,6 +166,9 @@ export default function CommissionRulesPage() {
   );
 }
 
+// `days` field giữ trong payload backend (column stage1_days/stage2_days vẫn
+// có trong DB) nhưng KHÔNG hiển thị/edit ở UI — hết ý nghĩa từ khi đổi sang
+// mô hình payment-count. Engine bỏ qua giá trị này, dùng paymentSequence.
 function Stage({
   label, days, pct, onDays, onPct,
 }: {
@@ -175,15 +178,10 @@ function Stage({
   onDays: (v: number) => void;
   onPct: (v: number) => void;
 }) {
+  void days; void onDays; // unused — payment-count model
   return (
     <div className="border rounded p-3 space-y-2">
       <div className="text-xs font-semibold text-gray-600">{label}</div>
-      {days !== null && (
-        <div>
-          <label className="text-xs block mb-1">Số ngày</label>
-          <Input type="number" value={days} onChange={(e) => onDays(Number(e.target.value))} />
-        </div>
-      )}
       <div>
         <label className="text-xs block mb-1">% hoa hồng</label>
         <Input
@@ -194,18 +192,17 @@ function Stage({
           value={pct}
           onChange={(e) => onPct(Number(e.target.value))}
         />
-        <div className="text-[10px] text-gray-400 mt-1">Vd: 0.5 = 50%</div>
+        <div className="text-[10px] text-gray-400 mt-1">Vd: 0.45 = 45%</div>
       </div>
     </div>
   );
 }
 
-function Display({ label, days, pct }: { label: string; days: number | null; pct: number }) {
+function Display({ label, pct }: { label: string; pct: number }) {
   return (
     <div className="border rounded p-3">
       <div className="text-xs font-semibold text-gray-600">{label}</div>
       <div className="mt-1">
-        {days !== null && <span className="text-sm">{days} ngày · </span>}
         <span className="text-lg font-bold">{(pct * 100).toFixed(0)}%</span>
       </div>
     </div>
