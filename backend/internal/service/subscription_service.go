@@ -218,7 +218,10 @@ func (s *SubscriptionService) RunExpiryCron(ctx context.Context) {
 		}
 	}
 
-	// Notify users whose subscriptions expire within 72 hours
+	// Notify users whose subscriptions expire within 72 hours.
+	// Dedup: GetExpiringSoon filter `reminder_sent_at < NOW() - 24h` ở DB layer
+	// → max 1 reminder / sub / 24h. Sau khi gửi push thành công, mark reminder_sent_at
+	// = NOW() để chặn 24h tiếp theo.
 	if s.notifier != nil {
 		expiring, err := s.subRepo.GetExpiringSoon(ctx, 72)
 		if err != nil {
@@ -230,6 +233,10 @@ func (s *SubscriptionService) RunExpiryCron(ctx context.Context) {
 			body := fmt.Sprintf("Gói đăng ký của bạn sẽ hết hạn sau %d ngày. Hãy gia hạn để tránh gián đoạn.", daysLeft)
 			if _, err := s.notifier.Create(ctx, sub.UserID, "subscription_expiring", "Sắp hết hạn gói đăng ký", body, nil); err != nil {
 				log.Printf("Failed to notify user %s about expiring sub: %v", sub.UserID, err)
+				continue // don't mark sent if notify failed → retry next hour
+			}
+			if err := s.subRepo.MarkReminderSent(ctx, sub.ID); err != nil {
+				log.Printf("Failed to mark reminder_sent_at for sub %s: %v", sub.ID, err)
 			}
 		}
 	}

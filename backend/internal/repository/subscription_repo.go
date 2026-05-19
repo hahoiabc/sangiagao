@@ -159,13 +159,17 @@ func (r *SubscriptionRepo) ListByUserID(ctx context.Context, userID string, page
 	return subs, total, nil
 }
 
+// GetExpiringSoon — trả về subs sắp hết hạn CHƯA gửi reminder trong 24h gần đây.
+// Dedup ở DB layer để chỉ gửi tối đa 1 reminder/sub/24h, tránh spam khi cron
+// chạy mỗi giờ.
 func (r *SubscriptionRepo) GetExpiringSoon(ctx context.Context, withinHours int) ([]*model.Subscription, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT `+subCols+`
 		 FROM subscriptions
 		 WHERE status = 'active'
 		   AND expires_at > NOW()
-		   AND expires_at <= NOW() + ($1 * interval '1 hour')`,
+		   AND expires_at <= NOW() + ($1 * interval '1 hour')
+		   AND (reminder_sent_at IS NULL OR reminder_sent_at < NOW() - INTERVAL '24 hours')`,
 		withinHours,
 	)
 	if err != nil {
@@ -174,6 +178,16 @@ func (r *SubscriptionRepo) GetExpiringSoon(ctx context.Context, withinHours int)
 	defer rows.Close()
 
 	return scanSubRows(rows)
+}
+
+// MarkReminderSent — set reminder_sent_at = NOW() sau khi đã push notif thành công.
+// Cron gọi sau mỗi lần Notify để chặn 24h tiếp theo.
+func (r *SubscriptionRepo) MarkReminderSent(ctx context.Context, subscriptionID string) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE subscriptions SET reminder_sent_at = NOW() WHERE id = $1`,
+		subscriptionID,
+	)
+	return err
 }
 
 type SubRevenueMonth struct {

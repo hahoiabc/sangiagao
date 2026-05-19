@@ -267,6 +267,11 @@ func (m *mockAdminSubRepo) GetExpiringSoon(ctx context.Context, withinHours int)
 	}
 	return args.Get(0).([]*model.Subscription), args.Error(1)
 }
+
+func (m *mockAdminSubRepo) MarkReminderSent(ctx context.Context, subscriptionID string) error {
+	args := m.Called(ctx, subscriptionID)
+	return args.Error(0)
+}
 func (m *mockAdminSubRepo) GetRevenueStats(ctx context.Context) (*repository.SubRevenueStats, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {

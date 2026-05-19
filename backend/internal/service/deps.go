@@ -71,6 +71,7 @@ type SubscriptionRepository interface {
 	RestoreListings(ctx context.Context, userID string) (int, error)
 	ListByUserID(ctx context.Context, userID string, page, limit int) ([]*model.Subscription, int, error)
 	GetExpiringSoon(ctx context.Context, withinHours int) ([]*model.Subscription, error)
+	MarkReminderSent(ctx context.Context, subscriptionID string) error
 	GetRevenueStats(ctx context.Context) (*repository.SubRevenueStats, error)
 	GetDailyRevenue(ctx context.Context, from, to string) (*repository.SubDailyRevenueReport, error)
 	HasUsedTrial(ctx context.Context, phoneHash string) (bool, error)
