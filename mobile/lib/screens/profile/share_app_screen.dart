@@ -79,38 +79,42 @@ class ShareAppScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton.icon(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF0068FF),
-                          ),
-                          icon: const Icon(Icons.chat_bubble_outline, size: 18),
-                          label: const Text('Zalo'),
-                          onPressed: () => _shareZalo(context),
-                        ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF0068FF),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: FilledButton.icon(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF1877F2),
-                          ),
-                          icon: const Icon(Icons.facebook, size: 18),
-                          label: const Text('Facebook'),
-                          onPressed: _shareFacebook,
-                        ),
+                      icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                      label: const Text('Chia sẻ qua Zalo'),
+                      onPressed: () => _shareZalo(context),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF1877F2),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.copy, size: 18),
-                          label: const Text('Sao chép'),
-                          onPressed: () => _copyLink(context),
-                        ),
+                      icon: const Icon(Icons.facebook, size: 18),
+                      label: const Text('Chia sẻ qua Facebook'),
+                      onPressed: _shareFacebook,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
-                    ],
+                      icon: const Icon(Icons.copy, size: 18),
+                      label: const Text('Sao chép link'),
+                      onPressed: () => _copyLink(context),
+                    ),
                   ),
                 ],
               ),

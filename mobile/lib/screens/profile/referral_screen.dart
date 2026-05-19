@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import '../../providers/providers.dart';
 
@@ -181,10 +181,59 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                icon: const Icon(Icons.share),
-                label: const Text('Chia sẻ ngay'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF0068FF),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                label: const Text('Chia sẻ qua Zalo'),
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: _shareMessage));
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Đã sao chép. Mở Zalo và dán vào tin nhắn'),
+                        duration: Duration(seconds: 3),
+                      ),
+                    );
+                  }
+                  await launchUrl(Uri.parse('https://zalo.me/'),
+                      mode: LaunchMode.externalApplication);
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF1877F2),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                icon: const Icon(Icons.facebook, size: 18),
+                label: const Text('Chia sẻ qua Facebook'),
+                onPressed: () async {
+                  final url = Uri.parse(
+                    'https://www.facebook.com/sharer/sharer.php?u=${Uri.encodeComponent(_shareLink)}',
+                  );
+                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                icon: const Icon(Icons.copy, size: 18),
+                label: const Text('Sao chép link'),
                 onPressed: () {
-                  Share.share(_shareMessage, subject: 'Sàn Giá Gạo - Mã giới thiệu');
+                  Clipboard.setData(ClipboardData(text: _shareLink));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Đã sao chép link'), duration: Duration(seconds: 1)),
+                  );
                 },
               ),
             ),

@@ -131,15 +131,15 @@ export default function GioiThieuBanPage() {
               <Copy className="h-4 w-4" />
             </Button>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            <Button onClick={shareZalo} className="bg-[#0068FF] hover:bg-[#0055d6] text-white">
-              <MessageCircle className="h-4 w-4 mr-1.5" /> Zalo
+          <div className="space-y-2">
+            <Button onClick={shareZalo} className="w-full bg-[#0068FF] hover:bg-[#0055d6] text-white">
+              <MessageCircle className="h-4 w-4 mr-2" /> Chia sẻ qua Zalo
             </Button>
-            <Button onClick={shareFacebook} className="bg-[#1877F2] hover:bg-[#0d65d9] text-white">
-              <Facebook className="h-4 w-4 mr-1.5" /> Facebook
+            <Button onClick={shareFacebook} className="w-full bg-[#1877F2] hover:bg-[#0d65d9] text-white">
+              <Facebook className="h-4 w-4 mr-2" /> Chia sẻ qua Facebook
             </Button>
-            <Button variant="outline" onClick={() => copy(shareLink, "link")}>
-              <Copy className="h-4 w-4 mr-1.5" /> Sao chép
+            <Button variant="outline" onClick={() => copy(shareLink, "link")} className="w-full">
+              <Copy className="h-4 w-4 mr-2" /> Sao chép link
             </Button>
           </div>
         </CardContent>
