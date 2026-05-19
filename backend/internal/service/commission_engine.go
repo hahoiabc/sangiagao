@@ -44,7 +44,7 @@ type PaymentEvent struct {
 }
 
 // CommissionCalc is the pure-function result of stage + rate + amount given
-// rule + referee age. Exported for unit tests.
+// rule + payment sequence. Exported for unit tests.
 type CommissionCalc struct {
 	Stage            int
 	Rate             float64
@@ -52,24 +52,27 @@ type CommissionCalc struct {
 	NetAmount        int64
 	PlatformFee      int64
 	CommissionAmount int64
-	RefereeAgeDays   int
+	PaymentSequence  int // 1, 2, 3...
 }
 
-// Calculate is pure: given rule + referee age + gross, return what should be
-// recorded. Stage transition uses referee age at payment time (not pro-rated
-// across the billing period).
-func Calculate(rule *model.CommissionRule, gross int64, platformFeePct float64, refereeFirstPayment, occurredAt time.Time) CommissionCalc {
-	// Stage selection
-	ageDays := int(occurredAt.Sub(refereeFirstPayment).Hours() / 24)
-	if ageDays < 0 {
-		ageDays = 0
+// Calculate is pure: given rule + payment sequence + gross, return what should
+// be recorded. Stage is the payment sequence capped at 3:
+//   - payment #1 → stage 1 (45% default)
+//   - payment #2 → stage 2 (30% default)
+//   - payment #3+ → stage 3 (15% default, perpetual)
+//
+// Đổi từ time-based sang payment-count-based 2026-05-19 — đơn giản hơn, đẩy
+// gói dài, công bằng giữa monthly và yearly subscribers.
+func Calculate(rule *model.CommissionRule, gross int64, platformFeePct float64, paymentSequence int) CommissionCalc {
+	if paymentSequence < 1 {
+		paymentSequence = 1
 	}
 	var stage int
 	var rate float64
-	switch {
-	case ageDays < rule.Stage1Days:
+	switch paymentSequence {
+	case 1:
 		stage, rate = 1, rule.Stage1Pct
-	case ageDays < rule.Stage1Days+rule.Stage2Days:
+	case 2:
 		stage, rate = 2, rule.Stage2Pct
 	default:
 		stage, rate = 3, rule.Stage3Pct
@@ -95,7 +98,7 @@ func Calculate(rule *model.CommissionRule, gross int64, platformFeePct float64, 
 		NetAmount:        net,
 		PlatformFee:      platformFee,
 		CommissionAmount: commission,
-		RefereeAgeDays:   ageDays,
+		PaymentSequence:  paymentSequence,
 	}
 }
 
@@ -113,15 +116,9 @@ func (e *CommissionEngine) RecordForPayment(ctx context.Context, ev PaymentEvent
 
 	// Look up referrer
 	var referrerUserID *string
-	var refereeFirstPayment time.Time
 	err := e.pool.QueryRow(ctx,
-		`SELECT u.referrer_user_id,
-		        COALESCE(
-		          (SELECT MIN(started_at) FROM subscriptions WHERE user_id = $1 AND status IN ('active','expired')),
-		          NOW()
-		        )
-		   FROM users u WHERE u.id = $1`, ev.RefereeUserID).
-		Scan(&referrerUserID, &refereeFirstPayment)
+		`SELECT referrer_user_id FROM users WHERE id = $1`, ev.RefereeUserID).
+		Scan(&referrerUserID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("commission: referee %s not found", ev.RefereeUserID)
@@ -138,6 +135,20 @@ func (e *CommissionEngine) RecordForPayment(ctx context.Context, ev PaymentEvent
 		slog.Warn("commission: self-referral blocked", "user_id", ev.RefereeUserID)
 		return nil, nil
 	}
+
+	// Đếm payment sequence: số commission records hợp lệ (not cancelled) đã
+	// có sẵn cho cặp (referrer, referee). +1 cho lần này.
+	// Stage 1 = payment #1, Stage 2 = payment #2, Stage 3 = payment #3+
+	var existingCount int
+	err = e.pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM commission_records
+		  WHERE referrer_user_id = $1 AND referee_user_id = $2
+		    AND status != 'cancelled'`,
+		*referrerUserID, ev.RefereeUserID).Scan(&existingCount)
+	if err != nil {
+		return nil, fmt.Errorf("commission: count existing: %w", err)
+	}
+	paymentSequence := existingCount + 1
 
 	// Phương án C (2026-05-18): bỏ guard "aff-only". Mọi role có code đều earn
 	// (owner/admin/editor/aff). Vector gian lận tự bơm tiền KHÔNG có lời vì
@@ -160,7 +171,7 @@ func (e *CommissionEngine) RecordForPayment(ctx context.Context, ev PaymentEvent
 		return nil, fmt.Errorf("commission: load rule: %w", err)
 	}
 
-	calc := Calculate(rule, ev.GrossAmount, ev.PlatformFeePct, refereeFirstPayment, ev.OccurredAt)
+	calc := Calculate(rule, ev.GrossAmount, ev.PlatformFeePct, paymentSequence)
 
 	rec := &model.CommissionRecord{
 		ReferrerUserID:   *referrerUserID,
@@ -175,7 +186,7 @@ func (e *CommissionEngine) RecordForPayment(ctx context.Context, ev PaymentEvent
 		Stage:            calc.Stage,
 		Rate:             calc.Rate,
 		CommissionAmount: calc.CommissionAmount,
-		RefereeAgeDays:   calc.RefereeAgeDays,
+		PaymentSequence:  calc.PaymentSequence,
 		RuleID:           rule.ID,
 		PayableAfter:     ev.OccurredAt.Add(PayableDelayDays * 24 * time.Hour),
 	}

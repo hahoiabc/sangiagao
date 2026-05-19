@@ -108,10 +108,10 @@ class _JoinAffScreenState extends ConsumerState<JoinAffScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          _benefit('Hoa hồng 3 giai đoạn',
-              'Giai đoạn 1 ($_stage1Days ngày đầu): ${_pct(_stage1Pct)} doanh thu ròng\n'
-              'Giai đoạn 2 ($_stage2Days ngày kế): ${_pct(_stage2Pct)}\n'
-              'Giai đoạn 3 (vĩnh viễn): ${_pct(_stage3Pct)}'),
+          _benefit('Hoa hồng theo lần thanh toán',
+              'Lần đầu tiên: ${_pct(_stage1Pct)} doanh thu ròng\n'
+              'Lần thứ 2: ${_pct(_stage2Pct)}\n'
+              'Từ lần thứ 3 (vĩnh viễn): ${_pct(_stage3Pct)}'),
           _benefit('Mã giới thiệu riêng',
               'Mỗi đối tác có 1 mã + link riêng. Sàn tự động ghi nhận hoa hồng khi referee đăng ký qua link.'),
           _benefit('Theo dõi minh bạch',

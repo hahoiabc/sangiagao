@@ -362,7 +362,7 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
       child: ListTile(
         title: Text('${fmt.format(amount)} đ', style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(
-          'Giai đoạn $stage (${rate.toStringAsFixed(0)}%) · ${source.toString().toUpperCase()} · ${_formatDate(createdAt.toString())}',
+          'Lần $stage (${rate.toStringAsFixed(0)}%) · ${source.toString().toUpperCase()} · ${_formatDate(createdAt.toString())}',
           style: const TextStyle(fontSize: 12),
         ),
         trailing: Container(

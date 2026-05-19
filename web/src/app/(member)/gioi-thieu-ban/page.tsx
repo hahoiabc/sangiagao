@@ -44,9 +44,9 @@ export default function GioiThieuBanPage() {
   const handleActivate = async () => {
     if (!confirm(
       "Khi bạn giới thiệu bạn bè đăng ký + mua gói, bạn nhận hoa hồng:\n\n" +
-      "• Giai đoạn 1 (3 tháng đầu): 50%\n" +
-      "• Giai đoạn 2 (6 tháng kế): 30%\n" +
-      "• Giai đoạn 3 (vĩnh viễn): 20%\n\n" +
+      "• Lần thanh toán đầu tiên: 45%\n" +
+      "• Lần thanh toán thứ 2: 30%\n" +
+      "• Từ lần thứ 3 trở đi (vĩnh viễn): 15%\n\n" +
       "Tính trên doanh thu ròng. Thanh toán sau 45 ngày từ giao dịch.\n\nĐồng ý kích hoạt?",
     )) return;
     setActivating(true);
@@ -198,7 +198,7 @@ export default function GioiThieuBanPage() {
                 <tr>
                   <th className="px-4 py-2 font-semibold">Ngày</th>
                   <th className="px-4 py-2 font-semibold">Nguồn</th>
-                  <th className="px-4 py-2 font-semibold">Giai đoạn</th>
+                  <th className="px-4 py-2 font-semibold">Lần TT</th>
                   <th className="px-4 py-2 font-semibold text-right">Hoa hồng</th>
                   <th className="px-4 py-2 font-semibold">Trạng thái</th>
                 </tr>
@@ -211,7 +211,7 @@ export default function GioiThieuBanPage() {
                       <td className="px-4 py-2">{fmtDate(r.created_at)}</td>
                       <td className="px-4 py-2 uppercase text-xs text-gray-500">{r.payment_source}</td>
                       <td className="px-4 py-2">
-                        Giai đoạn {r.stage} ({(r.rate * 100).toFixed(0)}%)
+                        Lần {r.stage} ({(r.rate * 100).toFixed(0)}%)
                       </td>
                       <td className="px-4 py-2 text-right font-semibold">{fmtVND(r.commission_amount)}</td>
                       <td className="px-4 py-2">

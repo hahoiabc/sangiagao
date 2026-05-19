@@ -89,10 +89,10 @@ class _AffTermsScreenState extends ConsumerState<AffTermsScreen> {
                   ),
                   const SizedBox(height: 12),
                   _section('1. Quyền lợi',
-                      'Đối tác (Aff) nhận hoa hồng theo 3 giai đoạn dựa trên tuổi của người được giới thiệu (Referee):\n'
-                      '• Giai đoạn 1 ($_stage1Days ngày đầu): ${_pct(_stage1Pct)} doanh thu ròng\n'
-                      '• Giai đoạn 2 ($_stage2Days ngày kế): ${_pct(_stage2Pct)} doanh thu ròng\n'
-                      '• Giai đoạn 3 (vĩnh viễn): ${_pct(_stage3Pct)} doanh thu ròng\n\n'
+                      'Đối tác (Aff) nhận hoa hồng theo 3 mức dựa trên lần thanh toán của người được giới thiệu (Referee):\n'
+                      '• Lần thanh toán đầu tiên: ${_pct(_stage1Pct)} doanh thu ròng\n'
+                      '• Lần thanh toán thứ 2: ${_pct(_stage2Pct)} doanh thu ròng\n'
+                      '• Từ lần thứ 3 trở đi (vĩnh viễn): ${_pct(_stage3Pct)} doanh thu ròng\n\n'
                       'Doanh thu ròng = số tiền Sàn thực nhận sau khi trừ phí nền tảng (Apple 30%, SePay 0%).'),
                   _section('2. Thanh toán',
                       '• Ngưỡng tối thiểu hiện hành: ${(_minimumPayout / 1000).toStringAsFixed(0)}.000đ. Sàn có thể điều chỉnh theo từng giai đoạn phát triển nền tảng.\n'
