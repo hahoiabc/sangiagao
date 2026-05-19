@@ -68,7 +68,7 @@ export default function PriceBoardPage() {
                       </Link>
                       <Link href="/dang-nhap" className={`${ctaBtn} bg-white/15 hover:bg-white/25 text-white backdrop-blur-sm`}>
                         <span className="text-[10px] uppercase opacity-80 tracking-wide">Đã có tài khoản</span>
-                        <span className="text-base font-semibold leading-tight">🔑 Đăng Nhập</span>
+                        <span className="text-base font-semibold leading-tight">Đăng Nhập</span>
                       </Link>
                     </>
                   )}
