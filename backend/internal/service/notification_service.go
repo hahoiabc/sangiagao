@@ -84,11 +84,30 @@ func (s *NotificationService) SendPushOnly(ctx context.Context, userID, title, b
 		return nil
 	}
 	log.Printf("SendPushOnly: sending to %d device(s) for user %s", len(tokens), userID)
-	return s.pushSender.SendToTokens(ctx, tokens, title, body, "", data)
+	// Nếu data chứa image_url → Android sẽ render big-picture (rich preview).
+	// iOS bỏ qua image trừ khi có Notification Service Extension extract.
+	imageURL := data["image_url"]
+	return s.pushSender.SendToTokens(ctx, tokens, title, body, imageURL, data)
 }
 
 func (s *NotificationService) UnreadCount(ctx context.Context, userID string) (int, error) {
 	return s.notifRepo.UnreadCount(ctx, userID)
+}
+
+// SendSilentSync — data-only push (không UI) tới mọi device của user. Dùng để:
+//   - dismiss notification từ conversation X trên các device khác khi user
+//     đã đọc trên 1 device
+//   - sync badge count / mark read / update state across devices
+// Mobile app đăng ký background handler để nhận event này và thao tác local.
+func (s *NotificationService) SendSilentSync(ctx context.Context, userID string, data map[string]string) error {
+	if s.pushSender == nil {
+		return nil
+	}
+	tokens, err := s.notifRepo.GetDeviceTokens(ctx, userID)
+	if err != nil || len(tokens) == 0 {
+		return err
+	}
+	return s.pushSender.SendSilentToTokens(ctx, tokens, data)
 }
 
 // BroadcastNotification creates a notification for all active users and sends push to all devices.

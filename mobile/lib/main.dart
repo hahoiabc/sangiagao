@@ -36,7 +36,7 @@ class SanGaoApp extends ConsumerStatefulWidget {
   ConsumerState<SanGaoApp> createState() => _SanGaoAppState();
 }
 
-class _SanGaoAppState extends ConsumerState<SanGaoApp> {
+class _SanGaoAppState extends ConsumerState<SanGaoApp> with WidgetsBindingObserver {
   bool _pushInitialized = false;
   final _appLinks = AppLinks();
   StreamSubscription<Uri>? _linkSub;
@@ -44,13 +44,29 @@ class _SanGaoAppState extends ConsumerState<SanGaoApp> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initDeepLinks();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _linkSub?.cancel();
     super.dispose();
+  }
+
+  /// Khi app trở lại foreground sau khoảng thời gian background → refresh
+  /// total unread count để đồng bộ tin nhắn miss khi app ngủ. Tránh tình trạng
+  /// "mở app phải đợi 1 lúc mới thấy tin mới".
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      final auth = ref.read(authProvider);
+      if (auth.status == AuthStatus.authenticated) {
+        ref.read(unreadCountProvider.notifier).refresh();
+        ref.read(inboxUnreadProvider.notifier).refresh();
+      }
+    }
   }
 
   /// Listen for Universal Links (iOS) + App Links (Android). Used to

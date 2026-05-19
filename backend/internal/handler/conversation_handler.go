@@ -169,6 +169,12 @@ func (h *ConversationHandler) SendMessage(c *gin.Context) {
 				"conversation_id": conversationID,
 				"type":            "new_message",
 				"sender_id":       userID,
+				"msg_type":        msgType,
+			}
+			// Rich preview: gắn URL ảnh để Android big-picture style hiển thị inline.
+			// iOS cần Notification Service Extension (chưa làm) → bỏ qua tới khi setup.
+			if msgType == "image" && req.Content != "" {
+				pushData["image_url"] = req.Content
 			}
 			if err := h.notifService.SendPushOnly(ctx, recipientID, senderName, preview, pushData); err != nil {
 				log.Printf("Failed to send chat push: %v", err)
@@ -192,6 +198,18 @@ func (h *ConversationHandler) MarkRead(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal", "message": "failed to mark read"})
 		}
 		return
+	}
+
+	// Fire-and-forget data-only push tới các device khác của cùng user để
+	// dismiss notification của conversation này (multi-device sync).
+	if h.notifService != nil {
+		go func() {
+			bgCtx := context.Background()
+			_ = h.notifService.SendSilentSync(bgCtx, userID, map[string]string{
+				"type":            "conversation_read",
+				"conversation_id": conversationID,
+			})
+		}()
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "ok"})

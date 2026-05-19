@@ -18,6 +18,9 @@ import (
 // PushSender sends push notifications via FCM HTTP v1 API.
 type PushSender interface {
 	SendToTokens(ctx context.Context, tokens []string, title, body, imageURL string, data map[string]string) error
+	// Data-only silent push — dùng cho sync events (dismiss notif, mark read,
+	// badge update). KHÔNG hiển thị UI notification.
+	SendSilentToTokens(ctx context.Context, tokens []string, data map[string]string) error
 }
 
 // FCMSender implements PushSender using Firebase Cloud Messaging HTTP v1 API.
@@ -212,12 +215,48 @@ func (s *FCMSender) SendToTokens(ctx context.Context, tokens []string, title, bo
 	}, "notification")
 }
 
+// SendSilentToTokens — data-only push, KHÔNG hiển thị notification UI.
+// Dùng cho sync events (dismiss notif, mark read across device, badge update).
+// Android: data-only payload (no notification block) → đánh thức background handler.
+// iOS: content-available=1 + KHÔNG có alert → silent background.
+func (s *FCMSender) SendSilentToTokens(ctx context.Context, tokens []string, data map[string]string) error {
+	return s.sendFCM(ctx, tokens, func(deviceToken string) fcmV1Request {
+		return fcmV1Request{
+			Message: fcmV1Message{
+				Token: deviceToken,
+				Data:  data,
+				Android: &fcmAndroid{
+					Priority: "high",
+				},
+				APNS: &fcmAPNS{
+					Headers: map[string]string{
+						"apns-priority":  "5", // background priority
+						"apns-push-type": "background",
+					},
+					Payload: &fcmAPNSPayload{
+						APS: &fcmAPS{
+							ContentAvailable: 1,
+						},
+					},
+				},
+			},
+		}
+	}, "silent")
+}
+
 // MockPushSender logs push notifications instead of sending them.
 type MockPushSender struct{}
 
 func (m *MockPushSender) SendToTokens(ctx context.Context, tokens []string, title, body, imageURL string, data map[string]string) error {
 	if len(tokens) > 0 {
 		fmt.Printf("[PUSH MOCK] To %d device(s): %s — %s\n", len(tokens), title, body)
+	}
+	return nil
+}
+
+func (m *MockPushSender) SendSilentToTokens(ctx context.Context, tokens []string, data map[string]string) error {
+	if len(tokens) > 0 {
+		fmt.Printf("[PUSH MOCK SILENT] To %d device(s): %v\n", len(tokens), data)
 	}
 	return nil
 }

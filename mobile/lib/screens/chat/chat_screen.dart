@@ -89,8 +89,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    // Track active conversation to suppress push notifications
+    // Track active conversation to suppress push notifications + flag user is
+    // on chat screen (suppress banner cho conv khác trong lúc đang chat)
     PushNotificationService.activeConversationId = widget.conversationId;
+    PushNotificationService.isOnChatScreen = true;
     PushNotificationService.clearUnreadForConversation(widget.conversationId);
     _init();
     _positionSub = _audioPlayer.onPositionChanged.listen((pos) {
@@ -650,10 +652,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   void dispose() {
-    // Clear active conversation tracking
+    // Clear active conversation + chat-screen flag
     if (PushNotificationService.activeConversationId == widget.conversationId) {
       PushNotificationService.activeConversationId = null;
     }
+    PushNotificationService.isOnChatScreen = false;
     _heartbeat?.cancel();
     _pollTimer?.cancel();
     _typingDebounce?.cancel();

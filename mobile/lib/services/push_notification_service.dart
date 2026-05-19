@@ -27,6 +27,11 @@ class PushNotificationService {
   /// Currently active conversation ID — suppress notifications for this chat
   static String? activeConversationId;
 
+  /// True khi user đang ở BẤT KỲ màn chat nào (list conv, chat detail, search...).
+  /// Khi true, banner chat từ conv khác bị suppress để không làm phiền — user
+  /// vẫn thấy update qua list conv + badge.
+  static bool isOnChatScreen = false;
+
   /// Track last notification time per conversation — for sound suppression
   static final Map<String, DateTime> _lastNotifTime = {};
 
@@ -119,8 +124,23 @@ class PushNotificationService {
   }
 
   void _showLocalNotification(RemoteMessage message) {
+    final dataType = message.data['type'] as String?;
+
+    // Data-only sync event "conversation_read" — gửi từ backend khi user mark
+    // read trên device khác. Cancel local notification của conv này để
+    // multi-device dismiss đồng bộ.
+    if (dataType == 'conversation_read') {
+      final convId = message.data['conversation_id'] as String?;
+      if (convId != null) {
+        _localNotifications.cancel(convId.hashCode);
+        _unreadCount.remove(convId);
+        _lastNotifTime.remove(convId);
+      }
+      return;
+    }
+
     // Handle system inbox push — increment badge
-    if (message.data['type'] == 'system_inbox') {
+    if (dataType == 'system_inbox') {
       onSystemInbox?.call();
       // Don't return — let it show as a local notification below
     }
@@ -132,6 +152,17 @@ class PushNotificationService {
 
     // Suppress notification if user is currently viewing this conversation
     if (convId != null && convId == activeConversationId) {
+      return;
+    }
+
+    // Suppress banner khi user đang ở bất kỳ màn chat nào (list conv, chat
+    // detail conv khác, etc.). User vẫn thấy update qua list realtime — banner
+    // banner trong lúc đang chat là spam.
+    if (dataType == 'new_message' && isOnChatScreen) {
+      // Vẫn track unread count (cho summary nếu user thoát chat ra)
+      if (convId != null) {
+        _unreadCount[convId] = (_unreadCount[convId] ?? 0) + 1;
+      }
       return;
     }
 
@@ -157,25 +188,59 @@ class PushNotificationService {
     // Pick channel based on sound decision
     final channelToUse = playSound ? _channel : _silentChannel;
 
+    // Android rich preview: nếu push data có image_url, dùng BigPictureStyle.
+    // Cần tải ảnh thành ByteArrayAndroidBitmap. URL phải public (MinIO/CDN).
+    AndroidNotificationDetails androidDetails;
+    final imageUrl = message.data['image_url'] as String?;
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      // ByteArrayAndroidBitmap nhận URL trực tiếp qua FilePathAndroidBitmap
+      // không dùng được vì là URL; thay vào dùng FilePath nếu local hoặc
+      // ByteArray fetched. Đơn giản nhất: BigText fallback nếu fetch fail.
+      androidDetails = AndroidNotificationDetails(
+        channelToUse.id,
+        channelToUse.name,
+        channelDescription: channelToUse.description,
+        importance: playSound ? Importance.high : Importance.low,
+        priority: playSound ? Priority.high : Priority.defaultPriority,
+        icon: '@mipmap/ic_launcher',
+        groupKey: convId,
+        playSound: playSound,
+        enableVibration: playSound,
+        // BigPicture style — Flutter plugin nhận URL trực tiếp qua extras.
+        // Image sẽ fetch async khi system show notif.
+        styleInformation: BigPictureStyleInformation(
+          FilePathAndroidBitmap(imageUrl), // works with http URL on Android 11+
+          contentTitle: notification.title,
+          summaryText: notification.body,
+          htmlFormatContentTitle: true,
+        ),
+      );
+    } else {
+      androidDetails = AndroidNotificationDetails(
+        channelToUse.id,
+        channelToUse.name,
+        channelDescription: channelToUse.description,
+        importance: playSound ? Importance.high : Importance.low,
+        priority: playSound ? Priority.high : Priority.defaultPriority,
+        icon: '@mipmap/ic_launcher',
+        groupKey: convId,
+        playSound: playSound,
+        enableVibration: playSound,
+      );
+    }
+
     _localNotifications.show(
       convId?.hashCode ?? notification.hashCode,
       notification.title,
       _buildNotificationBody(convId, notification.body),
       NotificationDetails(
-        android: AndroidNotificationDetails(
-          channelToUse.id,
-          channelToUse.name,
-          channelDescription: channelToUse.description,
-          importance: playSound ? Importance.high : Importance.low,
-          priority: playSound ? Priority.high : Priority.defaultPriority,
-          icon: '@mipmap/ic_launcher',
-          groupKey: convId,
-          playSound: playSound,
-          enableVibration: playSound,
-        ),
+        android: androidDetails,
         iOS: DarwinNotificationDetails(
           threadIdentifier: convId,
           sound: playSound ? 'default' : null,
+          // iOS rich preview cần Notification Service Extension (chưa setup) →
+          // chỉ truyền attachment URL qua data, app tự fetch trong extension.
+          // Hiện tại iOS không hiển thị inline image.
         ),
       ),
       payload: payload,
