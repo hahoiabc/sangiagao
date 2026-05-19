@@ -53,43 +53,46 @@ export default function PriceBoardPage() {
               {slogan}
             </p>
           </div>
-          {/* All CTA buttons — 2x2 grid (1 col on mobile, 2 col on tablet+),
-              tất cả cùng width + height + corner radius để cân đối. */}
+          {/* All CTA buttons — 2x2 grid. Mọi nút share class `ctaBtn` để
+              đảm bảo cùng height/padding/radius/shadow; chỉ khác màu bg. */}
           <div className="max-w-md mx-auto grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {!user && (
-              <>
-                <Link href="/dang-ky" className="block w-full">
-                  <div className="block w-full text-center rounded-lg bg-yellow-400 hover:bg-yellow-300 text-gray-900 px-4 py-3 shadow-lg transition-colors">
-                    <div className="text-[10px] uppercase opacity-80 tracking-wide">Tài khoản mới</div>
-                    <div className="text-base font-semibold">👤 Đăng Ký Miễn Phí</div>
-                  </div>
-                </Link>
-                <Link href="/dang-nhap" className="block w-full">
-                  <div className="block w-full text-center rounded-lg bg-white/10 hover:bg-white/20 text-white border border-white/40 px-4 py-3 shadow-lg backdrop-blur-sm transition-colors">
-                    <div className="text-[10px] uppercase opacity-80 tracking-wide">Đã có tài khoản</div>
-                    <div className="text-base font-semibold">🔑 Đăng Nhập</div>
-                  </div>
-                </Link>
-              </>
-            )}
-            <a
-              href="https://play.google.com/store/apps/details?id=com.sangiagao.rice_marketplace"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full text-center rounded-lg bg-green-700 hover:bg-green-600 text-white px-4 py-3 shadow-lg backdrop-blur-sm transition-colors"
-            >
-              <div className="text-[10px] uppercase opacity-80 tracking-wide">Android</div>
-              <div className="text-base font-semibold">📱 Tải Google Play</div>
-            </a>
-            <a
-              href="https://apps.apple.com/vn/app/sangiagao-vn/id6761744869"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full text-center rounded-lg bg-gray-900/80 hover:bg-gray-800 text-white px-4 py-3 shadow-lg backdrop-blur-sm transition-colors"
-            >
-              <div className="text-[10px] uppercase opacity-80 tracking-wide">iOS / iPhone</div>
-              <div className="text-base font-semibold">🍎 Tải App Store</div>
-            </a>
+            {(() => {
+              const ctaBtn = "flex h-[68px] w-full flex-col items-center justify-center rounded-lg px-4 shadow-lg transition-colors";
+              return (
+                <>
+                  {!user && (
+                    <>
+                      <Link href="/dang-ky" className={`${ctaBtn} bg-yellow-400 hover:bg-yellow-300 text-gray-900`}>
+                        <span className="text-[10px] uppercase opacity-80 tracking-wide">Tài khoản mới</span>
+                        <span className="text-base font-semibold leading-tight">👤 Đăng Ký Miễn Phí</span>
+                      </Link>
+                      <Link href="/dang-nhap" className={`${ctaBtn} bg-white/15 hover:bg-white/25 text-white backdrop-blur-sm`}>
+                        <span className="text-[10px] uppercase opacity-80 tracking-wide">Đã có tài khoản</span>
+                        <span className="text-base font-semibold leading-tight">🔑 Đăng Nhập</span>
+                      </Link>
+                    </>
+                  )}
+                  <a
+                    href="https://play.google.com/store/apps/details?id=com.sangiagao.rice_marketplace"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`${ctaBtn} bg-green-700 hover:bg-green-600 text-white`}
+                  >
+                    <span className="text-[10px] uppercase opacity-80 tracking-wide">Android</span>
+                    <span className="text-base font-semibold leading-tight">📱 Tải Google Play</span>
+                  </a>
+                  <a
+                    href="https://apps.apple.com/vn/app/sangiagao-vn/id6761744869"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`${ctaBtn} bg-gray-900/80 hover:bg-gray-800 text-white`}
+                  >
+                    <span className="text-[10px] uppercase opacity-80 tracking-wide">iOS / iPhone</span>
+                    <span className="text-base font-semibold leading-tight">🍎 Tải App Store</span>
+                  </a>
+                </>
+              );
+            })()}
           </div>
         </div>
       </section>
