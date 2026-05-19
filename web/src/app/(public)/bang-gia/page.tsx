@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Wheat, Eye, Users } from "lucide-react";
+import { Wheat, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -53,26 +53,25 @@ export default function PriceBoardPage() {
               {slogan}
             </p>
           </div>
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          {/* All CTA buttons — 2x2 grid (1 col on mobile, 2 col on tablet+),
+              tất cả cùng width + height + corner radius để cân đối. */}
+          <div className="max-w-md mx-auto grid grid-cols-1 sm:grid-cols-2 gap-3">
             {!user && (
               <>
-                <Link href="/dang-ky">
-                  <Button size="lg" className="gap-2 bg-yellow-400 text-gray-900 hover:bg-yellow-300 border-0">
-                    <Users className="h-4 w-4" />
-                    Đăng Ký Miễn Phí
-                  </Button>
+                <Link href="/dang-ky" className="block w-full">
+                  <div className="block w-full text-center rounded-lg bg-yellow-400 hover:bg-yellow-300 text-gray-900 px-4 py-3 shadow-lg transition-colors">
+                    <div className="text-[10px] uppercase opacity-80 tracking-wide">Tài khoản mới</div>
+                    <div className="text-base font-semibold">👤 Đăng Ký Miễn Phí</div>
+                  </div>
                 </Link>
-                <Link href="/dang-nhap">
-                  <Button size="lg" variant="outline" className="gap-2 bg-white/10 text-white border-white/40 hover:bg-white/20 backdrop-blur-sm">
-                    Đăng Nhập
-                  </Button>
+                <Link href="/dang-nhap" className="block w-full">
+                  <div className="block w-full text-center rounded-lg bg-white/10 hover:bg-white/20 text-white border border-white/40 px-4 py-3 shadow-lg backdrop-blur-sm transition-colors">
+                    <div className="text-[10px] uppercase opacity-80 tracking-wide">Đã có tài khoản</div>
+                    <div className="text-base font-semibold">🔑 Đăng Nhập</div>
+                  </div>
                 </Link>
               </>
             )}
-          </div>
-
-          {/* Mobile install CTAs */}
-          <div className="mt-6 max-w-md mx-auto grid grid-cols-1 sm:grid-cols-2 gap-3">
             <a
               href="https://play.google.com/store/apps/details?id=com.sangiagao.rice_marketplace"
               target="_blank"
