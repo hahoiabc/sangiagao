@@ -95,6 +95,13 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const res = await fetchWithRetry(`${API_BASE}${path}`, fetchOpts, timeout ?? DEFAULT_TIMEOUT);
 
   if (res.status === 401) {
+    // Auth endpoints (login, refresh) trả 401 = credentials sai, KHÔNG phải
+    // session expired. Skip refresh-token flow + propagate backend error message
+    // ("Sai mật khẩu", "Số điện thoại không tồn tại", v.v.) cho user thấy.
+    if (path === "/auth/login" || path === "/auth/refresh") {
+      const body = await res.json().catch(() => ({}));
+      throw new ApiError(401, body.error || "unauthorized", body.error || body.message || "Sai số điện thoại hoặc mật khẩu");
+    }
     try {
       if (!isRefreshing) {
         isRefreshing = true;
