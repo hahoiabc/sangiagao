@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Simple "share Sàn Giá Gạo" screen for ALL users (member + aff + others).
 /// Link does NOT include an affiliate code — purely brand invite.
@@ -10,6 +10,33 @@ class ShareAppScreen extends StatelessWidget {
   static const String _link = 'https://sangiagao.vn/cai-app';
   static const String _message =
       'Tải SanGiaGao để xem giá Gạo và kết nối với thương nhân\n$_link';
+
+  Future<void> _shareZalo(BuildContext context) async {
+    await Clipboard.setData(const ClipboardData(text: _message));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đã sao chép. Mở Zalo và dán vào tin nhắn'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+    await launchUrl(Uri.parse('https://zalo.me/'), mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _shareFacebook() async {
+    final url = Uri.parse(
+      'https://www.facebook.com/sharer/sharer.php?u=${Uri.encodeComponent(_link)}',
+    );
+    await launchUrl(url, mode: LaunchMode.externalApplication);
+  }
+
+  void _copyLink(BuildContext context) {
+    Clipboard.setData(const ClipboardData(text: _link));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Đã sao chép link'), duration: Duration(seconds: 1)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,12 +54,6 @@ class ShareAppScreen extends StatelessWidget {
                   const Text(
                     'Chia sẻ Sàn Giá Gạo với bạn bè',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Gửi link dưới đây để mời bạn bè tham gia. Bạn có thể đăng ký làm Đối tác Affiliate '
-                    'để nhận hoa hồng khi giới thiệu thành công.',
-                    style: TextStyle(fontSize: 13, height: 1.4),
                   ),
                   const SizedBox(height: 16),
                   Container(
@@ -52,24 +73,44 @@ class ShareAppScreen extends StatelessWidget {
                         IconButton(
                           icon: const Icon(Icons.copy, size: 20),
                           tooltip: 'Sao chép',
-                          onPressed: () {
-                            Clipboard.setData(const ClipboardData(text: _link));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Đã sao chép link'), duration: Duration(seconds: 1)),
-                            );
-                          },
+                          onPressed: () => _copyLink(context),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      icon: const Icon(Icons.share),
-                      label: const Text('Chia sẻ ngay'),
-                      onPressed: () => Share.share(_message, subject: 'Sàn Giá Gạo'),
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF0068FF),
+                          ),
+                          icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                          label: const Text('Zalo'),
+                          onPressed: () => _shareZalo(context),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF1877F2),
+                          ),
+                          icon: const Icon(Icons.facebook, size: 18),
+                          label: const Text('Facebook'),
+                          onPressed: _shareFacebook,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.copy, size: 18),
+                          label: const Text('Sao chép'),
+                          onPressed: () => _copyLink(context),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

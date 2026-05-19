@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import {
   User, Save, KeyRound, Phone, Eye, EyeOff, Crown, MessageSquareText,
-  ChevronRight, LogOut, Camera, Pencil, X, Trash2,
+  ChevronRight, LogOut, Camera, Pencil, X, Trash2, Users, Star,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -412,6 +412,22 @@ export default function ProfilePage() {
                     <div className="flex items-center gap-3">
                       <Crown className="h-5 w-5 text-muted-foreground" />
                       <span className="text-sm font-medium">Gói dịch vụ & Gia hạn</span>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </Link>
+                )}
+                <Link href="/gioi-thieu-ban" className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors">
+                  <div className="flex items-center gap-3">
+                    <Users className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-sm font-medium">Giới thiệu bạn bè</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </Link>
+                {profile.role === "member" && (
+                  <Link href="/dieu-khoan-doi-tac" className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors">
+                    <div className="flex items-center gap-3">
+                      <Star className="h-5 w-5 text-amber-600" />
+                      <span className="text-sm font-medium">Đăng ký làm Đối tác Affiliate</span>
                     </div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </Link>

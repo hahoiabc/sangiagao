@@ -143,7 +143,7 @@ export default function PayoutsPage() {
                       />
                     </th>
                     <th className="px-3 py-2 font-semibold">Ngày tạo</th>
-                    <th className="px-3 py-2 font-semibold">Giai đoạn</th>
+                    <th className="px-3 py-2 font-semibold">Lần TT</th>
                     <th className="px-3 py-2 font-semibold text-right">Số tiền</th>
                   </tr>
                 </thead>
@@ -164,7 +164,7 @@ export default function PayoutsPage() {
                       </td>
                       <td className="px-3 py-2">{new Date(r.created_at).toLocaleDateString("vi-VN")}</td>
                       <td className="px-3 py-2">
-                        GD {r.stage} ({(r.rate * 100).toFixed(0)}%)
+                        Lần {r.stage}{r.stage >= 3 ? "+" : ""} ({(r.rate * 100).toFixed(0)}%)
                       </td>
                       <td className="px-3 py-2 text-right font-medium">{fmt(r.commission_amount)}</td>
                     </tr>

@@ -19,11 +19,11 @@ class _AffTermsScreenState extends ConsumerState<AffTermsScreen> {
   String _currentVersion = '1.0';
   bool _alreadyAccepted = false;
   // Rule values pulled from backend so T&C reflects current admin settings.
-  int _stage1Days = 90;
-  double _stage1Pct = 0.5;
-  int _stage2Days = 180;
-  double _stage2Pct = 0.3;
-  double _stage3Pct = 0.2;
+  int _stage1Days = 1;
+  double _stage1Pct = 0.45;
+  int _stage2Days = 1;
+  double _stage2Pct = 0.30;
+  double _stage3Pct = 0.15;
   int _minimumPayout = 100000;
 
   @override
@@ -95,7 +95,7 @@ class _AffTermsScreenState extends ConsumerState<AffTermsScreen> {
                       '• Từ lần thứ 3 trở đi (vĩnh viễn): ${_pct(_stage3Pct)} doanh thu ròng\n\n'
                       'Doanh thu ròng = số tiền Sàn thực nhận sau khi trừ phí nền tảng (Apple 30%, SePay 0%).'),
                   _section('2. Thanh toán',
-                      '• Ngưỡng tối thiểu hiện hành: ${(_minimumPayout / 1000).toStringAsFixed(0)}.000đ. Sàn có thể điều chỉnh theo từng giai đoạn phát triển nền tảng.\n'
+                      '• Ngưỡng tối thiểu hiện hành: ${(_minimumPayout / 1000).toStringAsFixed(0)}.000đ. Sàn có thể điều chỉnh theo nhu cầu vận hành.\n'
                       '• Thời gian đối soát: T+45 ngày sau khi Referee thanh toán.\n'
                       '• Phí chuyển khoản: do Đối tác chịu, trừ trực tiếp từ số tiền payout (thực tế từng lần, tuỳ ngân hàng).\n'
                       '• Đối tác phải cập nhật chính xác thông tin tài khoản nhận tiền. Sàn không chịu trách nhiệm nếu chuyển sai do thông tin sai.'),

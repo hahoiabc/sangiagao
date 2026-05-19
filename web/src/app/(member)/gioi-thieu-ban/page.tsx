@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Copy, Share2, Users, CheckCircle2, Clock, Banknote, Star } from "lucide-react";
+import Link from "next/link";
+import { Copy, Users, CheckCircle2, Clock, Banknote, Star, MessageCircle, Facebook } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -9,7 +10,6 @@ import { useAuth } from "@/lib/auth";
 import {
   getReferralStats,
   getReferralHistory,
-  becomeAffiliate,
   type ReferralStats,
   type CommissionRecord,
 } from "@/services/api";
@@ -39,27 +39,6 @@ export default function GioiThieuBanPage() {
   const [stats, setStats] = useState<ReferralStats | null>(null);
   const [history, setHistory] = useState<CommissionRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activating, setActivating] = useState(false);
-
-  const handleActivate = async () => {
-    if (!confirm(
-      "Khi bạn giới thiệu bạn bè đăng ký + mua gói, bạn nhận hoa hồng:\n\n" +
-      "• Lần thanh toán đầu tiên: 45%\n" +
-      "• Lần thanh toán thứ 2: 30%\n" +
-      "• Từ lần thứ 3 trở đi (vĩnh viễn): 15%\n\n" +
-      "Tính trên doanh thu ròng. Thanh toán sau 45 ngày từ giao dịch.\n\nĐồng ý kích hoạt?",
-    )) return;
-    setActivating(true);
-    try {
-      await becomeAffiliate();
-      toast.success("Đã kích hoạt vai trò đối tác. Tải lại trang…");
-      setTimeout(() => window.location.reload(), 1200);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Không thể kích hoạt");
-    } finally {
-      setActivating(false);
-    }
-  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -93,43 +72,43 @@ export default function GioiThieuBanPage() {
     toast.success(`Đã sao chép ${label}`);
   };
 
-  const share = async () => {
-    if (typeof navigator !== "undefined" && "share" in navigator) {
-      try {
-        await navigator.share({ title: "Sàn Giá Gạo - Mã giới thiệu", text: shareMessage, url: shareLink });
-      } catch {}
-    } else {
-      copy(shareMessage, "tin nhắn");
-    }
+  const shareZalo = () => {
+    // Zalo không có web share URL ổn định — copy text rồi mở Zalo, user
+    // dán thủ công. Hoạt động trên cả desktop + mobile.
+    navigator.clipboard.writeText(shareMessage);
+    toast.success("Đã sao chép. Mở Zalo và dán vào tin nhắn", { duration: 4000 });
+    window.open("https://zalo.me/", "_blank");
+  };
+
+  const shareFacebook = () => {
+    const url = encodeURIComponent(shareLink);
+    window.open(
+      `https://www.facebook.com/sharer/sharer.php?u=${url}`,
+      "fb-share",
+      "width=600,height=540,scrollbars=yes,resizable=yes",
+    );
   };
 
   return (
     <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Giới thiệu bạn bè</h1>
-        <p className="text-gray-600 text-sm mt-1">
-          Chia sẻ link để bạn bè đăng ký Sàn Giá Gạo và nhận hoa hồng mỗi khi họ mua gói thành viên.
-        </p>
-      </div>
+      <h1 className="text-2xl font-bold">Giới thiệu bạn bè</h1>
 
       {isMember && (
-        <Card className="bg-amber-50 border-amber-200">
+        <Card id="activate" className="bg-amber-50 border-amber-200 scroll-mt-20">
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Star className="h-5 w-5 text-amber-600" />
               <h2 className="font-semibold">Trở thành đối tác chính thức</h2>
             </div>
             <p className="text-sm text-gray-700">
-              Kích hoạt vai trò Đối tác để xem chi tiết người bạn giới thiệu, theo dõi hoa hồng theo từng giai đoạn,
+              Kích hoạt vai trò Đối tác để xem chi tiết người bạn giới thiệu, theo dõi hoa hồng theo từng lần thanh toán,
               và nhận tiền khi đạt ngưỡng tối thiểu.
             </p>
-            <Button
-              onClick={handleActivate}
-              disabled={activating}
-              className="bg-amber-600 hover:bg-amber-700 text-white"
-            >
-              {activating ? "Đang kích hoạt…" : "Kích hoạt làm đối tác"}
-            </Button>
+            <Link href="/dieu-khoan-doi-tac">
+              <Button className="bg-amber-600 hover:bg-amber-700 text-white">
+                Đọc điều khoản & Kích hoạt
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       )}
@@ -152,9 +131,17 @@ export default function GioiThieuBanPage() {
               <Copy className="h-4 w-4" />
             </Button>
           </div>
-          <Button onClick={share} className="w-full">
-            <Share2 className="h-4 w-4 mr-2" /> Chia sẻ ngay
-          </Button>
+          <div className="grid grid-cols-3 gap-2">
+            <Button onClick={shareZalo} className="bg-[#0068FF] hover:bg-[#0055d6] text-white">
+              <MessageCircle className="h-4 w-4 mr-1.5" /> Zalo
+            </Button>
+            <Button onClick={shareFacebook} className="bg-[#1877F2] hover:bg-[#0d65d9] text-white">
+              <Facebook className="h-4 w-4 mr-1.5" /> Facebook
+            </Button>
+            <Button variant="outline" onClick={() => copy(shareLink, "link")}>
+              <Copy className="h-4 w-4 mr-1.5" /> Sao chép
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

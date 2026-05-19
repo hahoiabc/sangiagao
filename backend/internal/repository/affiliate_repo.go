@@ -12,7 +12,6 @@ import (
 
 var ErrReferralCodeNotFound = errors.New("referral code not found")
 var ErrCommissionRuleNotFound = errors.New("commission rule not found")
-var ErrCommissionRecordExists = errors.New("commission record already exists for this payment event")
 
 type AffiliateRepo struct {
 	pool *pgxpool.Pool
@@ -164,30 +163,9 @@ func (r *AffiliateRepo) UpsertRule(ctx context.Context, rule *model.CommissionRu
 }
 
 // --- commission_records ---
-
-// InsertRecord inserts a commission_record idempotently. Returns
-// ErrCommissionRecordExists if (payment_source, payment_event_id) already
-// exists.
-func (r *AffiliateRepo) InsertRecord(ctx context.Context, rec *model.CommissionRecord) error {
-	row := r.pool.QueryRow(ctx,
-		`INSERT INTO commission_records
-		    (referrer_user_id, referee_user_id, subscription_id, payment_source, payment_event_id,
-		     gross_amount, platform_fee, net_amount, base_amount, stage, rate, commission_amount,
-		     referee_age_days, payment_sequence, rule_id, payable_after)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-		 ON CONFLICT (payment_source, payment_event_id) DO NOTHING
-		 RETURNING id, status, created_at`,
-		rec.ReferrerUserID, rec.RefereeUserID, rec.SubscriptionID, rec.PaymentSource, rec.PaymentEventID,
-		rec.GrossAmount, rec.PlatformFee, rec.NetAmount, rec.BaseAmount, rec.Stage, rec.Rate,
-		rec.CommissionAmount, rec.RefereeAgeDays, rec.PaymentSequence, rec.RuleID, rec.PayableAfter)
-	if err := row.Scan(&rec.ID, &rec.Status, &rec.CreatedAt); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrCommissionRecordExists
-		}
-		return err
-	}
-	return nil
-}
+// INSERT đã chuyển vào commission_engine.RecordForPayment (cần chạy trong tx
+// chung với SELECT FOR UPDATE để serialize payment_sequence). Repo còn read +
+// stats helpers thôi.
 
 // StatsForReferrer aggregates commission totals for a single referrer.
 func (r *AffiliateRepo) StatsForReferrer(ctx context.Context, userID string) (*model.ReferralStats, error) {
@@ -223,7 +201,7 @@ func (r *AffiliateRepo) ListRecordsForReferrer(ctx context.Context, userID strin
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, referrer_user_id, referee_user_id, subscription_id,
 		        payment_source, payment_event_id, gross_amount, platform_fee, net_amount,
-		        base_amount, stage, rate, commission_amount, referee_age_days, payment_sequence, rule_id,
+		        base_amount, stage, rate, commission_amount, payment_sequence, rule_id,
 		        status, payable_after, paid_at, payout_id, created_at
 		   FROM commission_records
 		  WHERE referrer_user_id = $1
@@ -239,7 +217,7 @@ func (r *AffiliateRepo) ListRecordsForReferrer(ctx context.Context, userID strin
 		if err := rows.Scan(
 			&rec.ID, &rec.ReferrerUserID, &rec.RefereeUserID, &rec.SubscriptionID,
 			&rec.PaymentSource, &rec.PaymentEventID, &rec.GrossAmount, &rec.PlatformFee, &rec.NetAmount,
-			&rec.BaseAmount, &rec.Stage, &rec.Rate, &rec.CommissionAmount, &rec.RefereeAgeDays, &rec.PaymentSequence, &rec.RuleID,
+			&rec.BaseAmount, &rec.Stage, &rec.Rate, &rec.CommissionAmount, &rec.PaymentSequence, &rec.RuleID,
 			&rec.Status, &rec.PayableAfter, &rec.PaidAt, &rec.PayoutID, &rec.CreatedAt,
 		); err != nil {
 			return nil, err

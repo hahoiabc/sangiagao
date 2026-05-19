@@ -490,6 +490,33 @@ export async function becomeAffiliate(): Promise<{ role: string }> {
   return request<{ role: string }>("/me/become-affiliate", { method: "POST" });
 }
 
+export interface AffTermsResponse {
+  current_version: string;
+  accepted: boolean;
+  accepted_at: string | null;
+  accepted_version: string | null;
+  rule: {
+    stage1_days: number;
+    stage1_pct: number;
+    stage2_days: number;
+    stage2_pct: number;
+    stage3_pct: number;
+    minimum_payout: number;
+    base_type: "net" | "gross";
+  };
+}
+
+export async function getAffTerms(): Promise<AffTermsResponse> {
+  return request<AffTermsResponse>("/me/aff-terms");
+}
+
+export async function acceptAffTerms(version: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>("/me/aff-terms/accept", {
+    method: "POST",
+    body: JSON.stringify({ version }),
+  });
+}
+
 export async function getSEOPriceBoard(): Promise<SEOPriceBoardResponse> {
   return request<SEOPriceBoardResponse>("/seo/price-board");
 }

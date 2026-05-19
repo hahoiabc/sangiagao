@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { getSubscriptionStatus, type SubscriptionStatus } from "@/services/api";
 
 // Routes that are always accessible (like mobile's allowed list)
-const ALWAYS_ALLOWED = ["/tai-khoan", "/goi-thanh-vien", "/thong-bao", "/phan-hoi", "/gioi-thieu-ban"];
+const ALWAYS_ALLOWED = ["/tai-khoan", "/goi-thanh-vien", "/thong-bao", "/phan-hoi", "/gioi-thieu-ban", "/dieu-khoan-doi-tac"];
 // Privileged roles that skip subscription gate
 const PRIVILEGED_ROLES = ["editor", "admin", "owner"];
 

@@ -105,6 +105,11 @@ func Calculate(rule *model.CommissionRule, gross int64, platformFeePct float64, 
 // RecordForPayment is the main entry point called from Apple/SePay/admin
 // payment handlers. Idempotent: returns nil without error if event already
 // recorded. Returns nil error + no record if referee has no referrer.
+//
+// Bọc trong transaction + FOR UPDATE lock trên users row của referee để
+// serialize concurrent webhook (Apple retry + SePay parallel) cho cùng 1
+// referee — giữ payment_sequence monotonic. Unique index
+// commission_records_seq_unique (mig 035) là layer phòng thủ thứ 2.
 func (e *CommissionEngine) RecordForPayment(ctx context.Context, ev PaymentEvent) (*model.CommissionRecord, error) {
 	if ev.RefereeUserID == "" || ev.SubscriptionID == "" || ev.EventID == "" {
 		return nil, errors.New("commission: missing required fields")
@@ -114,10 +119,16 @@ func (e *CommissionEngine) RecordForPayment(ctx context.Context, ev PaymentEvent
 		return nil, nil
 	}
 
-	// Look up referrer
+	tx, err := e.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("commission: begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// Lock referee row → serialize concurrent webhook cho cùng referee.
 	var referrerUserID *string
-	err := e.pool.QueryRow(ctx,
-		`SELECT referrer_user_id FROM users WHERE id = $1`, ev.RefereeUserID).
+	err = tx.QueryRow(ctx,
+		`SELECT referrer_user_id FROM users WHERE id = $1 FOR UPDATE`, ev.RefereeUserID).
 		Scan(&referrerUserID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -136,11 +147,11 @@ func (e *CommissionEngine) RecordForPayment(ctx context.Context, ev PaymentEvent
 		return nil, nil
 	}
 
-	// Đếm payment sequence: số commission records hợp lệ (not cancelled) đã
-	// có sẵn cho cặp (referrer, referee). +1 cho lần này.
+	// Đếm payment sequence trong cùng tx (lock referee đang giữ): số commission
+	// records hợp lệ đã có cho cặp (referrer, referee). +1 cho lần này.
 	// Stage 1 = payment #1, Stage 2 = payment #2, Stage 3 = payment #3+
 	var existingCount int
-	err = e.pool.QueryRow(ctx,
+	err = tx.QueryRow(ctx,
 		`SELECT COUNT(*) FROM commission_records
 		  WHERE referrer_user_id = $1 AND referee_user_id = $2
 		    AND status != 'cancelled'`,
@@ -158,7 +169,7 @@ func (e *CommissionEngine) RecordForPayment(ctx context.Context, ev PaymentEvent
 
 	// Get referrer's referral_code_id (for per-partner rule lookup)
 	var referralCodeID *string
-	err = e.pool.QueryRow(ctx,
+	err = tx.QueryRow(ctx,
 		`SELECT id FROM referral_codes WHERE user_id = $1`, *referrerUserID).Scan(&referralCodeID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, err
@@ -191,12 +202,30 @@ func (e *CommissionEngine) RecordForPayment(ctx context.Context, ev PaymentEvent
 		PayableAfter:     ev.OccurredAt.Add(PayableDelayDays * 24 * time.Hour),
 	}
 
-	if err := e.affRepo.InsertRecord(ctx, rec); err != nil {
-		if errors.Is(err, repository.ErrCommissionRecordExists) {
+	// INSERT trong cùng tx. ON CONFLICT (payment_source, payment_event_id) cho
+	// idempotency. Unique index seq_unique sẽ chặn case lệch sequence — nếu vi
+	// phạm là bug (chỉ có thể xảy ra nếu lock bị skip).
+	row := tx.QueryRow(ctx,
+		`INSERT INTO commission_records
+		    (referrer_user_id, referee_user_id, subscription_id, payment_source, payment_event_id,
+		     gross_amount, platform_fee, net_amount, base_amount, stage, rate, commission_amount,
+		     payment_sequence, rule_id, payable_after)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+		 ON CONFLICT (payment_source, payment_event_id) DO NOTHING
+		 RETURNING id, status, created_at`,
+		rec.ReferrerUserID, rec.RefereeUserID, rec.SubscriptionID, rec.PaymentSource, rec.PaymentEventID,
+		rec.GrossAmount, rec.PlatformFee, rec.NetAmount, rec.BaseAmount, rec.Stage, rec.Rate,
+		rec.CommissionAmount, rec.PaymentSequence, rec.RuleID, rec.PayableAfter)
+	if err := row.Scan(&rec.ID, &rec.Status, &rec.CreatedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
 			slog.Info("commission: duplicate event, ignored", "event_id", ev.EventID)
 			return nil, nil
 		}
 		return nil, fmt.Errorf("commission: insert: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("commission: commit: %w", err)
 	}
 
 	slog.Info("commission: recorded",

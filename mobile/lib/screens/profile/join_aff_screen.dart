@@ -16,11 +16,11 @@ class JoinAffScreen extends ConsumerStatefulWidget {
 
 class _JoinAffScreenState extends ConsumerState<JoinAffScreen> {
   bool _activating = false;
-  int _stage1Days = 90;
-  double _stage1Pct = 0.5;
-  int _stage2Days = 180;
-  double _stage2Pct = 0.3;
-  double _stage3Pct = 0.2;
+  int _stage1Days = 1;
+  double _stage1Pct = 0.45;
+  int _stage2Days = 1;
+  double _stage2Pct = 0.30;
+  double _stage3Pct = 0.15;
   int _minimumPayout = 100000;
 
   @override

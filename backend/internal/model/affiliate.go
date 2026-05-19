@@ -48,8 +48,7 @@ type CommissionRecord struct {
 	Stage            int        `json:"stage"`       // 1, 2, 3
 	Rate             float64    `json:"rate"`
 	CommissionAmount int64      `json:"commission_amount"`
-	RefereeAgeDays   int        `json:"referee_age_days"` // deprecated — kept for old records
-	PaymentSequence  int        `json:"payment_sequence"` // 1, 2, 3+ — model mới đếm theo lần thanh toán
+	PaymentSequence  int        `json:"payment_sequence"` // 1, 2, 3+ — đếm theo lần thanh toán của cặp (referrer, referee)
 	RuleID           string     `json:"rule_id"`
 	Status           string     `json:"status"` // pending | payable | paid | cancelled
 	PayableAfter     time.Time  `json:"payable_after"`
