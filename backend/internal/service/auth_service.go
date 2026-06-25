@@ -23,18 +23,18 @@ import (
 )
 
 var (
-	ErrInvalidPhone   = errors.New("invalid phone number")
-	ErrRateLimited    = errors.New("too many OTP requests, try again later")
-	ErrOTPCooldown    = errors.New("vui lòng chờ 60 giây trước khi gửi lại")
-	ErrInvalidOTP     = errors.New("invalid or expired OTP")
+	ErrInvalidPhone    = errors.New("invalid phone number")
+	ErrRateLimited     = errors.New("too many OTP requests, try again later")
+	ErrOTPCooldown     = errors.New("vui lòng chờ 60 giây trước khi gửi lại")
+	ErrInvalidOTP      = errors.New("invalid or expired OTP")
 	ErrTooManyAttempts = errors.New("too many failed attempts")
-	ErrUserBlocked    = errors.New("account is blocked")
-	ErrPhoneExists    = errors.New("phone number already registered")
-	ErrWrongPassword  = errors.New("wrong password")
-	ErrNoPassword     = errors.New("account has no password, use OTP login")
-	ErrWeakPassword   = errors.New("mật khẩu phải có ít nhất 6 ký tự, gồm chữ hoa, chữ thường và ký tự đặc biệt")
-	ErrInvalidName    = errors.New("tên phải có từ 4 đến 60 ký tự")
-	ErrInvalidAddress = errors.New("địa chỉ chi tiết phải có từ 6 đến 80 ký tự")
+	ErrUserBlocked     = errors.New("account is blocked")
+	ErrPhoneExists     = errors.New("phone number already registered")
+	ErrWrongPassword   = errors.New("wrong password")
+	ErrNoPassword      = errors.New("account has no password, use OTP login")
+	ErrWeakPassword    = errors.New("mật khẩu phải có ít nhất 6 ký tự, gồm chữ hoa, chữ thường và ký tự đặc biệt")
+	ErrInvalidName     = errors.New("tên phải có từ 4 đến 60 ký tự")
+	ErrInvalidAddress  = errors.New("địa chỉ chi tiết phải có từ 6 đến 80 ký tự")
 )
 
 var phoneRegex = regexp.MustCompile(`^0(3[2-9]|5[2689]|7[06-9]|8[1-689]|9[0-46-9])\d{7}$`)
@@ -143,7 +143,7 @@ func (s *AuthService) SendOTP(ctx context.Context, phone string) error {
 }
 
 type VerifyOTPResult struct {
-	User      *model.User      `json:"user"`
+	User      *model.User       `json:"user"`
 	Tokens    *jwtpkg.TokenPair `json:"tokens"`
 	IsNewUser bool              `json:"is_new_user"`
 }
@@ -229,7 +229,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*j
 }
 
 type RegisterResult struct {
-	User   *model.User      `json:"user"`
+	User   *model.User       `json:"user"`
 	Tokens *jwtpkg.TokenPair `json:"tokens"`
 }
 
@@ -355,58 +355,59 @@ func (s *AuthService) LoginPassword(ctx context.Context, phone, password string)
 	}, nil
 }
 
-func (s *AuthService) ResetPassword(ctx context.Context, phone, code, newPassword string) error {
+// ResetPassword trả về userID khi thành công để handler thu hồi token cũ (#12).
+func (s *AuthService) ResetPassword(ctx context.Context, phone, code, newPassword string) (string, error) {
 	if !phoneRegex.MatchString(phone) {
-		return ErrInvalidPhone
+		return "", ErrInvalidPhone
 	}
 	if err := validatePassword(newPassword); err != nil {
-		return err
+		return "", err
 	}
 
 	// Verify OTP
 	otp, err := s.otpRepo.GetLatest(ctx, phone)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrInvalidOTP
+			return "", ErrInvalidOTP
 		}
-		return fmt.Errorf("get OTP: %w", err)
+		return "", fmt.Errorf("get OTP: %w", err)
 	}
 
 	if time.Now().After(otp.ExpiresAt) {
-		return ErrInvalidOTP
+		return "", ErrInvalidOTP
 	}
 
 	if otp.Attempts >= 5 {
-		return ErrTooManyAttempts
+		return "", ErrTooManyAttempts
 	}
 
 	if subtle.ConstantTimeCompare([]byte(otp.Code), []byte(code)) != 1 {
 		_ = s.otpRepo.IncrementAttempts(ctx, otp.ID)
-		return ErrInvalidOTP
+		return "", ErrInvalidOTP
 	}
 
 	_ = s.otpRepo.MarkVerified(ctx, otp.ID)
 
 	// Check user exists
-	_, err = s.userRepo.GetByPhone(ctx, phone)
+	user, err := s.userRepo.GetByPhone(ctx, phone)
 	if err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
-			return repository.ErrUserNotFound
+			return "", repository.ErrUserNotFound
 		}
-		return fmt.Errorf("get user: %w", err)
+		return "", fmt.Errorf("get user: %w", err)
 	}
 
 	// Hash new password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
-		return fmt.Errorf("hash password: %w", err)
+		return "", fmt.Errorf("hash password: %w", err)
 	}
 
 	if err := s.userRepo.UpdatePassword(ctx, phone, string(hashedPassword)); err != nil {
-		return fmt.Errorf("update password: %w", err)
+		return "", fmt.Errorf("update password: %w", err)
 	}
 
-	return nil
+	return user.ID, nil
 }
 
 func generateOTP() string {

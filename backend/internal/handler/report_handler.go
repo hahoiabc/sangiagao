@@ -3,12 +3,15 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sangiagao/rice-marketplace/internal/model"
+	"github.com/sangiagao/rice-marketplace/internal/repository"
+	"github.com/sangiagao/rice-marketplace/internal/service"
 )
 
 var actionLabels = map[string]string{
@@ -51,7 +54,14 @@ func (h *ReportHandler) Create(c *gin.Context) {
 
 	report, err := h.reportService.Create(c.Request.Context(), userID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create report"})
+		switch {
+		case errors.Is(err, service.ErrSelfReport):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "không thể tự báo cáo chính mình"})
+		case errors.Is(err, repository.ErrDuplicateReport):
+			c.JSON(http.StatusConflict, gin.H{"error": "bạn đã báo cáo nội dung này rồi"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create report"})
+		}
 		return
 	}
 
@@ -98,9 +108,13 @@ func (h *ReportHandler) Resolve(c *gin.Context) {
 	// Resolve target owner BEFORE executing action (which may delete the listing)
 	targetOwnerID := h.getTargetOwnerID(c.Request.Context(), report)
 
-	// Execute the actual admin action
+	// BUG #15: KHÔNG nuốt lỗi executeAction. Nếu thao tác (xóa tin/khóa user)
+	// thất bại → báo cho admin (report đã đánh dấu resolved, admin thử lại sẽ
+	// chạy lại action — idempotent), thay vì âm thầm 200 mà tin vi phạm còn sống.
 	if execErr := h.executeAction(c.Request.Context(), report); execErr != nil {
 		log.Printf("Failed to execute action %s for report %s: %v", req.AdminAction, reportID, execErr)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Đã đánh dấu xử lý nhưng THAO TÁC (xóa tin/khóa user) THẤT BẠI — vui lòng thử lại"})
+		return
 	}
 
 	// Send notifications to reporter and target owner (best effort, don't fail the request)

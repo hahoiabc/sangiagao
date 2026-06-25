@@ -98,6 +98,13 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("PHONE_ENCRYPT_KEY must be exactly 64 hex characters (32 bytes)")
 	}
 	if c.AppEnv == "production" {
+		// BUG #4: SMS_PROVIDER ở prod PHẢI là provider gửi SMS/ZNS THẬT. Code chỉ
+		// hiện thực "zalo" và "zalo+mock"; MỌI giá trị khác ('mock', rỗng, 'esms',
+		// gõ sai...) rơi vào default→MockSender → OTP không gửi được (backdoor cũ
+		// 123456 hoặc OTP ngẫu nhiên không ai nhận) → không đăng nhập được.
+		if c.SMSProvider != "zalo" && c.SMSProvider != "zalo+mock" {
+			return fmt.Errorf("SMS_PROVIDER must be 'zalo' (or 'zalo+mock') in production, got %q — bất kỳ giá trị khác sẽ âm thầm dùng Mock và làm hỏng OTP", c.SMSProvider)
+		}
 		if c.CORSOrigins == "" || c.CORSOrigins == "*" {
 			return fmt.Errorf("CORS_ORIGINS must be explicitly set in production (not empty or '*')")
 		}

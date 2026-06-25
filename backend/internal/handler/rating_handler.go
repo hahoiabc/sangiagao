@@ -38,6 +38,8 @@ func (h *RatingHandler) Create(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "target user is not a seller"})
 		case errors.Is(err, service.ErrAlreadyRated):
 			c.JSON(http.StatusConflict, gin.H{"error": "you already rated this seller"})
+		case errors.Is(err, service.ErrInsufficientInteraction):
+			c.JSON(http.StatusForbidden, gin.H{"error": "cần ít nhất 5 tin nhắn qua lại với người bán trước khi đánh giá"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create rating"})
 		}

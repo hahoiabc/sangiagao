@@ -9,10 +9,14 @@ import (
 )
 
 var (
-	ErrCannotRateSelf  = errors.New("cannot rate yourself")
-	ErrTargetNotSeller = errors.New("target user is not a seller")
-	ErrAlreadyRated    = errors.New("you already rated this seller")
+	ErrCannotRateSelf          = errors.New("cannot rate yourself")
+	ErrTargetNotSeller         = errors.New("target user is not a seller")
+	ErrAlreadyRated            = errors.New("you already rated this seller")
+	ErrInsufficientInteraction = errors.New("cần ít nhất 5 tin nhắn qua lại với người bán trước khi đánh giá")
 )
+
+// minMessagesForRating — ngưỡng tương tác tối thiểu để được đánh giá (PRD FR-009 AC-1).
+const minMessagesForRating = 5
 
 type RatingService struct {
 	ratingRepo RatingRepository
@@ -39,6 +43,16 @@ func (s *RatingService) Create(ctx context.Context, reviewerID string, req *mode
 	}
 	if already {
 		return nil, ErrAlreadyRated
+	}
+
+	// BUG #16 fix (PRD FR-009 AC-1): chỉ cho đánh giá khi đã đủ tương tác thực
+	// (≥5 tin nhắn qua lại) → chống rating brigading bằng nhiều tài khoản.
+	msgCount, err := s.ratingRepo.CountMessagesBetween(ctx, reviewerID, req.SellerID)
+	if err != nil {
+		return nil, err
+	}
+	if msgCount < minMessagesForRating {
+		return nil, ErrInsufficientInteraction
 	}
 
 	rating, err := s.ratingRepo.Create(ctx, reviewerID, req)

@@ -2,9 +2,13 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"github.com/sangiagao/rice-marketplace/internal/model"
 )
+
+// ErrSelfReport — không thể tự báo cáo chính mình.
+var ErrSelfReport = errors.New("không thể tự báo cáo chính mình")
 
 type ReportService struct {
 	reportRepo ReportRepository
@@ -15,6 +19,10 @@ func NewReportService(reportRepo ReportRepository) *ReportService {
 }
 
 func (s *ReportService) Create(ctx context.Context, reporterID string, req *model.CreateReportRequest) (*model.Report, error) {
+	// BUG #19: chặn tự báo cáo chính mình.
+	if req.TargetType == "user" && req.TargetID == reporterID {
+		return nil, ErrSelfReport
+	}
 	return s.reportRepo.Create(ctx, reporterID, req)
 }
 

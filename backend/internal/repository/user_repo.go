@@ -300,15 +300,64 @@ func (r *UserRepo) BlockUser(ctx context.Context, id, reason string) (*model.Use
 	return r.scanUser(row)
 }
 
+// DeleteUser — Xóa tài khoản (dùng cho cả user TỰ xóa lẫn owner xóa từ admin).
+// Theo quyết định chủ dự án:
+//   - XÓA SẠCH dữ liệu cá nhân + lịch sử: tin đăng, hội thoại+tin nhắn, đánh giá,
+//     báo cáo, thông báo, device token, phản hồi, inbox-read, chặn user, reaction.
+//   - GIỮ commission/payment/subscription/referral (đối soát kế toán) + audit log
+//     (log thao tác). Vì giữ các bản ghi tiền (FK tới users), DÒNG USER được GIỮ
+//     nhưng ẩn danh hoàn toàn (xóa PII, đổi phone→mã → GIẢI PHÓNG SĐT gốc để đăng
+//     ký lại như lần đầu; phone_hash đổi → không login/không hiện trong tìm kiếm).
+//   - is_blocked=true + deleted_at đánh dấu đã xóa. updated_at do trigger.
 func (r *UserRepo) DeleteUser(ctx context.Context, id string) error {
-	result, err := r.pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, id)
+	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
-	if result.RowsAffected() == 0 {
+	defer tx.Rollback(ctx)
+
+	// 1. Ẩn danh dòng user (giữ lại để neo FK commission/payment).
+	tag, err := tx.Exec(ctx,
+		`UPDATE users SET
+		    deleted_at    = NOW(),
+		    is_blocked    = true,
+		    name          = 'Tài khoản đã xóa',
+		    avatar_url    = NULL,
+		    address       = NULL,
+		    description   = NULL,
+		    org_name      = NULL,
+		    phone         = 'D' || substr(replace(id::text, '-', ''), 1, 14),
+		    phone_hash    = 'deleted:' || id::text,
+		    phone_encrypt = NULL
+		  WHERE id = $1 AND deleted_at IS NULL`, id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
 		return ErrUserNotFound
 	}
-	return nil
+
+	// 2. Xóa sạch dữ liệu cá nhân + lịch sử (KHÔNG đụng commission/payment/
+	//    subscription/referral/audit-log). messages cascade theo conversations.
+	for _, q := range []string{
+		`DELETE FROM message_reactions WHERE user_id = $1`,
+		`DELETE FROM conversations WHERE member_id = $1 OR seller_id = $1`,
+		`DELETE FROM ratings WHERE reviewer_id = $1 OR seller_id = $1`,
+		`DELETE FROM reports WHERE reporter_id = $1`,
+		`UPDATE reports SET resolved_by = NULL WHERE resolved_by = $1`,
+		`DELETE FROM notifications WHERE user_id = $1`,
+		`DELETE FROM device_tokens WHERE user_id = $1`,
+		`DELETE FROM feedbacks WHERE user_id = $1`,
+		`DELETE FROM inbox_read_status WHERE user_id = $1`,
+		`DELETE FROM user_blocks WHERE blocker_id = $1 OR blocked_id = $1`,
+		`DELETE FROM listings WHERE user_id = $1`,
+	} {
+		if _, err := tx.Exec(ctx, q, id); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
 }
 
 func (r *UserRepo) UnblockUser(ctx context.Context, id string) (*model.User, error) {
@@ -607,12 +656,24 @@ func (r *UserRepo) GetDashboardCharts(ctx context.Context) (*DashboardCharts, er
 	}
 
 	// Ensure non-nil slices
-	if charts.UsersByMonth == nil { charts.UsersByMonth = []MonthCount{} }
-	if charts.ListingsByMonth == nil { charts.ListingsByMonth = []MonthCount{} }
-	if charts.SubsByMonth == nil { charts.SubsByMonth = []MonthCount{} }
-	if charts.UsersByRole == nil { charts.UsersByRole = []LabelCount{} }
-	if charts.ListingsByRiceType == nil { charts.ListingsByRiceType = []LabelCount{} }
-	if charts.ListingsByProvince == nil { charts.ListingsByProvince = []LabelCount{} }
+	if charts.UsersByMonth == nil {
+		charts.UsersByMonth = []MonthCount{}
+	}
+	if charts.ListingsByMonth == nil {
+		charts.ListingsByMonth = []MonthCount{}
+	}
+	if charts.SubsByMonth == nil {
+		charts.SubsByMonth = []MonthCount{}
+	}
+	if charts.UsersByRole == nil {
+		charts.UsersByRole = []LabelCount{}
+	}
+	if charts.ListingsByRiceType == nil {
+		charts.ListingsByRiceType = []LabelCount{}
+	}
+	if charts.ListingsByProvince == nil {
+		charts.ListingsByProvince = []LabelCount{}
+	}
 
 	return charts, nil
 }

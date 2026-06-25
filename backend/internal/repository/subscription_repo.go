@@ -90,11 +90,14 @@ func (r *SubscriptionRepo) ExpireOverdue(ctx context.Context) (int, error) {
 
 func (r *SubscriptionRepo) HideListingsForExpired(ctx context.Context) (int, error) {
 	tag, err := r.pool.Exec(ctx,
+		// BUG #2 fix: ẩn tin của MỌI user không còn subscription active (bỏ filter
+		// role='seller' — người bán thật là 'member'/'aff', không ai là 'seller').
+		// Trial vẫn có dòng sub active nên không bị ẩn nhầm.
 		`UPDATE listings SET status = 'hidden_subscription'
 		 WHERE status = 'active'
 		   AND user_id IN (
-		     SELECT DISTINCT u.id FROM users u
-		     WHERE u.role = 'seller'
+		     SELECT u.id FROM users u
+		     WHERE u.deleted_at IS NULL
 		       AND NOT EXISTS (
 		         SELECT 1 FROM subscriptions s
 		         WHERE s.user_id = u.id AND s.status = 'active' AND s.expires_at > NOW()
@@ -260,12 +263,12 @@ type SubRevenueDay struct {
 }
 
 type SubDailyRevenueReport struct {
-	From       string          `json:"from"`
-	To         string          `json:"to"`
-	TotalPaid  int             `json:"total_paid"`
-	TotalTrial int             `json:"total_trial"`
-	TotalRevenue int64         `json:"total_revenue"`
-	Days       []SubRevenueDay `json:"days"`
+	From         string          `json:"from"`
+	To           string          `json:"to"`
+	TotalPaid    int             `json:"total_paid"`
+	TotalTrial   int             `json:"total_trial"`
+	TotalRevenue int64           `json:"total_revenue"`
+	Days         []SubRevenueDay `json:"days"`
 }
 
 func (r *SubscriptionRepo) GetDailyRevenue(ctx context.Context, from, to string) (*SubDailyRevenueReport, error) {

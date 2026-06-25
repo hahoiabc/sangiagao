@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -313,7 +314,7 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 		return
 	}
 
-	err := h.authService.ResetPassword(c.Request.Context(), req.Phone, req.Code, req.NewPassword)
+	userID, err := h.authService.ResetPassword(c.Request.Context(), req.Phone, req.Code, req.NewPassword)
 	h.spamService.LogAttempt(c.Request.Context(), ip, deviceID, req.Phone, "reset_pw", err == nil)
 	if err != nil {
 		switch {
@@ -330,6 +331,9 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 		}
 		return
 	}
+
+	// BUG #12: reset mật khẩu → thu hồi mọi token cũ (đuổi kẻ đang xâm nhập).
+	middleware.RevokeUserTokens(h.cache, userID)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Đặt lại mật khẩu thành công"})
 }
@@ -354,9 +358,23 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	// Check if refresh token was blacklisted (logout)
+	tokenKey := middleware.TokenHash(refreshToken)
+
 	if h.cache != nil {
-		if revoked, _ := h.cache.Exists(c.Request.Context(), "blacklist:"+middleware.TokenHash(refreshToken)); revoked {
+		// BUG #11 (cách A — ân hạn xoay): nếu refresh token này VỪA được xoay
+		// (trong ~60s), trả LẠI đúng cặp token mới đã cấp (idempotent). Nhờ vậy
+		// client KHÔNG khoá refresh tuần tự (mobile bắn nhiều request 401 cùng
+		// lúc) không bị văng đăng nhập khi các lệnh refresh chạy song song.
+		if cached, err := h.cache.Get(c.Request.Context(), "rot:"+tokenKey); err == nil && len(cached) > 0 {
+			var tp jwtpkg.TokenPair
+			if json.Unmarshal(cached, &tp) == nil {
+				h.setAuthCookies(c, tp.AccessToken, tp.RefreshToken)
+				c.JSON(http.StatusOK, tp)
+				return
+			}
+		}
+		// Đã thu hồi (logout) hoặc hết ân hạn xoay → từ chối.
+		if revoked, _ := h.cache.Exists(c.Request.Context(), "blacklist:"+tokenKey); revoked {
 			h.clearAuthCookies(c)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "token has been revoked"})
 			return
@@ -376,6 +394,16 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "refresh failed"})
 		}
 		return
+	}
+
+	// BUG #11: rotation — token cũ chỉ dùng 1 lần. Lưu kết quả xoay với ân hạn
+	// 60s (idempotent cho refresh song song) + blacklist token cũ (chặn tái dùng
+	// sau ân hạn / nếu bị trộm).
+	if h.cache != nil {
+		if b, mErr := json.Marshal(tokens); mErr == nil {
+			_ = h.cache.Set(c.Request.Context(), "rot:"+tokenKey, b, 60*time.Second)
+		}
+		middleware.BlacklistToken(h.cache, refreshToken, 30*24*time.Hour)
 	}
 
 	h.setAuthCookies(c, tokens.AccessToken, tokens.RefreshToken)

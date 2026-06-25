@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 )
 
@@ -15,6 +16,10 @@ var (
 	ErrDeviceLoginBlocked  = errors.New("Thiết bị này đã bị tạm khóa đăng nhập")
 	ErrIPResetPWLimit      = errors.New("Địa chỉ IP này đã đạt giới hạn đặt lại mật khẩu hôm nay")
 	ErrDeviceResetPWLimit  = errors.New("Thiết bị này đã đạt giới hạn đặt lại mật khẩu hôm nay")
+	// BUG (spam fail-open): lỗi DB khi kiểm tra spam → FAIL-CLOSED (chặn) thay vì
+	// âm thầm cho qua. Lỗi DB ở bảng auth_attempts thường đi kèm DB sự cố diện
+	// rộng nên không làm giảm tính sẵn sàng thực tế.
+	ErrSpamCheckUnavailable = errors.New("Hệ thống đang bận, vui lòng thử lại sau giây lát")
 )
 
 type SpamService struct {
@@ -31,7 +36,8 @@ func (s *SpamService) CheckRegister(ctx context.Context, ip, deviceID string) er
 
 	ipCount, err := s.repo.CountByIP(ctx, ip, "register", today)
 	if err != nil {
-		return nil // fail-open
+		slog.Error("spam check db error (fail-closed)", "check", "register_ip", "err", err)
+		return ErrSpamCheckUnavailable
 	}
 	if ipCount >= 3 {
 		return ErrIPRegisterLimit
@@ -40,7 +46,8 @@ func (s *SpamService) CheckRegister(ctx context.Context, ip, deviceID string) er
 	if deviceID != "" {
 		devCount, err := s.repo.CountByDeviceAllTime(ctx, deviceID, "register")
 		if err != nil {
-			return nil
+			slog.Error("spam check db error (fail-closed)", "err", err)
+			return ErrSpamCheckUnavailable
 		}
 		if devCount >= 6 {
 			return ErrDeviceRegisterLimit
@@ -56,7 +63,8 @@ func (s *SpamService) CheckSendOTP(ctx context.Context, ip, deviceID string) err
 
 	ipCount, err := s.repo.CountByIP(ctx, ip, "send_otp", oneHourAgo)
 	if err != nil {
-		return nil
+		slog.Error("spam check db error (fail-closed)", "err", err)
+		return ErrSpamCheckUnavailable
 	}
 	if ipCount >= 5 {
 		return ErrIPOTPLimit
@@ -65,7 +73,8 @@ func (s *SpamService) CheckSendOTP(ctx context.Context, ip, deviceID string) err
 	if deviceID != "" {
 		devCount, err := s.repo.CountByDevice(ctx, deviceID, "send_otp", oneHourAgo)
 		if err != nil {
-			return nil
+			slog.Error("spam check db error (fail-closed)", "err", err)
+			return ErrSpamCheckUnavailable
 		}
 		if devCount >= 5 {
 			return ErrDeviceOTPLimit
@@ -81,7 +90,8 @@ func (s *SpamService) CheckLogin(ctx context.Context, ip, deviceID string) error
 
 	ipCount, err := s.repo.CountByIP(ctx, ip, "login_fail", oneHourAgo)
 	if err != nil {
-		return nil
+		slog.Error("spam check db error (fail-closed)", "err", err)
+		return ErrSpamCheckUnavailable
 	}
 	if ipCount >= 10 {
 		return ErrIPLoginBlocked
@@ -90,7 +100,8 @@ func (s *SpamService) CheckLogin(ctx context.Context, ip, deviceID string) error
 	if deviceID != "" {
 		devCount, err := s.repo.CountByDevice(ctx, deviceID, "login_fail", oneHourAgo)
 		if err != nil {
-			return nil
+			slog.Error("spam check db error (fail-closed)", "err", err)
+			return ErrSpamCheckUnavailable
 		}
 		if devCount >= 10 {
 			return ErrDeviceLoginBlocked
@@ -106,7 +117,8 @@ func (s *SpamService) CheckResetPassword(ctx context.Context, ip, deviceID strin
 
 	ipCount, err := s.repo.CountByIP(ctx, ip, "reset_pw", today)
 	if err != nil {
-		return nil
+		slog.Error("spam check db error (fail-closed)", "err", err)
+		return ErrSpamCheckUnavailable
 	}
 	if ipCount >= 3 {
 		return ErrIPResetPWLimit
@@ -115,7 +127,8 @@ func (s *SpamService) CheckResetPassword(ctx context.Context, ip, deviceID strin
 	if deviceID != "" {
 		devCount, err := s.repo.CountByDevice(ctx, deviceID, "reset_pw", today)
 		if err != nil {
-			return nil
+			slog.Error("spam check db error (fail-closed)", "err", err)
+			return ErrSpamCheckUnavailable
 		}
 		if devCount >= 3 {
 			return ErrDeviceResetPWLimit

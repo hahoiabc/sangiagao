@@ -78,8 +78,8 @@ func (s *InboxService) ListForUser(ctx context.Context, userID, userRole string,
 	return s.inboxRepo.ListForUser(ctx, userID, userRole, page, limit)
 }
 
-func (s *InboxService) GetByID(ctx context.Context, id, userID string) (*model.InboxMessage, error) {
-	return s.inboxRepo.GetByID(ctx, id, userID)
+func (s *InboxService) GetByID(ctx context.Context, id, userID, userRole string) (*model.InboxMessage, error) {
+	return s.inboxRepo.GetByID(ctx, id, userID, userRole)
 }
 
 func (s *InboxService) MarkRead(ctx context.Context, userID, inboxID string) error {

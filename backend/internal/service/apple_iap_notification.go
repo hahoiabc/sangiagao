@@ -213,7 +213,7 @@ func (s *AppleIAPService) applyRevoked(ctx context.Context, t *apple.Transaction
 	}
 
 	_, err = tx.Exec(ctx,
-		`UPDATE listings SET status = 'hidden', updated_at = NOW()
+		`UPDATE listings SET status = 'hidden_subscription', updated_at = NOW()
 		  WHERE user_id = $1 AND status = 'active'`,
 		userID,
 	)
@@ -229,7 +229,7 @@ func (s *AppleIAPService) applyRevoked(ctx context.Context, t *apple.Transaction
 	// và nếu fail cũng không nên rollback việc mark expired.
 	if s.engine != nil {
 		if _, err := s.engine.CancelCommissionsForSubscription(ctx, subID); err != nil {
-			slog.Warn("commission clawback failed on Apple revoke", "sub_id", subID, "err", err)
+			slog.Error("commission clawback failed on Apple revoke", "sub_id", subID, "err", err)
 		}
 	}
 	return nil

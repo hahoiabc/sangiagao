@@ -2,10 +2,15 @@ package repository
 
 import (
 	"context"
+	"errors"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sangiagao/rice-marketplace/internal/model"
 )
+
+// ErrDuplicateReport — đã có báo cáo pending cho cùng (reporter, target).
+var ErrDuplicateReport = errors.New("bạn đã báo cáo nội dung này rồi")
 
 type ReportRepo struct {
 	pool *pgxpool.Pool
@@ -36,7 +41,17 @@ func (r *ReportRepo) Create(ctx context.Context, reporterID string, req *model.C
 		 RETURNING `+reportColumns,
 		reporterID, req.TargetType, req.TargetID, req.Reason, req.Description,
 	)
-	return scanReport(row)
+	rep, err := scanReport(row)
+	if err != nil {
+		// BUG #19: map unique-violation (idx_reports_unique_pending) → lỗi sạch
+		// thay vì 500.
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return nil, ErrDuplicateReport
+		}
+		return nil, err
+	}
+	return rep, nil
 }
 
 func (r *ReportRepo) ListByStatus(ctx context.Context, status string, page, limit int) ([]*model.Report, int, error) {

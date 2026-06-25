@@ -6,8 +6,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sangiagao/rice-marketplace/internal/middleware"
 	"github.com/sangiagao/rice-marketplace/internal/model"
 	"github.com/sangiagao/rice-marketplace/internal/service"
+	"github.com/sangiagao/rice-marketplace/pkg/cache"
 )
 
 // AuditLogger logs admin actions for accountability.
@@ -19,11 +21,15 @@ type AdminHandler struct {
 	adminService    AdminServiceInterface
 	audit           AuditLogger
 	referralService *service.ReferralService
+	cache           cache.Cache
 }
 
 func NewAdminHandler(adminService AdminServiceInterface, audit AuditLogger) *AdminHandler {
 	return &AdminHandler{adminService: adminService, audit: audit}
 }
+
+// SetCache wires Redis for immediate token revocation on user block (BUG #13).
+func (h *AdminHandler) SetCache(c cache.Cache) { h.cache = c }
 
 // SetReferralService wires the affiliate referral service for auto-creating
 // referral codes when a user is promoted to role='aff'.
@@ -152,6 +158,9 @@ func (h *AdminHandler) BlockUser(c *gin.Context) {
 		return
 	}
 
+	// BUG #13: khóa tài khoản → vô hiệu token cũ NGAY (không chờ hết 15').
+	middleware.RevokeUserTokens(h.cache, userID)
+
 	h.logAudit(c.Request.Context(), callerID, "block_user", "user", userID, map[string]interface{}{"reason": req.Reason})
 	c.JSON(http.StatusOK, gin.H{"message": "user blocked", "user": user})
 }
@@ -238,6 +247,9 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 		return
 	}
 
+	// Thu hồi mọi token của tài khoản vừa bị xóa (đăng xuất ngay).
+	middleware.RevokeUserTokens(h.cache, userID)
+
 	h.logAudit(c.Request.Context(), callerID, "delete_user", "user", userID, nil)
 	c.JSON(http.StatusOK, gin.H{"message": "Đã xóa tài khoản"})
 }
@@ -264,6 +276,11 @@ func (h *AdminHandler) BatchBlockUsers(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to batch block users"})
 		return
+	}
+
+	// BUG #13: vô hiệu token cũ của mọi user vừa khóa.
+	for _, uid := range req.UserIDs {
+		middleware.RevokeUserTokens(h.cache, uid)
 	}
 
 	c.JSON(http.StatusOK, result)

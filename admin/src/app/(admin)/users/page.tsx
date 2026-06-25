@@ -495,6 +495,10 @@ export default function UsersPage() {
   const [roleDialog, setRoleDialog] = useState<User | null>(null);
   const [newRole, setNewRole] = useState("");
 
+  // Delete account dialog (owner xóa từ admin trở xuống)
+  const [deleteDialog, setDeleteDialog] = useState<User | null>(null);
+  const [deletingUser, setDeletingUser] = useState(false);
+
   const limit = 20;
 
   const fetchUsers = useCallback(async () => {
@@ -569,6 +573,21 @@ export default function UsersPage() {
       fetchUsers();
     } catch {
       toast.error("Đổi vai trò thất bại");
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (!deleteDialog) return;
+    setDeletingUser(true);
+    try {
+      await deleteUser("", deleteDialog.id);
+      toast.success(`Đã xóa tài khoản ${deleteDialog.phone}`);
+      setDeleteDialog(null);
+      fetchUsers();
+    } catch {
+      toast.error("Xóa tài khoản thất bại");
+    } finally {
+      setDeletingUser(false);
     }
   }
 
@@ -792,6 +811,15 @@ export default function UsersPage() {
                                 </DropdownMenuItem>
                               </>
                             )}
+                            {currentUser?.role === "owner" && user.role !== "owner" && currentUser?.id !== user.id && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => setDeleteDialog(user)} className="text-destructive focus:text-destructive">
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Xóa tài khoản
+                                </DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -894,6 +922,32 @@ export default function UsersPage() {
             <Button variant="ghost" onClick={() => setRoleDialog(null)}>Hủy</Button>
             <Button onClick={handleChangeRole} disabled={!newRole || newRole === roleDialog?.role}>
               Xác nhận
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Xóa tài khoản (owner) — cảnh báo mạnh */}
+      <Dialog open={!!deleteDialog} onOpenChange={() => { if (!deletingUser) setDeleteDialog(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">⚠️ Xóa vĩnh viễn tài khoản</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 text-sm">
+            <p>
+              Xóa tài khoản <strong>{deleteDialog?.phone}</strong> ({deleteDialog?.name || "Chưa đặt tên"} — vai trò <strong>{deleteDialog?.role}</strong>)?
+            </p>
+            <p className="font-medium text-destructive">
+              KHÔNG THỂ HOÀN TÁC. Toàn bộ tin đăng, tin nhắn, đánh giá, thông báo và lịch sử của tài khoản sẽ bị xóa sạch.
+            </p>
+            <p className="text-muted-foreground">
+              Chỉ giữ lại dữ liệu đối soát (hoa hồng / thanh toán) và log thao tác. Số điện thoại được giải phóng để đăng ký lại như tài khoản mới.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteDialog(null)} disabled={deletingUser}>Hủy</Button>
+            <Button variant="destructive" onClick={handleDeleteAccount} disabled={deletingUser}>
+              {deletingUser ? "Đang xóa..." : "Xóa vĩnh viễn"}
             </Button>
           </DialogFooter>
         </DialogContent>

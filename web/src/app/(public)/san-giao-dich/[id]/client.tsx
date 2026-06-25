@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { safeJsonLd } from "@/lib/seo-helpers";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -170,7 +171,7 @@ export default function ListingDetailPage() {
       {jsonLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
         />
       )}
       <Link href="/san-giao-dich" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">

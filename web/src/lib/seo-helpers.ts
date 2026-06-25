@@ -43,3 +43,16 @@ export function formatDateVN(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
+
+/**
+ * BUG #10: Serialize JSON-LD an toàn để nhúng vào <script>.
+ * JSON.stringify KHÔNG escape `<`,`>`,`&` → nội dung do người bán nhập
+ * (title/description/seller.name) có thể chứa `</script>` để thoát thẻ và chạy
+ * JS (stored XSS). Escape các ký tự này thành \uXXXX.
+ */
+export function safeJsonLd(obj: unknown): string {
+  return JSON.stringify(obj)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026");
+}

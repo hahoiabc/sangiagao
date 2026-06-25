@@ -17,7 +17,7 @@ type AuthServiceInterface interface {
 	RefreshToken(ctx context.Context, refreshToken string) (*jwtpkg.TokenPair, error)
 	CompleteRegister(ctx context.Context, phone, code, name, password, province, ward, address string) (*service.RegisterResult, error)
 	LoginPassword(ctx context.Context, phone, password string) (*service.RegisterResult, error)
-	ResetPassword(ctx context.Context, phone, code, newPassword string) error
+	ResetPassword(ctx context.Context, phone, code, newPassword string) (string, error)
 	CheckPhoneRegistered(ctx context.Context, phone string) error
 }
 
@@ -131,7 +131,7 @@ type InboxServiceInterface interface {
 	Update(ctx context.Context, id string, req *model.UpdateInboxRequest) (*model.InboxMessage, error)
 	Delete(ctx context.Context, id string) error
 	ListForUser(ctx context.Context, userID, userRole string, page, limit int) ([]*model.InboxMessage, int, error)
-	GetByID(ctx context.Context, id, userID string) (*model.InboxMessage, error)
+	GetByID(ctx context.Context, id, userID, userRole string) (*model.InboxMessage, error)
 	MarkRead(ctx context.Context, userID, inboxID string) error
 	UnreadCount(ctx context.Context, userID, userRole string) (int, error)
 	ListAll(ctx context.Context, page, limit int) ([]*model.InboxMessage, int, error)

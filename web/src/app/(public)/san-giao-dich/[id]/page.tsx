@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import ListingDetailPage from "./client";
+import { safeJsonLd } from "@/lib/seo-helpers";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
 
@@ -97,7 +98,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       {jsonLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
         />
       )}
       <ListingDetailPage />

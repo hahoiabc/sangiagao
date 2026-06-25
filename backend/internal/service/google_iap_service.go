@@ -29,11 +29,11 @@ func NewGoogleIAPService(pool *pgxpool.Pool, client *google.Client, packageName 
 func (s *GoogleIAPService) AttachCommissionEngine(e *CommissionEngine) { s.engine = e }
 
 type GoogleVerifyResult struct {
-	SubscriptionID string    `json:"subscription_id"`
-	ProductID      string    `json:"product_id"`
-	ExpiresAt      time.Time `json:"expires_at"`
-	Months         int       `json:"months"`
-	IsNewActivation bool     `json:"is_new_activation"`
+	SubscriptionID  string    `json:"subscription_id"`
+	ProductID       string    `json:"product_id"`
+	ExpiresAt       time.Time `json:"expires_at"`
+	Months          int       `json:"months"`
+	IsNewActivation bool      `json:"is_new_activation"`
 }
 
 type googleProductInfo struct {
@@ -190,7 +190,7 @@ func (s *GoogleIAPService) recordCommission(ctx context.Context, refereeID, subI
 func (s *GoogleIAPService) restoreListings(ctx context.Context, userID string) (int, error) {
 	tag, err := s.pool.Exec(ctx,
 		`UPDATE listings SET status = 'active', updated_at = NOW()
-		  WHERE user_id = $1 AND status = 'hidden'`,
+		  WHERE user_id = $1 AND status = 'hidden_subscription'`,
 		userID,
 	)
 	if err != nil {
@@ -341,7 +341,7 @@ func (s *GoogleIAPService) applyRevoked(ctx context.Context, purchaseToken strin
 		return err
 	}
 	_, err = tx.Exec(ctx,
-		`UPDATE listings SET status = 'hidden', updated_at = NOW()
+		`UPDATE listings SET status = 'hidden_subscription', updated_at = NOW()
 		  WHERE user_id = $1 AND status = 'active'`, userID)
 	if err != nil {
 		return err
@@ -353,7 +353,7 @@ func (s *GoogleIAPService) applyRevoked(ctx context.Context, purchaseToken strin
 	// Refund/revoke = clawback hoa hồng pending/payable (paid không rollback được).
 	if s.engine != nil {
 		if _, err := s.engine.CancelCommissionsForSubscription(ctx, subID); err != nil {
-			slog.Warn("commission clawback failed on Google revoke", "sub_id", subID, "err", err)
+			slog.Error("commission clawback failed on Google revoke", "sub_id", subID, "err", err)
 		}
 	}
 	return nil

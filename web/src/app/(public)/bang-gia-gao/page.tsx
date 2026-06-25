@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getSEOPriceBoard } from "@/services/api";
-import { formatPriceVND, formatDateVN } from "@/lib/seo-helpers";
+import { formatPriceVND, formatDateVN, safeJsonLd } from "@/lib/seo-helpers";
 
 // ISR — regenerate every 1 hour
 export const revalidate = 3600;
@@ -106,7 +106,7 @@ export default async function PriceBoardIndexPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
+          __html: safeJsonLd({
             "@context": "https://schema.org",
             "@type": "WebSite",
             name: "SanGiaGao.vn",

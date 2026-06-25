@@ -102,3 +102,18 @@ func (r *RatingRepo) GetSellerRole(ctx context.Context, userID string) (string, 
 	}
 	return role, err
 }
+
+// CountMessagesBetween đếm tổng tin nhắn trao đổi (cả 2 chiều) trong các cuộc
+// hội thoại giữa 2 user. Dùng để gate đánh giá (PRD FR-009: ≥5 tin nhắn).
+// Postgres là nguồn thật: app gửi tin qua REST (ghi Postgres) rồi relay realtime.
+func (r *RatingRepo) CountMessagesBetween(ctx context.Context, userA, userB string) (int, error) {
+	var n int
+	err := r.pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM messages m
+		   JOIN conversations c ON c.id = m.conversation_id
+		  WHERE (c.member_id = $1 AND c.seller_id = $2)
+		     OR (c.member_id = $2 AND c.seller_id = $1)`,
+		userA, userB,
+	).Scan(&n)
+	return n, err
+}

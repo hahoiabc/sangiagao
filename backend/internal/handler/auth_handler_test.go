@@ -56,9 +56,9 @@ func (m *mockAuthService) LoginPassword(ctx context.Context, phone, password str
 	}
 	return args.Get(0).(*service.RegisterResult), args.Error(1)
 }
-func (m *mockAuthService) ResetPassword(ctx context.Context, phone, code, newPassword string) error {
+func (m *mockAuthService) ResetPassword(ctx context.Context, phone, code, newPassword string) (string, error) {
 	args := m.Called(ctx, phone, code, newPassword)
-	return args.Error(0)
+	return args.String(0), args.Error(1)
 }
 func (m *mockAuthService) CheckPhoneRegistered(ctx context.Context, phone string) error {
 	args := m.Called(ctx, phone)

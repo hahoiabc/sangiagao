@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/sangiagao/rice-marketplace/internal/model"
 	"golang.org/x/crypto/bcrypt"
@@ -10,14 +12,31 @@ import (
 
 // ErrInvalidName, ErrInvalidAddress declared in auth_service.go.
 
+// ErrInvalidMediaURL — BUG #20: avatar/ảnh tin phải thuộc storage của hệ thống
+// (chống nhét javascript:/data:/host ngoài → stored XSS/hotlink).
+var ErrInvalidMediaURL = errors.New("URL ảnh không hợp lệ")
+
+// validMediaURL kiểm tra url thuộc base storage công khai. base rỗng (chưa cấu
+// hình, vd test) → bỏ qua để không vỡ test.
+func validMediaURL(base, url string) bool {
+	if base == "" {
+		return true
+	}
+	return strings.HasPrefix(url, base)
+}
+
 type UserService struct {
-	userRepo UserRepository
-	subRepo  SubscriptionRepository
+	userRepo     UserRepository
+	subRepo      SubscriptionRepository
+	mediaBaseURL string
 }
 
 func NewUserService(userRepo UserRepository, subRepo SubscriptionRepository) *UserService {
 	return &UserService{userRepo: userRepo, subRepo: subRepo}
 }
+
+// SetMediaBaseURL wires the public storage base URL for avatar validation (#20).
+func (s *UserService) SetMediaBaseURL(u string) { s.mediaBaseURL = u }
 
 func (s *UserService) GetMe(ctx context.Context, userID string) (*model.User, error) {
 	return s.userRepo.GetByID(ctx, userID)
@@ -70,6 +89,9 @@ func (s *UserService) UpdateProfile(ctx context.Context, userID string, req *mod
 }
 
 func (s *UserService) UpdateAvatar(ctx context.Context, userID, avatarURL string) (*model.User, error) {
+	if !validMediaURL(s.mediaBaseURL, avatarURL) {
+		return nil, ErrInvalidMediaURL
+	}
 	return s.userRepo.UpdateAvatar(ctx, userID, avatarURL)
 }
 
@@ -135,7 +157,8 @@ func (s *UserService) VerifyPassword(ctx context.Context, userID, password strin
 	return nil
 }
 
-// DeleteAccount permanently deletes the user's account and all associated data.
+// DeleteAccount soft-deletes + ẩn danh tài khoản (BUG #9): xóa PII, chặn đăng
+// nhập, ẩn tin đăng; GIỮ commission/payment để đối soát. Không hard delete.
 func (s *UserService) DeleteAccount(ctx context.Context, userID string) error {
 	return s.userRepo.DeleteUser(ctx, userID)
 }

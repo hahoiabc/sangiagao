@@ -257,9 +257,12 @@ func (e *CommissionEngine) UpdateSubscriptionNet(ctx context.Context, subscripti
 // Gọi từ Apple/Google REFUND webhook handler. Trả về số records cancel để
 // log + admin báo cáo.
 func (e *CommissionEngine) CancelCommissionsForSubscription(ctx context.Context, subscriptionID string) (int64, error) {
+	// BUG #1 fix: bảng đúng là commission_records (KHÔNG phải 'commissions'), và
+	// bảng này KHÔNG có cột updated_at. Trước đây sai cả 2 → clawback luôn lỗi
+	// runtime, bị nuốt thành Warn → refund vẫn được payout.
 	tag, err := e.pool.Exec(ctx,
-		`UPDATE commissions
-		    SET status = 'cancelled', updated_at = NOW()
+		`UPDATE commission_records
+		    SET status = 'cancelled'
 		  WHERE subscription_id = $1
 		    AND status IN ('pending', 'payable')`,
 		subscriptionID,

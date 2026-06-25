@@ -40,6 +40,10 @@ func (m *mockRatingRepo) GetSellerRole(ctx context.Context, userID string) (stri
 	args := m.Called(ctx, userID)
 	return args.String(0), args.Error(1)
 }
+func (m *mockRatingRepo) CountMessagesBetween(ctx context.Context, userA, userB string) (int, error) {
+	args := m.Called(ctx, userA, userB)
+	return args.Int(0), args.Error(1)
+}
 
 // --- Tests ---
 
@@ -50,11 +54,25 @@ func TestRatingCreate_Success(t *testing.T) {
 	req := &model.CreateRatingRequest{SellerID: "seller-1", Stars: 5, Comment: "Great seller!!!!"}
 	repo.On("GetSellerRole", mock.Anything, "seller-1").Return("member", nil)
 	repo.On("HasRated", mock.Anything, "buyer-1", "seller-1").Return(false, nil)
+	repo.On("CountMessagesBetween", mock.Anything, "buyer-1", "seller-1").Return(5, nil)
 	repo.On("Create", mock.Anything, "buyer-1", req).Return(&model.Rating{ID: "r-1", Stars: 5}, nil)
 
 	rating, err := svc.Create(context.Background(), "buyer-1", req)
 	assert.NoError(t, err)
 	assert.Equal(t, 5, rating.Stars)
+}
+
+func TestRatingCreate_InsufficientInteraction(t *testing.T) {
+	repo := new(mockRatingRepo)
+	svc := NewRatingService(repo)
+
+	req := &model.CreateRatingRequest{SellerID: "seller-1", Stars: 5, Comment: "No chat yet!!!!"}
+	repo.On("GetSellerRole", mock.Anything, "seller-1").Return("member", nil)
+	repo.On("HasRated", mock.Anything, "buyer-1", "seller-1").Return(false, nil)
+	repo.On("CountMessagesBetween", mock.Anything, "buyer-1", "seller-1").Return(4, nil)
+
+	_, err := svc.Create(context.Background(), "buyer-1", req)
+	assert.ErrorIs(t, err, ErrInsufficientInteraction)
 }
 
 func TestRatingCreate_SelfRate(t *testing.T) {
@@ -73,6 +91,7 @@ func TestRatingCreate_MemberCanReceiveRating(t *testing.T) {
 	req := &model.CreateRatingRequest{SellerID: "user-2", Stars: 5, Comment: "Great member!"}
 	repo.On("GetSellerRole", mock.Anything, "user-2").Return("member", nil)
 	repo.On("HasRated", mock.Anything, "user-1", "user-2").Return(false, nil)
+	repo.On("CountMessagesBetween", mock.Anything, "user-1", "user-2").Return(10, nil)
 	repo.On("Create", mock.Anything, "user-1", req).Return(&model.Rating{ID: "r-2", Stars: 5}, nil)
 
 	rating, err := svc.Create(context.Background(), "user-1", req)

@@ -5,18 +5,24 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sangiagao/rice-marketplace/internal/middleware"
 	"github.com/sangiagao/rice-marketplace/internal/model"
 	"github.com/sangiagao/rice-marketplace/internal/repository"
 	"github.com/sangiagao/rice-marketplace/internal/service"
+	"github.com/sangiagao/rice-marketplace/pkg/cache"
 )
 
 type UserHandler struct {
 	userService UserServiceInterface
+	cache       cache.Cache
 }
 
 func NewUserHandler(userService UserServiceInterface) *UserHandler {
 	return &UserHandler{userService: userService}
 }
+
+// SetCache wires Redis for token revocation on password change (BUG #12).
+func (h *UserHandler) SetCache(c cache.Cache) { h.cache = c }
 
 func (h *UserHandler) GetMe(c *gin.Context) {
 	userID := c.GetString("user_id")
@@ -87,6 +93,10 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 
 	user, err := h.userService.UpdateAvatar(c.Request.Context(), userID, req.URL)
 	if err != nil {
+		if errors.Is(err, service.ErrInvalidMediaURL) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "URL ảnh không hợp lệ"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update avatar"})
 		return
 	}
@@ -120,6 +130,10 @@ func (h *UserHandler) ChangePassword(c *gin.Context) {
 		}
 		return
 	}
+
+	// BUG #12: đổi mật khẩu → vô hiệu hóa mọi token cũ (kể cả phiên hiện tại;
+	// người dùng đăng nhập lại với mật khẩu mới).
+	middleware.RevokeUserTokens(h.cache, userID)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Đổi mật khẩu thành công"})
 }
@@ -179,6 +193,9 @@ func (h *UserHandler) DeleteAccount(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Xóa tài khoản thất bại"})
 		return
 	}
+
+	// BUG #9: thu hồi mọi token của tài khoản vừa xóa (đăng xuất mọi thiết bị).
+	middleware.RevokeUserTokens(h.cache, userID)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Tài khoản đã được xóa thành công"})
 }

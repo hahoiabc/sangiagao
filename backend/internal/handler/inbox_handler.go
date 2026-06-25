@@ -47,9 +47,10 @@ func (h *InboxHandler) List(c *gin.Context) {
 
 func (h *InboxHandler) GetByID(c *gin.Context) {
 	userID := c.GetString("user_id")
+	userRole := c.GetString("user_role")
 	id := c.Param("id")
 
-	msg, err := h.inboxService.GetByID(c.Request.Context(), id, userID)
+	msg, err := h.inboxService.GetByID(c.Request.Context(), id, userID, userRole)
 	if err != nil {
 		if errors.Is(err, repository.ErrInboxNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "not_found", "message": "Không tìm thấy thông báo"})

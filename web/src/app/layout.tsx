@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { safeJsonLd } from "@/lib/seo-helpers";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
@@ -29,7 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
+            __html: safeJsonLd({
               "@context": "https://schema.org",
               "@type": "Organization",
               name: "SanGiaGao.Vn",

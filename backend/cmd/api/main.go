@@ -11,9 +11,9 @@ import (
 
 	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
+	"github.com/sangiagao/rice-marketplace/internal/apple"
 	"github.com/sangiagao/rice-marketplace/internal/config"
 	"github.com/sangiagao/rice-marketplace/internal/database"
-	"github.com/sangiagao/rice-marketplace/internal/apple"
 	googleiap "github.com/sangiagao/rice-marketplace/internal/google"
 	"github.com/sangiagao/rice-marketplace/internal/handler"
 	"github.com/sangiagao/rice-marketplace/internal/middleware"
@@ -57,10 +57,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Redis (optional — used for caching)
+	// Redis — used for caching + token blacklist/revocation.
+	// BUG #14: ở production Redis là BẮT BUỘC (logout/blacklist phụ thuộc Redis;
+	// thiếu Redis = logout giả). Dev vẫn cho phép thiếu Redis (non-fatal).
 	redisClient, err := database.NewRedisClient(cfg.RedisURL)
 	if err != nil {
-		slog.Warn("Redis connection failed (non-fatal)", "error", err)
+		if cfg.AppEnv == "production" {
+			slog.Error("Redis connection failed (REQUIRED in production for token revocation)", "error", err)
+			os.Exit(1)
+		}
+		slog.Warn("Redis connection failed (non-fatal in dev)", "error", err)
 	} else {
 		slog.Info("Redis connected")
 	}
@@ -155,7 +161,9 @@ func main() {
 	authService := service.NewAuthService(userRepo, otpRepo, subRepo, jwtManager, smsSender)
 	authService.SetPool(pushPool)
 	userService := service.NewUserService(userRepo, subRepo)
+	userService.SetMediaBaseURL(cfg.MinIOPublicURL) // BUG #20: validate avatar URL
 	listingService := service.NewListingService(listingRepo, sponsorRepo, userRepo, catalogRepo)
+	listingService.SetMediaBaseURL(cfg.MinIOPublicURL) // BUG #20: validate listing image URL
 	if appCache != nil {
 		listingService.SetCache(appCache)
 	}
@@ -222,6 +230,9 @@ func main() {
 	}
 	authHandler.SetReferralService(referralService)
 	userHandler := handler.NewUserHandler(userService)
+	if appCache != nil {
+		userHandler.SetCache(appCache) // BUG #12: thu hồi token khi đổi mật khẩu
+	}
 	listingHandler := handler.NewListingHandler(listingService)
 	catalogHandler := handler.NewCatalogHandler(catalogService)
 	marketplaceHandler := handler.NewMarketplaceHandler(listingService, catalogService)
@@ -263,6 +274,9 @@ func main() {
 	notifHandler := handler.NewNotificationHandler(notifService)
 	adminHandler := handler.NewAdminHandler(adminService, auditRepo)
 	adminHandler.SetReferralService(referralService)
+	if appCache != nil {
+		adminHandler.SetCache(appCache) // BUG #13: thu hồi token khi khóa tài khoản
+	}
 	convHandler := handler.NewConversationHandler(chatService, notifService)
 	convHandler.SetPool(pushPool)
 	sponsorHandler := handler.NewSponsorHandler(sponsorService)
@@ -451,7 +465,7 @@ func main() {
 				protected.POST("/upload/image", uploadLimit, uploadHandler.UploadImage)
 				protected.POST("/upload/audio", uploadLimit, uploadHandler.UploadAudio)
 				protected.GET("/upload/presign", uploadLimit, uploadHandler.GetPresignedPutURL)
-				protected.POST("/upload/confirm", uploadHandler.ConfirmPresignedUpload)
+				protected.POST("/upload/confirm", uploadLimit, uploadHandler.ConfirmPresignedUpload) // BUG #6: rate-limit
 			}
 
 			// Payments
@@ -510,7 +524,7 @@ func main() {
 				conversations.POST("/:id/messages/batch-recall", convHandler.BatchRecallMessages)
 				conversations.PUT("/:id/messages/:msgId/reaction", convHandler.ToggleReaction)
 
-				}
+			}
 
 			// Subscription
 			protected.GET("/subscription/status", subHandler.GetStatus)
@@ -557,10 +571,10 @@ func main() {
 			}
 
 			// Rating
-			protected.POST("/ratings", middleware.RequirePermission(permissionService, "ratings.create"), ratingHandler.Create)
+			protected.POST("/ratings", middleware.RequirePermission(permissionService, "ratings.create"), middleware.UserRateLimit(appCache, "ratelimit:rating", 20, 24*time.Hour), ratingHandler.Create) // BUG #18
 
 			// Report
-			protected.POST("/reports", middleware.RequirePermission(permissionService, "reports.create"), reportHandler.Create)
+			protected.POST("/reports", middleware.RequirePermission(permissionService, "reports.create"), middleware.UserRateLimit(appCache, "ratelimit:report", 10, 24*time.Hour), reportHandler.Create) // BUG #18
 
 			// Feedback
 			protected.POST("/feedbacks", middleware.RequirePermission(permissionService, "feedback.create"), feedbackHandler.Create)
@@ -575,7 +589,7 @@ func main() {
 				admin.GET("/dashboard/charts", middleware.RequirePermission(permissionService, "dashboard.charts"), adminHandler.GetDashboardCharts)
 
 				// Payments — admin + editor
-				admin.GET("/payments", paymentHandler.AdminListOrders)
+				admin.GET("/payments", middleware.RequirePermission(permissionService, "payments.view"), paymentHandler.AdminListOrders) // BUG #5
 
 				// Listings — admin + editor
 				admin.DELETE("/listings/:id", middleware.RequirePermission(permissionService, "listings.delete_any"), adminHandler.DeleteListing)
@@ -615,11 +629,11 @@ func main() {
 				admin.GET("/system/stats", middleware.RequirePermission(permissionService, "system.monitor"), systemHandler.GetStats)
 
 				// Notifications — admin + editor
-				admin.POST("/notifications/broadcast", middleware.RequirePermission(permissionService, "notifications.broadcast"), notifHandler.Broadcast)
-				admin.POST("/notifications/send", middleware.RequirePermission(permissionService, "notifications.send_individual"), notifHandler.SendToUser)
+				admin.POST("/notifications/broadcast", middleware.RequirePermission(permissionService, "notifications.broadcast"), middleware.UserRateLimit(appCache, "ratelimit:broadcast", 20, 1*time.Hour), notifHandler.Broadcast)     // BUG #21
+				admin.POST("/notifications/send", middleware.RequirePermission(permissionService, "notifications.send_individual"), middleware.UserRateLimit(appCache, "ratelimit:notif_send", 100, 1*time.Hour), notifHandler.SendToUser) // BUG #21
 
 				// Zalo ZNS — status viewable by admin+owner, modify owner only
-				admin.GET("/zalo-zns/status", znsHandler.GetStatus)
+				admin.GET("/zalo-zns/status", middleware.RequirePermission(permissionService, "zns.view"), znsHandler.GetStatus) // BUG #5
 				znsOnly := admin.Group("")
 				znsOnly.Use(middleware.RequireRole("owner"))
 				{
@@ -628,20 +642,24 @@ func main() {
 				}
 
 				// Site settings management
-				admin.PUT("/site-settings/slogan", siteSettingsHandler.UpdateSlogan)
-				admin.PUT("/site-settings/slogan-color", siteSettingsHandler.UpdateSloganColor)
-				admin.PUT("/site-settings/guide-video", siteSettingsHandler.UpdateGuideVideo)
-				admin.PUT("/site-settings/about-page", siteSettingsHandler.UpdateAboutPage)
+				ss := middleware.RequirePermission(permissionService, "site_settings.manage") // BUG #5
+				admin.PUT("/site-settings/slogan", ss, siteSettingsHandler.UpdateSlogan)
+				admin.PUT("/site-settings/slogan-color", ss, siteSettingsHandler.UpdateSloganColor)
+				admin.PUT("/site-settings/guide-video", ss, siteSettingsHandler.UpdateGuideVideo)
+				admin.PUT("/site-settings/about-page", ss, siteSettingsHandler.UpdateAboutPage)
 
 				// System Inbox management
-				admin.GET("/inbox", inboxHandler.AdminList)
-				admin.POST("/inbox", inboxHandler.AdminCreate)
-				admin.PUT("/inbox/:id", inboxHandler.AdminUpdate)
-				admin.DELETE("/inbox/:id", inboxHandler.AdminDelete)
+				ibx := middleware.RequirePermission(permissionService, "inbox.manage") // BUG #5
+				admin.GET("/inbox", ibx, inboxHandler.AdminList)
+				admin.POST("/inbox", ibx, inboxHandler.AdminCreate)
+				admin.PUT("/inbox/:id", ibx, inboxHandler.AdminUpdate)
+				admin.DELETE("/inbox/:id", ibx, inboxHandler.AdminDelete)
 
 				// Permissions management — owner + admin only
-				admin.GET("/permissions", permissionHandler.GetPermissions)
-				admin.PUT("/permissions", permissionHandler.SavePermissions)
+				// BUG #5: chỉ owner/admin được xem/ghi đè ma trận quyền (editor KHÔNG).
+				pm := middleware.RequirePermission(permissionService, "permissions.manage")
+				admin.GET("/permissions", pm, permissionHandler.GetPermissions)
+				admin.PUT("/permissions", pm, permissionHandler.SavePermissions)
 
 				// User management — admin only
 				adminOnly := admin.Group("")
@@ -677,8 +695,8 @@ func main() {
 			refAdmin.Use(middleware.RequireRole("owner", "admin", "aff"))
 			{
 				refAdmin.GET("/rules", adminReferralHandler.ListRules)
-			refAdmin.GET("/referees/:referrer_id", adminReferralHandler.ListReferees)
-			refAdmin.GET("/all-referees", adminReferralHandler.ListAllReferees)
+				refAdmin.GET("/referees/:referrer_id", adminReferralHandler.ListReferees)
+				refAdmin.GET("/all-referees", adminReferralHandler.ListAllReferees)
 				refAdmin.POST("/rules", adminReferralHandler.UpsertRule) // admin-only check inside
 				refAdmin.GET("/leaderboard", adminReferralHandler.Leaderboard)
 				refAdmin.GET("/payable", adminReferralHandler.ListPayablePerReferrer)

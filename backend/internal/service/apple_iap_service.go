@@ -221,7 +221,7 @@ func (s *AppleIAPService) upsert(ctx context.Context, userID string, info *apple
 func (s *AppleIAPService) restoreListings(ctx context.Context, userID string) (int, error) {
 	tag, err := s.pool.Exec(ctx,
 		`UPDATE listings SET status = 'active', updated_at = NOW()
-		  WHERE user_id = $1 AND status = 'hidden'`,
+		  WHERE user_id = $1 AND status = 'hidden_subscription'`,
 		userID,
 	)
 	if err != nil {

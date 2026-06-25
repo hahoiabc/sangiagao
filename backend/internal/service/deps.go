@@ -104,6 +104,7 @@ type RatingRepository interface {
 	GetSummary(ctx context.Context, sellerID string) (*model.RatingSummary, error)
 	HasRated(ctx context.Context, reviewerID, sellerID string) (bool, error)
 	GetSellerRole(ctx context.Context, userID string) (string, error)
+	CountMessagesBetween(ctx context.Context, userA, userB string) (int, error)
 }
 
 type ReportRepository interface {
@@ -131,7 +132,7 @@ type InboxRepository interface {
 	Update(ctx context.Context, id string, req *model.UpdateInboxRequest) (*model.InboxMessage, error)
 	Delete(ctx context.Context, id string) error
 	ListForUser(ctx context.Context, userID, userRole string, page, limit int) ([]*model.InboxMessage, int, error)
-	GetByID(ctx context.Context, id, userID string) (*model.InboxMessage, error)
+	GetByID(ctx context.Context, id, userID, userRole string) (*model.InboxMessage, error)
 	MarkRead(ctx context.Context, userID, inboxID string) error
 	UnreadCount(ctx context.Context, userID, userRole string) (int, error)
 	ListAll(ctx context.Context, page, limit int) ([]*model.InboxMessage, int, error)

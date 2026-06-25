@@ -14,6 +14,18 @@ import (
 )
 
 const blacklistPrefix = "blacklist:"
+const tokensValidFromPrefix = "tvf:"
+
+// RevokeUserTokens vô hiệu hóa MỌI access token của user được cấp TRƯỚC thời
+// điểm gọi (BUG #12/#13: đổi/reset mật khẩu, bị khóa). Cache-only — TTL = đời
+// refresh token tối đa (30 ngày); sau đó mọi token cũ đã hết hạn nên an toàn.
+func RevokeUserTokens(c cache.Cache, userID string) {
+	if c == nil || userID == "" {
+		return
+	}
+	now := []byte(time.Now().UTC().Format(time.RFC3339))
+	_ = c.Set(context.Background(), tokensValidFromPrefix+userID, now, 30*24*time.Hour)
+}
 
 // TokenHash returns a short hash of a token for blacklist key.
 func TokenHash(token string) string {
@@ -60,6 +72,16 @@ func JWTAuth(jwtManager *jwtpkg.Manager, caches ...cache.Cache) gin.HandlerFunc 
 			if revoked, _ := tokenCache.Exists(c.Request.Context(), blacklistPrefix+TokenHash(token)); revoked {
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token has been revoked"})
 				return
+			}
+			// BUG #12/#13: từ chối token cấp TRƯỚC mốc tokens_valid_from (set khi
+			// đổi/reset mật khẩu hoặc bị khóa). Vắng key = chưa thu hồi.
+			if claims.IssuedAt != nil {
+				if tvfBytes, err := tokenCache.Get(c.Request.Context(), tokensValidFromPrefix+claims.UserID); err == nil && len(tvfBytes) > 0 {
+					if tvf, perr := time.Parse(time.RFC3339, string(tvfBytes)); perr == nil && claims.IssuedAt.Time.Before(tvf) {
+						c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token has been revoked"})
+						return
+					}
+				}
 			}
 		}
 

@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getSEOPriceBoard } from "@/services/api";
-import { formatPriceVND, formatDateVN } from "@/lib/seo-helpers";
+import { formatPriceVND, formatDateVN, safeJsonLd } from "@/lib/seo-helpers";
 
 export const revalidate = 3600;
 
@@ -134,7 +134,7 @@ export default async function ProvincePricePage({ params }: Props) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
+          __html: safeJsonLd({
             "@context": "https://schema.org",
             "@type": "BreadcrumbList",
             itemListElement: [

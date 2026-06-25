@@ -173,13 +173,13 @@ func (h *ListingHandler) Bump(c *gin.Context) {
 			c.JSON(http.StatusForbidden, gin.H{"error": "bạn không phải chủ tin đăng này"})
 		case errors.Is(err, service.ErrBumpCooldown):
 			c.JSON(http.StatusTooManyRequests, gin.H{
-				"error":               err.Error(),
-				"cooldown_minutes":    model.BumpCooldownMinutes,
+				"error":            err.Error(),
+				"cooldown_minutes": model.BumpCooldownMinutes,
 			})
 		case errors.Is(err, service.ErrBumpQuotaExhausted):
 			c.JSON(http.StatusGone, gin.H{
-				"error":          err.Error(),
-				"lifetime_cap":   model.BumpLifetimeCap,
+				"error":        err.Error(),
+				"lifetime_cap": model.BumpLifetimeCap,
 			})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "không thể làm mới tin đăng"})
@@ -258,6 +258,8 @@ func (h *ListingHandler) AddImage(c *gin.Context) {
 			c.JSON(http.StatusForbidden, gin.H{"error": "you don't own this listing"})
 		case errors.Is(err, service.ErrMaxImages):
 			c.JSON(http.StatusConflict, gin.H{"error": "Tối đa 1 ảnh cho mỗi tin đăng"})
+		case errors.Is(err, service.ErrInvalidMediaURL):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "URL ảnh không hợp lệ"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to add image"})
 		}

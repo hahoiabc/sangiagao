@@ -31,7 +31,7 @@ type BumpResult struct {
 }
 
 const (
-	marketplaceCacheTTL = 5 * time.Minute
+	marketplaceCacheTTL    = 5 * time.Minute
 	marketplaceCachePrefix = "marketplace:"
 )
 
@@ -53,17 +53,21 @@ type catalogCache struct {
 const catalogCacheTTL = 1 * time.Hour
 
 type ListingService struct {
-	listingRepo ListingRepository
-	sponsorRepo SponsorRepository
-	userRepo    UserRepository
-	catalogRepo CatalogRepository
-	cache       cache.Cache
-	catCache    catalogCache
+	listingRepo  ListingRepository
+	sponsorRepo  SponsorRepository
+	userRepo     UserRepository
+	catalogRepo  CatalogRepository
+	cache        cache.Cache
+	catCache     catalogCache
+	mediaBaseURL string
 }
 
 func NewListingService(listingRepo ListingRepository, sponsorRepo SponsorRepository, userRepo UserRepository, catalogRepo CatalogRepository) *ListingService {
 	return &ListingService{listingRepo: listingRepo, sponsorRepo: sponsorRepo, userRepo: userRepo, catalogRepo: catalogRepo}
 }
+
+// SetMediaBaseURL wires the public storage base URL for image validation (#20).
+func (s *ListingService) SetMediaBaseURL(u string) { s.mediaBaseURL = u }
 
 // SetCache enables caching for marketplace queries (optional).
 func (s *ListingService) SetCache(c cache.Cache) {
@@ -319,6 +323,9 @@ func (s *ListingService) ListByUser(ctx context.Context, userID string, page, li
 }
 
 func (s *ListingService) AddImage(ctx context.Context, userID, id, imageURL string) (*model.Listing, error) {
+	if !validMediaURL(s.mediaBaseURL, imageURL) {
+		return nil, ErrInvalidMediaURL
+	}
 	listing, err := s.listingRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err

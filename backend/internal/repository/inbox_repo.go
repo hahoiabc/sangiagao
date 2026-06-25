@@ -143,15 +143,19 @@ func (r *InboxRepo) ListForUser(ctx context.Context, userID, userRole string, pa
 	return msgs, total, rows.Err()
 }
 
-func (r *InboxRepo) GetByID(ctx context.Context, id, userID string) (*model.InboxMessage, error) {
+func (r *InboxRepo) GetByID(ctx context.Context, id, userID, userRole string) (*model.InboxMessage, error) {
 	var m model.InboxMessage
+	// BUG #17 fix: lọc theo target/role + expires (giống ListForUser/UnreadCount)
+	// để chống IDOR — không cho đọc thông báo nhắm role khác.
 	err := r.pool.QueryRow(ctx,
 		`SELECT si.id, si.title, si.body, si.image_url, si.target, si.is_pinned, si.expires_at, si.created_by, si.created_at,
 		        (irs.user_id IS NOT NULL) AS is_read
 		 FROM system_inbox si
 		 LEFT JOIN inbox_read_status irs ON irs.inbox_id = si.id AND irs.user_id = $2
-		 WHERE si.id = $1`,
-		id, userID,
+		 WHERE si.id = $1
+		   AND (`+targetFilter("$3")+`)
+		   AND (si.expires_at IS NULL OR si.expires_at > NOW())`,
+		id, userID, userRole,
 	).Scan(&m.ID, &m.Title, &m.Body, &m.ImageURL, &m.Target, &m.IsPinned, &m.ExpiresAt, &m.CreatedBy, &m.CreatedAt, &m.IsRead)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrInboxNotFound
