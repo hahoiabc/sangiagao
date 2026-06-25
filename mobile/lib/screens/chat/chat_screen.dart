@@ -39,6 +39,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _scrollCtrl = ScrollController();
   List<Message> _messages = [];
   bool _loading = true;
+  // Phân trang tin cũ: cuộn lên đầu → tải thêm trang cũ hơn (prepend).
+  static const int _pageSize = 30;
+  int _oldestPage = 1; // trang cũ nhất đã tải (page 1 = 30 tin mới nhất)
+  bool _hasMoreOlder = true;
+  bool _loadingOlder = false;
   String? _currentUserId;
   PublicProfile? _otherUser;
   WebSocketChannel? _channel;
@@ -94,6 +99,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     PushNotificationService.activeConversationId = widget.conversationId;
     PushNotificationService.isOnChatScreen = true;
     PushNotificationService.clearUnreadForConversation(widget.conversationId);
+    _scrollCtrl.addListener(_onScroll);
     _init();
     _positionSub = _audioPlayer.onPositionChanged.listen((pos) {
       if (mounted) setState(() => _playPosition = pos);
@@ -135,12 +141,59 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final result = await ref.read(apiServiceProvider).getMessages(widget.conversationId);
       setState(() {
         _messages = result.data.reversed.toList();
+        _oldestPage = 1;
+        // Còn tin cũ hơn nếu tổng số > số tin trang đầu.
+        _hasMoreOlder = result.total > result.data.length;
       });
       _scrollToBottom();
     } catch (e) {
       debugPrint('Load messages error: $e');
     } finally {
       setState(() => _loading = false);
+    }
+  }
+
+  // Cuộn gần đỉnh (tin cũ nhất) → tải thêm trang cũ hơn.
+  void _onScroll() {
+    if (!_scrollCtrl.hasClients || _loadingOlder || !_hasMoreOlder) return;
+    final pos = _scrollCtrl.position;
+    if (pos.pixels <= pos.minScrollExtent + 120) {
+      _loadOlderMessages();
+    }
+  }
+
+  Future<void> _loadOlderMessages() async {
+    if (_loadingOlder || !_hasMoreOlder) return;
+    setState(() => _loadingOlder = true);
+    try {
+      final nextPage = _oldestPage + 1;
+      final result = await ref
+          .read(apiServiceProvider)
+          .getMessages(widget.conversationId, page: nextPage, limit: _pageSize);
+      final older = result.data.reversed.toList(); // cũ → mới trong trang
+      // Lọc trùng (phòng khi có tin mới làm lệch trang).
+      final existingIds = _messages.map((m) => m.id).toSet();
+      final toPrepend = older.where((m) => !existingIds.contains(m.id)).toList();
+
+      // Giữ vị trí cuộn: đo extent trước khi chèn, bù lại sau khi layout.
+      final beforeExtent = _scrollCtrl.hasClients ? _scrollCtrl.position.maxScrollExtent : 0.0;
+      setState(() {
+        if (toPrepend.isNotEmpty) _messages = [...toPrepend, ..._messages];
+        _oldestPage = nextPage;
+        _hasMoreOlder = nextPage * _pageSize < result.total;
+      });
+      if (toPrepend.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollCtrl.hasClients) {
+            final afterExtent = _scrollCtrl.position.maxScrollExtent;
+            _scrollCtrl.jumpTo(_scrollCtrl.offset + (afterExtent - beforeExtent));
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Load older messages error: $e');
+    } finally {
+      if (mounted) setState(() => _loadingOlder = false);
     }
   }
 
@@ -218,12 +271,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     try {
       final result = await ref.read(apiServiceProvider).getMessages(widget.conversationId);
       final freshMessages = result.data.reversed.toList();
-      // Compare by last real message ID (ignore temp_ messages)
-      final realLocal = _messages.where((m) => !m.id.startsWith('temp_'));
-      final lastLocalId = realLocal.isNotEmpty ? realLocal.last.id : null;
-      final lastRemoteId = freshMessages.isNotEmpty ? freshMessages.last.id : null;
-      if (lastRemoteId != null && lastLocalId != lastRemoteId) {
-        setState(() => _messages = freshMessages);
+      // CHỈ append tin MỚI (không thay cả danh sách) để giữ lịch sử cũ đã tải khi
+      // cuộn lên — nếu thay cả list, poll sẽ xóa mất các trang tin cũ.
+      final existingIds = _messages.map((m) => m.id).toSet();
+      final newOnes = freshMessages.where((m) => !existingIds.contains(m.id)).toList();
+      if (newOnes.isNotEmpty) {
+        setState(() => _messages = [..._messages, ...newOnes]);
         _scrollToBottom();
       }
     } catch (e) {
