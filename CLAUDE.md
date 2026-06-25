@@ -4,6 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
+> 📘 **Đọc trước khi fix/nâng cấp:** [`PROJECT_GUIDE.md`](PROJECT_GUIDE.md) — cẩm nang (deploy thực tế, mô hình dữ liệu + bẫy, auth/payment/chat/xóa-TK, nợ kỹ thuật, quy ước fix). [`AUDIT_FINDINGS.md`](AUDIT_FINDINGS.md) — danh sách lỗ + cách fix.
+
 **Sàn Giao Gạo (Rice Marketplace)** — A Vietnamese rice marketplace platform with 4 services in a monorepo:
 
 | Service | Tech | Port | Directory |
