@@ -138,6 +138,7 @@ Migration gần nhất: **037**. Số kế tiếp = **038**.
 | **Web chat polling** | Web dùng REST polling 15s thay vì nối Phoenix WS client (hạ tầng WS đã có). | TB |
 | **Apple/Google IAP** | Đang tắt. Bật cần env `APP_STORE_*` / Google service account. | Khi cần |
 | **Observability** | Chưa có metrics (Prometheus)/tracing/Crashlytics. Log slog lẫn log.Printf. | TB |
+| **Giới hạn thiết bị đăng nhập** | HIỆN TẠI: đăng nhập KHÔNG giới hạn số thiết bị (CỐ Ý — chủ chọn để mở, sẽ siết sau; ĐỪNG nhầm là bug). Push: 1 token/nền tảng (máy mới nhất). Khi siết: dùng `RevokeUserTokens` (tvf) để đá phiên cũ khi đăng nhập máy mới. | Hoãn (chủ quyết) |
 
 ---
 
