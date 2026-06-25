@@ -50,6 +50,11 @@ class ApiService {
   final Dio _dio;
   final FlutterSecureStorage _storage;
 
+  // #11-B single-flight: chỉ chạy MỘT lệnh refresh tại một thời điểm. Nhiều
+  // request bị 401 cùng lúc sẽ cùng chờ 1 lệnh refresh thay vì mỗi cái tự gọi
+  // (đua nhau làm vé gia hạn bị huỷ → đăng xuất nhầm khi backend rotation).
+  Future<bool>? _refreshInFlight;
+
   ApiService({Dio? dio, FlutterSecureStorage? storage})
       : _dio = dio ?? _createDio(),
         _storage = storage ?? const FlutterSecureStorage() {
@@ -144,7 +149,18 @@ class ApiService {
     return id;
   }
 
-  Future<bool> _refreshToken() async {
+  // #11-B: bọc single-flight. Nếu đang có lệnh refresh chạy → chờ kết quả lệnh
+  // đó (không khởi tạo lệnh mới). Xong thì xoá để lần sau refresh lại được.
+  Future<bool> _refreshToken() {
+    final inFlight = _refreshInFlight;
+    if (inFlight != null) return inFlight;
+    final future = _doRefreshToken();
+    _refreshInFlight = future;
+    future.whenComplete(() => _refreshInFlight = null);
+    return future;
+  }
+
+  Future<bool> _doRefreshToken() async {
     try {
       final refreshToken = await _storage.read(key: 'refresh_token');
       if (refreshToken == null) return false;
