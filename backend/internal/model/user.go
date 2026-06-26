@@ -3,22 +3,23 @@ package model
 import "time"
 
 type User struct {
-	ID            string     `json:"id"`
-	Phone         string     `json:"phone,omitempty"`
-	Role          string     `json:"role"`
-	Name          *string    `json:"name,omitempty"`
-	AvatarURL     *string    `json:"avatar_url,omitempty"`
-	Address       *string    `json:"address,omitempty"`
-	Province      *string    `json:"province,omitempty"`
-	Ward          *string    `json:"ward,omitempty"`
-	Description   *string    `json:"description,omitempty"`
-	OrgName       *string    `json:"org_name,omitempty"`
-	IsBlocked              bool       `json:"is_blocked"`
-	BlockReason            *string    `json:"block_reason,omitempty"`
-	AcceptedTOSAt          *time.Time `json:"accepted_tos_at,omitempty"`
-	SubscriptionExpiresAt  *time.Time `json:"subscription_expires_at,omitempty"`
-	CreatedAt              time.Time  `json:"created_at"`
-	UpdatedAt              time.Time  `json:"updated_at"`
+	ID                    string     `json:"id"`
+	Phone                 string     `json:"phone,omitempty"`
+	Role                  string     `json:"role"`
+	Name                  *string    `json:"name,omitempty"`
+	AvatarURL             *string    `json:"avatar_url,omitempty"`
+	Address               *string    `json:"address,omitempty"`
+	Province              *string    `json:"province,omitempty"`
+	Ward                  *string    `json:"ward,omitempty"`
+	Description           *string    `json:"description,omitempty"`
+	OrgName               *string    `json:"org_name,omitempty"`
+	IsBlocked             bool       `json:"is_blocked"`
+	IsInternal            bool       `json:"is_internal"`
+	BlockReason           *string    `json:"block_reason,omitempty"`
+	AcceptedTOSAt         *time.Time `json:"accepted_tos_at,omitempty"`
+	SubscriptionExpiresAt *time.Time `json:"subscription_expires_at,omitempty"`
+	CreatedAt             time.Time  `json:"created_at"`
+	UpdatedAt             time.Time  `json:"updated_at"`
 }
 
 type PublicProfile struct {

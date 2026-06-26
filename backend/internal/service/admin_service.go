@@ -3,6 +3,10 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
+	"unicode/utf8"
+
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/sangiagao/rice-marketplace/internal/model"
 	"github.com/sangiagao/rice-marketplace/internal/repository"
@@ -12,6 +16,41 @@ var (
 	ErrInvalidAdminRole  = errors.New("invalid role")
 	ErrCannotModifyAdmin = errors.New("không thể thao tác trên tài khoản quản trị viên")
 )
+
+// adminCreatableRoles — vai trò admin/owner được phép tạo thủ công (KHÔNG tạo owner).
+var adminCreatableRoles = map[string]bool{
+	"member": true, "seller": true, "editor": true, "admin": true,
+}
+
+// CreateUser — admin/owner tạo tài khoản thủ công (không qua OTP/Zalo).
+// Người dùng đăng nhập ngay bằng SĐT + mật khẩu. is_internal → miễn gói + ẩn
+// khỏi thống kê.
+func (s *AdminService) CreateUser(ctx context.Context, phone, name, password, role string, isInternal bool) (*model.User, error) {
+	if !phoneRegex.MatchString(phone) {
+		return nil, ErrInvalidPhone
+	}
+	if n := utf8.RuneCountInString(strings.TrimSpace(name)); n < 4 || n > 60 {
+		return nil, ErrInvalidName
+	}
+	if err := validatePassword(password); err != nil {
+		return nil, err
+	}
+	if !adminCreatableRoles[role] {
+		return nil, ErrInvalidAdminRole
+	}
+	exists, err := s.userRepo.PhoneExists(ctx, phone)
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		return nil, ErrPhoneExists
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+	return s.userRepo.CreateByAdmin(ctx, phone, strings.TrimSpace(name), string(hash), role, isInternal)
+}
 
 type AdminService struct {
 	userRepo    UserRepository

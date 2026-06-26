@@ -4,6 +4,9 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -14,10 +17,10 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { MoreHorizontal, Eye, ShieldBan, ShieldCheck, CreditCard, UserCog, Users, Shield, Check, X, Lock, FlaskConical, Trash2 } from "lucide-react";
+import { MoreHorizontal, Eye, EyeOff, ShieldBan, ShieldCheck, CreditCard, UserCog, Users, Shield, Check, X, Lock, FlaskConical, Trash2, UserPlus, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
-import { listUsers, blockUser, unblockUser, activateSubscription, changeUserRole, getPermissions, savePermissions, listTrialUsers, deleteUser, type User, type PermissionMatrix } from "@/services/api";
+import { listUsers, blockUser, unblockUser, activateSubscription, changeUserRole, getPermissions, savePermissions, listTrialUsers, deleteUser, createUser, type User, type PermissionMatrix } from "@/services/api";
 import { cn } from "@/lib/utils";
 
 // ── Roles ──
@@ -321,6 +324,137 @@ function RolePermissionsTab() {
   );
 }
 
+// ── Tạo thành viên Tab ──
+const createRoleOptions = [
+  { key: "member", label: "Thành viên", desc: "Người dùng thường (cần gói để đăng tin)" },
+  { key: "seller", label: "Người bán", desc: "Đăng tin bán gạo (cần gói)" },
+  { key: "editor", label: "Biên tập viên", desc: "Quản lý nội dung — miễn gói" },
+  { key: "admin", label: "Quản trị viên", desc: "Toàn quyền quản trị — miễn gói" },
+];
+
+function CreateMemberTab({ onCreated }: { onCreated: () => void }) {
+  const [phone, setPhone] = useState("");
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState("member");
+  const [isInternal, setIsInternal] = useState(false);
+  const [showPw, setShowPw] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  function genPassword() {
+    const a = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    const b = "abcdefghijkmnpqrstuvwxyz";
+    const d = "23456789";
+    const s = "@#$%&*";
+    const pick = (set: string) => set[Math.floor(Math.random() * set.length)];
+    let p = pick(a) + pick(b) + pick(d) + pick(s);
+    const all = a + b + d;
+    for (let i = 0; i < 5; i++) p += pick(all);
+    p = p.split("").sort(() => Math.random() - 0.5).join("");
+    setPassword(p);
+    setShowPw(true);
+  }
+
+  async function handleSubmit() {
+    if (!phone || !name || !password) {
+      toast.error("Vui lòng nhập đủ số điện thoại, họ tên và mật khẩu");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await createUser("", { phone, name, password, role, is_internal: isInternal });
+      toast.success(`Đã tạo tài khoản ${phone} • đăng nhập bằng SĐT + mật khẩu`);
+      setPhone(""); setName(""); setPassword(""); setRole("member"); setIsInternal(false); setShowPw(false);
+      onCreated();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Tạo tài khoản thất bại");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Card className="max-w-2xl">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <UserPlus className="h-5 w-5 text-primary" /> Tạo thành viên
+        </CardTitle>
+        <CardDescription>
+          Tạo tài khoản thủ công cho người <strong>không có Zalo</strong> hoặc tài khoản nội bộ.
+          Người dùng đăng nhập ngay bằng <strong>số điện thoại + mật khẩu</strong>, không cần đăng ký / không cần OTP.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label>Số điện thoại <span className="text-destructive">*</span></Label>
+            <Input value={phone} maxLength={10} placeholder="0…"
+              onChange={e => setPhone(e.target.value.replace(/\D/g, ""))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Họ tên <span className="text-destructive">*</span></Label>
+            <Input value={name} placeholder="Nguyễn Văn A" onChange={e => setName(e.target.value)} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label>Mật khẩu <span className="text-destructive">*</span></Label>
+            <div className="relative">
+              <Input type={showPw ? "text" : "password"} value={password} className="pr-16"
+                placeholder="≥6 ký tự, có hoa/thường/đặc biệt"
+                onChange={e => setPassword(e.target.value)} />
+              <div className="absolute right-1 top-1/2 -translate-y-1/2 flex">
+                <button type="button" onClick={() => setShowPw(v => !v)}
+                  className="p-1.5 text-muted-foreground hover:text-foreground rounded">
+                  {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+                <button type="button" onClick={genPassword} title="Tạo mật khẩu ngẫu nhiên"
+                  className="p-1.5 text-muted-foreground hover:text-primary rounded">
+                  <Sparkles className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Vai trò <span className="text-destructive">*</span></Label>
+            <select value={role} onChange={e => setRole(e.target.value)}
+              className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+              {createRoleOptions.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
+            </select>
+            <p className="text-xs text-muted-foreground">{createRoleOptions.find(r => r.key === role)?.desc}</p>
+          </div>
+        </div>
+
+        <button type="button" onClick={() => setIsInternal(v => !v)}
+          className={cn(
+            "w-full flex items-start gap-3 rounded-lg border p-3.5 text-left transition-colors",
+            isInternal ? "border-primary bg-primary/5" : "border-input hover:border-muted-foreground/40"
+          )}>
+          <div className={cn(
+            "mt-0.5 h-5 w-5 rounded-md border flex items-center justify-center flex-shrink-0 transition-colors",
+            isInternal ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/40"
+          )}>
+            {isInternal && <Check className="h-3.5 w-3.5" />}
+          </div>
+          <div>
+            <div className="text-sm font-medium">Tài khoản nội bộ</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Miễn gói thời hạn (đăng tin thoải mái, không bị ẩn) · Loại khỏi thống kê · Hiện nhãn “Nội bộ”
+            </div>
+          </div>
+        </button>
+      </CardContent>
+      <CardFooter className="justify-end gap-2">
+        <Button variant="ghost" onClick={onCreated}>Hủy</Button>
+        <Button onClick={handleSubmit} disabled={submitting}>
+          {submitting ? "Đang tạo..." : <><Check className="h-4 w-4 mr-1.5" /> Tạo tài khoản</>}
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+}
+
 // ── Trial Users Tab ──
 function TrialUsersTab() {
   const { user: currentUser } = useAuth();
@@ -474,7 +608,7 @@ function TrialUsersTab() {
 export default function UsersPage() {
   const { user: currentUser } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"users" | "trial" | "roles">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "create" | "trial" | "roles">("users");
   const [users, setUsers] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
@@ -617,6 +751,18 @@ export default function UsersPage() {
           Quản lý người dùng
         </button>
         <button
+          onClick={() => setActiveTab("create")}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px",
+            activeTab === "create"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
+          )}
+        >
+          <UserPlus className="h-4 w-4" />
+          Tạo thành viên
+        </button>
+        <button
           onClick={() => setActiveTab("trial")}
           className={cn(
             "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px",
@@ -641,6 +787,9 @@ export default function UsersPage() {
           Vai trò & Quyền hạn
         </button>
       </div>
+
+      {/* ── Tab: Tạo thành viên ── */}
+      {activeTab === "create" && <CreateMemberTab onCreated={() => setActiveTab("users")} />}
 
       {/* ── Tab: Trial Users ── */}
       {activeTab === "trial" && <TrialUsersTab />}
@@ -740,6 +889,9 @@ export default function UsersPage() {
                             </AvatarFallback>
                           </Avatar>
                           <span className="font-medium text-sm">{user.name || "-"}</span>
+                          {user.is_internal && (
+                            <Badge variant="secondary" className="text-[10px] py-0 px-1.5 font-normal">Nội bộ</Badge>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="font-mono text-sm">{user.phone}</TableCell>

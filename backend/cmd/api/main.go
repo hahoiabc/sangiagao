@@ -666,6 +666,7 @@ func main() {
 				adminOnly.Use(middleware.RequireRole("owner", "admin"))
 				{
 					adminOnly.GET("/users", middleware.RequirePermission(permissionService, "users.list"), adminHandler.ListUsers)
+					adminOnly.POST("/users", middleware.RequirePermission(permissionService, "users.create"), adminHandler.CreateUser) // tạo tài khoản thủ công
 					adminOnly.GET("/users/trial", middleware.RequirePermission(permissionService, "users.list"), adminHandler.ListTrialUsers)
 					adminOnly.GET("/users/:id", middleware.RequirePermission(permissionService, "users.detail"), adminHandler.GetUser)
 					adminOnly.GET("/users/:id/listings", middleware.RequirePermission(permissionService, "users.detail"), adminHandler.ListUserListings)

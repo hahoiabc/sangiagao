@@ -106,6 +106,7 @@ type AdminServiceInterface interface {
 	UnblockUser(ctx context.Context, userID, callerRole string) (*model.User, error)
 	ChangeUserRole(ctx context.Context, userID, role, callerRole string) (*model.User, error)
 	DeleteUser(ctx context.Context, userID, callerRole string) error
+	CreateUser(ctx context.Context, phone, name, password, role string, isInternal bool) (*model.User, error)
 	DeleteListing(ctx context.Context, listingID string) error
 	BatchBlockUsers(ctx context.Context, userIDs []string, reason, callerRole string) (*service.BatchBlockResult, error)
 	BatchDeleteListings(ctx context.Context, listingIDs []string) (*service.BatchDeleteResult, error)

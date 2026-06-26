@@ -269,6 +269,13 @@ func (m *mockAdminService) ChangeUserRole(ctx context.Context, userID, role, cal
 func (m *mockAdminService) DeleteUser(ctx context.Context, userID, callerRole string) error {
 	return m.Called(ctx, userID, callerRole).Error(0)
 }
+func (m *mockAdminService) CreateUser(ctx context.Context, phone, name, password, role string, isInternal bool) (*model.User, error) {
+	args := m.Called(ctx, phone, name, password, role, isInternal)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.User), args.Error(1)
+}
 func (m *mockAdminService) GetDashboardCharts(ctx context.Context) (*repository.DashboardCharts, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {

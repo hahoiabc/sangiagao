@@ -87,6 +87,28 @@ func (r *UserRepo) CreateWithPassword(ctx context.Context, phone, name, password
 	return r.scanUser(row)
 }
 
+// CreateByAdmin — admin/owner tạo tài khoản THỦ CÔNG (không qua OTP/Zalo).
+// Set sẵn password + role + is_internal + accepted_tos → đăng nhập ngay được.
+func (r *UserRepo) CreateByAdmin(ctx context.Context, phone, name, passwordHash, role string, isInternal bool) (*model.User, error) {
+	phoneHash := r.crypto.Hash(phone)
+	phoneEnc, err := r.crypto.Encrypt(phone)
+	if err != nil {
+		return nil, err
+	}
+	row := r.pool.QueryRow(ctx,
+		`INSERT INTO users (phone, role, name, password_hash, accepted_tos_at, is_internal, phone_hash, phone_encrypt)
+		 VALUES ($1, $2, $3, $4, NOW(), $5, $6, $7)
+		 RETURNING `+userColumns,
+		phone, role, name, passwordHash, isInternal, phoneHash, phoneEnc,
+	)
+	u, err := r.scanUser(row)
+	if err != nil {
+		return nil, err
+	}
+	u.IsInternal = isInternal
+	return u, nil
+}
+
 func (r *UserRepo) GetPasswordHash(ctx context.Context, phone string) (string, error) {
 	phoneHash := r.crypto.Hash(phone)
 	var hash *string
@@ -132,7 +154,7 @@ func (r *UserRepo) GetByID(ctx context.Context, id string) (*model.User, error) 
 	var discardDistrict *string
 	var phoneEncrypt *string
 	err := r.pool.QueryRow(ctx,
-		`SELECT `+userColumns+`,
+		`SELECT `+userColumns+`, is_internal,
 			(SELECT MAX(expires_at) FROM subscriptions WHERE user_id = users.id AND status = 'active' AND expires_at > NOW())
 		 FROM users WHERE id = $1`, id,
 	).Scan(
@@ -141,6 +163,7 @@ func (r *UserRepo) GetByID(ctx context.Context, id string) (*model.User, error) 
 		&u.IsBlocked, &u.BlockReason, &u.AcceptedTOSAt,
 		&u.CreatedAt, &u.UpdatedAt,
 		&phoneEncrypt,
+		&u.IsInternal,
 		&u.SubscriptionExpiresAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -441,20 +464,20 @@ func (r *UserRepo) ListUsers(ctx context.Context, search string, page, limit int
 	if search != "" {
 		if phoneSearchRegex.MatchString(search) {
 			phoneHash := r.crypto.Hash(search)
-			dataQuery = `SELECT ` + userColumns + `, sub.sub_expires_at FROM users` + subExpiryJoin + `
+			dataQuery = `SELECT ` + userColumns + `, users.is_internal, sub.sub_expires_at FROM users` + subExpiryJoin + `
 				WHERE phone_hash = $1
 				ORDER BY users.created_at DESC LIMIT $2 OFFSET $3`
 			dataArgs = []interface{}{phoneHash, limit, offset}
 		} else {
 			escaped := strings.ReplaceAll(search, "%", "\\%")
 			escaped = strings.ReplaceAll(escaped, "_", "\\_")
-			dataQuery = `SELECT ` + userColumns + `, sub.sub_expires_at FROM users` + subExpiryJoin + `
+			dataQuery = `SELECT ` + userColumns + `, users.is_internal, sub.sub_expires_at FROM users` + subExpiryJoin + `
 				WHERE name ILIKE $1
 				ORDER BY users.created_at DESC LIMIT $2 OFFSET $3`
 			dataArgs = []interface{}{"%" + escaped + "%", limit, offset}
 		}
 	} else {
-		dataQuery = `SELECT ` + userColumns + `, sub.sub_expires_at FROM users` + subExpiryJoin + `
+		dataQuery = `SELECT ` + userColumns + `, users.is_internal, sub.sub_expires_at FROM users` + subExpiryJoin + `
 			ORDER BY users.created_at DESC LIMIT $1 OFFSET $2`
 		dataArgs = []interface{}{limit, offset}
 	}
@@ -476,6 +499,7 @@ func (r *UserRepo) ListUsers(ctx context.Context, search string, page, limit int
 			&u.IsBlocked, &u.BlockReason, &u.AcceptedTOSAt,
 			&u.CreatedAt, &u.UpdatedAt,
 			&phoneEncrypt,
+			&u.IsInternal,
 			&u.SubscriptionExpiresAt,
 		); err != nil {
 			return nil, 0, err
@@ -541,7 +565,7 @@ func (r *UserRepo) ListTrialUsers(ctx context.Context) ([]*model.User, error) {
 func (r *UserRepo) GetDashboardStats(ctx context.Context) (map[string]int, error) {
 	// Single query with subqueries — 1 DB round-trip instead of 6
 	const q = `SELECT
-		(SELECT COUNT(*) FROM users),
+		(SELECT COUNT(*) FROM users WHERE is_internal = false AND deleted_at IS NULL),
 		(SELECT COUNT(*) FROM listings WHERE status != 'deleted'),
 		(SELECT COUNT(*) FROM listings WHERE status = 'active'),
 		(SELECT COUNT(*) FROM subscriptions WHERE status = 'active' AND expires_at > NOW()),

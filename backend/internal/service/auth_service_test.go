@@ -126,6 +126,13 @@ func (m *mockUserRepo) CreateWithPassword(ctx context.Context, phone, name, pass
 	}
 	return args.Get(0).(*model.User), args.Error(1)
 }
+func (m *mockUserRepo) CreateByAdmin(ctx context.Context, phone, name, passwordHash, role string, isInternal bool) (*model.User, error) {
+	args := m.Called(ctx, phone, name, passwordHash, role, isInternal)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.User), args.Error(1)
+}
 func (m *mockUserRepo) GetPasswordHash(ctx context.Context, phone string) (string, error) {
 	args := m.Called(ctx, phone)
 	return args.String(0), args.Error(1)

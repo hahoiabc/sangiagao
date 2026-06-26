@@ -195,6 +195,7 @@ export interface User {
   description: string;
   org_name: string;
   is_blocked: boolean;
+  is_internal: boolean;
   block_reason: string;
   subscription_expires_at: string | null;
   created_at: string;
@@ -336,6 +337,22 @@ export async function changeUserRole(token: string, userId: string, role: string
     token,
     method: "PUT",
     body: JSON.stringify({ role }),
+  });
+}
+
+export interface CreateUserInput {
+  phone: string;
+  name: string;
+  password: string;
+  role: string;
+  is_internal: boolean;
+}
+
+export async function createUser(token: string, input: CreateUserInput) {
+  return request<User>(`/admin/users`, {
+    token,
+    method: "POST",
+    body: JSON.stringify(input),
   });
 }
 

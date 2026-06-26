@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 
@@ -252,6 +253,45 @@ func (h *AdminHandler) DeleteUser(c *gin.Context) {
 
 	h.logAudit(c.Request.Context(), callerID, "delete_user", "user", userID, nil)
 	c.JSON(http.StatusOK, gin.H{"message": "Đã xóa tài khoản"})
+}
+
+type createUserRequest struct {
+	Phone      string `json:"phone" binding:"required"`
+	Name       string `json:"name" binding:"required"`
+	Password   string `json:"password" binding:"required"`
+	Role       string `json:"role" binding:"required"`
+	IsInternal bool   `json:"is_internal"`
+}
+
+// CreateUser — admin/owner tạo tài khoản thủ công (không qua OTP/Zalo).
+func (h *AdminHandler) CreateUser(c *gin.Context) {
+	var req createUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Vui lòng nhập đủ SĐT, họ tên, mật khẩu, vai trò"})
+		return
+	}
+	user, err := h.adminService.CreateUser(c.Request.Context(), req.Phone, req.Name, req.Password, req.Role, req.IsInternal)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrInvalidPhone):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Số điện thoại không hợp lệ"})
+		case errors.Is(err, service.ErrInvalidName):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Họ tên phải từ 4 đến 60 ký tự"})
+		case errors.Is(err, service.ErrWeakPassword):
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		case errors.Is(err, service.ErrInvalidAdminRole):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Vai trò không hợp lệ"})
+		case errors.Is(err, service.ErrPhoneExists):
+			c.JSON(http.StatusConflict, gin.H{"error": "Số điện thoại đã được đăng ký"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Tạo tài khoản thất bại"})
+		}
+		return
+	}
+	callerID := c.GetString("user_id")
+	h.logAudit(c.Request.Context(), callerID, "create_user", "user", user.ID,
+		map[string]interface{}{"role": req.Role, "is_internal": req.IsInternal})
+	c.JSON(http.StatusCreated, user)
 }
 
 type batchBlockUsersRequest struct {

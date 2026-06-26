@@ -158,8 +158,9 @@ func (s *ListingService) Create(ctx context.Context, userID string, req *model.C
 		if seller.IsBlocked {
 			return nil, ErrUserBlocked
 		}
-		// Staff (owner/admin/editor) MIỄN gói — đăng tin không cần subscription.
-		if !isPlatformStaff(seller.Role) &&
+		// Staff (owner/admin/editor) + tài khoản nội bộ MIỄN gói — đăng tin không
+		// cần subscription.
+		if !isPlatformStaff(seller.Role) && !seller.IsInternal &&
 			(seller.SubscriptionExpiresAt == nil || seller.SubscriptionExpiresAt.Before(time.Now())) {
 			return nil, ErrSubscriptionRequired
 		}

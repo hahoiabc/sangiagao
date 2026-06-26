@@ -21,6 +21,7 @@ type UserRepository interface {
 	Create(ctx context.Context, phone, role string) (*model.User, error)
 	GetByPhone(ctx context.Context, phone string) (*model.User, error)
 	CreateWithPassword(ctx context.Context, phone, name, passwordHash, province, ward, address string) (*model.User, error)
+	CreateByAdmin(ctx context.Context, phone, name, passwordHash, role string, isInternal bool) (*model.User, error)
 	GetPasswordHash(ctx context.Context, phone string) (string, error)
 	UpdatePassword(ctx context.Context, phone, passwordHash string) error
 	GetByID(ctx context.Context, id string) (*model.User, error)
