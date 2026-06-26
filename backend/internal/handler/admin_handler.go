@@ -276,7 +276,7 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 		case errors.Is(err, service.ErrInvalidPhone):
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Số điện thoại không hợp lệ"})
 		case errors.Is(err, service.ErrInvalidName):
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Họ tên phải từ 4 đến 60 ký tự"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Họ tên phải từ 2 đến 60 ký tự"})
 		case errors.Is(err, service.ErrCreatePassword):
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Mật khẩu phải có ít nhất 6 ký tự"})
 		case errors.Is(err, service.ErrInvalidAdminRole):

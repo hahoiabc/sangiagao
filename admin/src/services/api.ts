@@ -100,7 +100,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
       const retryRes = await fetchWithTimeout(`${API_BASE}${path}`, retryOpts, timeout ?? DEFAULT_TIMEOUT);
       if (!retryRes.ok) {
         const body = await retryRes.json().catch(() => ({}));
-        throw new ApiError(retryRes.status, body.error || "unknown", body.message || retryRes.statusText);
+        throw new ApiError(retryRes.status, body.error || "unknown", body.error || body.message || retryRes.statusText);
       }
       return retryRes.json();
     } catch {
@@ -113,7 +113,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new ApiError(res.status, body.error || "unknown", body.message || res.statusText);
+    throw new ApiError(res.status, body.error || "unknown", body.error || body.message || res.statusText);
   }
 
   return res.json();
@@ -646,7 +646,7 @@ export async function uploadImage(fileOrToken: File | string, fileOrFolder: File
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new ApiError(res.status, body.error || "unknown", body.message || res.statusText);
+    throw new ApiError(res.status, body.error || "unknown", body.error || body.message || res.statusText);
   }
 
   return res.json() as Promise<{ url: string }>;

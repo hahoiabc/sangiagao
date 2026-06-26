@@ -30,7 +30,7 @@ func (s *AdminService) CreateUser(ctx context.Context, phone, name, password, ro
 	if !phoneRegex.MatchString(phone) {
 		return nil, ErrInvalidPhone
 	}
-	if n := utf8.RuneCountInString(strings.TrimSpace(name)); n < 4 || n > 60 {
+	if n := utf8.RuneCountInString(strings.TrimSpace(name)); n < 2 || n > 60 {
 		return nil, ErrInvalidName
 	}
 	// Admin tự đặt mật khẩu → chỉ yêu cầu tối thiểu 6 ký tự (không bắt buộc
