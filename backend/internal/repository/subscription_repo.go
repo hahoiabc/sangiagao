@@ -98,6 +98,7 @@ func (r *SubscriptionRepo) HideListingsForExpired(ctx context.Context) (int, err
 		   AND user_id IN (
 		     SELECT u.id FROM users u
 		     WHERE u.deleted_at IS NULL
+		       AND u.role NOT IN ('owner', 'admin', 'editor')
 		       AND NOT EXISTS (
 		         SELECT 1 FROM subscriptions s
 		         WHERE s.user_id = u.id AND s.status = 'active' AND s.expires_at > NOW()

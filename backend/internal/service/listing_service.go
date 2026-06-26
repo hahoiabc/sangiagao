@@ -140,6 +140,12 @@ func (s *ListingService) validateCatalog(ctx context.Context, categoryKey, produ
 
 // --- Seller operations ---
 
+// isPlatformStaff — owner/admin/editor là nhân sự platform, MIỄN gói thành viên
+// (đồng bộ với middleware subscriptionBypassRoles).
+func isPlatformStaff(role string) bool {
+	return role == "owner" || role == "admin" || role == "editor"
+}
+
 func (s *ListingService) Create(ctx context.Context, userID string, req *model.CreateListingRequest) (*model.Listing, error) {
 	// Check if user is blocked or has active subscription
 	var seller *model.User
@@ -152,7 +158,9 @@ func (s *ListingService) Create(ctx context.Context, userID string, req *model.C
 		if seller.IsBlocked {
 			return nil, ErrUserBlocked
 		}
-		if seller.SubscriptionExpiresAt == nil || seller.SubscriptionExpiresAt.Before(time.Now()) {
+		// Staff (owner/admin/editor) MIỄN gói — đăng tin không cần subscription.
+		if !isPlatformStaff(seller.Role) &&
+			(seller.SubscriptionExpiresAt == nil || seller.SubscriptionExpiresAt.Before(time.Now())) {
 			return nil, ErrSubscriptionRequired
 		}
 	}
