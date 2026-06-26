@@ -34,7 +34,6 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
 
 export default function GioiThieuBanPage() {
   const { user } = useAuth();
-  const isMember = user?.role === "member";
   const isAff = user?.role === "aff";
   const [stats, setStats] = useState<ReferralStats | null>(null);
   const [history, setHistory] = useState<CommissionRecord[]>([]);
@@ -93,7 +92,7 @@ export default function GioiThieuBanPage() {
     <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
       <h1 className="text-2xl font-bold">Giới thiệu bạn bè</h1>
 
-      {isMember && (
+      {!isAff && (
         <Card id="activate" className="bg-amber-50 border-amber-200 scroll-mt-20">
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center gap-2">

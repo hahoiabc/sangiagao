@@ -423,7 +423,7 @@ export default function ProfilePage() {
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </Link>
-                {profile.role === "member" && (
+                {profile.role !== "aff" && (
                   <Link href="/dieu-khoan-doi-tac" className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors">
                     <div className="flex items-center gap-3">
                       <Star className="h-5 w-5 text-amber-600" />

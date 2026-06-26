@@ -65,7 +65,6 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
     final isAff = user?.role == 'aff';
-    final isMember = user?.role == 'member';
 
     return Scaffold(
       appBar: AppBar(title: const Text('Giới thiệu bạn bè')),
@@ -93,11 +92,11 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
                                 style: TextStyle(color: Colors.grey),
                               ),
                               const SizedBox(height: 12),
-                              if (isMember)
-                                FilledButton(
-                                  onPressed: () => context.push('/referral/join'),
-                                  child: const Text('Đăng ký làm Đối tác'),
-                                ),
+                              // Mọi vai trò chưa phải aff đều thấy nút (đang ở nhánh !isAff).
+                              FilledButton(
+                                onPressed: () => context.push('/referral/join'),
+                                child: const Text('Đăng ký làm Đối tác'),
+                              ),
                             ],
                           ),
                         ),
