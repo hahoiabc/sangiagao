@@ -73,14 +73,14 @@ func (s *AdminService) GetDashboardCharts(ctx context.Context) (*repository.Dash
 	return s.userRepo.GetDashboardCharts(ctx)
 }
 
-func (s *AdminService) ListUsers(ctx context.Context, search string, page, limit int) ([]*model.User, int, error) {
+func (s *AdminService) ListUsers(ctx context.Context, search string, page, limit int, onlyDeleted bool) ([]*model.User, int, error) {
 	if page < 1 {
 		page = 1
 	}
 	if limit < 1 || limit > 50 {
 		limit = 20
 	}
-	return s.userRepo.ListUsers(ctx, search, page, limit)
+	return s.userRepo.ListUsers(ctx, search, page, limit, onlyDeleted)
 }
 
 func (s *AdminService) ListTrialUsers(ctx context.Context) ([]*model.User, error) {

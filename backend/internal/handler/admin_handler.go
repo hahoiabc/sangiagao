@@ -111,8 +111,9 @@ func (h *AdminHandler) ListUserSubscriptions(c *gin.Context) {
 func (h *AdminHandler) ListUsers(c *gin.Context) {
 	search := c.Query("search")
 	page, limit := parsePagination(c, 20)
+	onlyDeleted := c.Query("deleted") == "true"
 
-	users, total, err := h.adminService.ListUsers(c.Request.Context(), search, page, limit)
+	users, total, err := h.adminService.ListUsers(c.Request.Context(), search, page, limit, onlyDeleted)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list users"})
 		return

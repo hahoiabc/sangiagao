@@ -455,6 +455,78 @@ function CreateMemberTab({ onCreated }: { onCreated: () => void }) {
   );
 }
 
+// ── Tab: Đã xóa ──
+function DeletedUsersTab() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await listUsers("", "", 1, 100, true);
+        setUsers(res.data ?? []);
+      } catch {
+        toast.error("Không thể tải danh sách tài khoản đã xóa");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm text-muted-foreground">
+          Tài khoản đã xóa (ẩn danh, đã khóa) — giữ lại để đối soát. SĐT &amp; tên gốc đã được xóa.
+        </p>
+        <span className="text-sm font-medium">{users.length} tài khoản</span>
+      </div>
+
+      <div className="rounded-lg border shadow-sm bg-card overflow-x-auto">
+        <Table className="min-w-[640px]">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Thành viên</TableHead>
+              <TableHead>Mã ẩn danh</TableHead>
+              <TableHead>Vai trò</TableHead>
+              <TableHead>Địa chỉ</TableHead>
+              <TableHead>Ngày tạo</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Đang tải...</TableCell></TableRow>
+            ) : users.length === 0 ? (
+              <TableRow><TableCell colSpan={5} className="text-center py-10 text-muted-foreground">Chưa có tài khoản nào bị xóa 🎉</TableCell></TableRow>
+            ) : (
+              users.map((u) => (
+                <TableRow key={u.id} className="hover:bg-muted/50 opacity-80">
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8"><AvatarFallback className="text-xs">{(u.name || "?").charAt(0).toUpperCase()}</AvatarFallback></Avatar>
+                      <span className="font-medium text-sm">{u.name || "-"}</span>
+                      {u.is_internal && <Badge variant="secondary" className="text-[10px] py-0 px-1.5 font-normal">Nội bộ</Badge>}
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{u.phone}</TableCell>
+                  <TableCell>
+                    <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border bg-gray-50 text-gray-600 border-gray-200">
+                      {u.role === "owner" ? "Chủ sở hữu" : u.role === "admin" ? "Quản trị viên" : u.role === "editor" ? "Biên tập viên" : "Thành viên"}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-sm">{[u.ward, u.province].filter(Boolean).join(", ") || "-"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{new Date(u.created_at).toLocaleDateString("vi-VN")}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+
 // ── Trial Users Tab ──
 function TrialUsersTab() {
   const { user: currentUser } = useAuth();
@@ -608,7 +680,7 @@ function TrialUsersTab() {
 export default function UsersPage() {
   const { user: currentUser } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"users" | "create" | "trial" | "roles">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "create" | "trial" | "deleted" | "roles">("users");
   const [users, setUsers] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
@@ -775,6 +847,18 @@ export default function UsersPage() {
           Dùng thử
         </button>
         <button
+          onClick={() => setActiveTab("deleted")}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px",
+            activeTab === "deleted"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
+          )}
+        >
+          <Trash2 className="h-4 w-4" />
+          Đã xóa
+        </button>
+        <button
           onClick={() => setActiveTab("roles")}
           className={cn(
             "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px",
@@ -793,6 +877,9 @@ export default function UsersPage() {
 
       {/* ── Tab: Trial Users ── */}
       {activeTab === "trial" && <TrialUsersTab />}
+
+      {/* ── Tab: Đã xóa ── */}
+      {activeTab === "deleted" && <DeletedUsersTab />}
 
       {/* ── Tab: Roles & Permissions ── */}
       {activeTab === "roles" && <RolePermissionsTab />}

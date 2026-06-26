@@ -423,8 +423,14 @@ func (r *UserRepo) BatchBlock(ctx context.Context, ids []string, reason string) 
 	return int(tag.RowsAffected()), nil
 }
 
-func (r *UserRepo) ListUsers(ctx context.Context, search string, page, limit int) ([]*model.User, int, error) {
+func (r *UserRepo) ListUsers(ctx context.Context, search string, page, limit int, onlyDeleted bool) ([]*model.User, int, error) {
 	offset := (page - 1) * limit
+
+	// Tab "Đã xóa" hiện deleted_at IS NOT NULL; danh sách chính ẩn TK đã xóa.
+	countDel, dataDel := "deleted_at IS NULL", "users.deleted_at IS NULL"
+	if onlyDeleted {
+		countDel, dataDel = "deleted_at IS NOT NULL", "users.deleted_at IS NOT NULL"
+	}
 
 	var total int
 	var countQuery string
@@ -434,18 +440,18 @@ func (r *UserRepo) ListUsers(ctx context.Context, search string, page, limit int
 		if phoneSearchRegex.MatchString(search) {
 			// Exact phone search: hash and match
 			phoneHash := r.crypto.Hash(search)
-			countQuery = `SELECT COUNT(*) FROM users WHERE phone_hash = $1`
+			countQuery = `SELECT COUNT(*) FROM users WHERE phone_hash = $1 AND ` + countDel
 			countArgs = []interface{}{phoneHash}
 		} else {
 			// Name search only (can't LIKE on encrypted phone)
 			// Escape LIKE wildcards to prevent pattern injection
 			escaped := strings.ReplaceAll(search, "%", "\\%")
 			escaped = strings.ReplaceAll(escaped, "_", "\\_")
-			countQuery = `SELECT COUNT(*) FROM users WHERE name ILIKE $1`
+			countQuery = `SELECT COUNT(*) FROM users WHERE name ILIKE $1 AND ` + countDel
 			countArgs = []interface{}{"%" + escaped + "%"}
 		}
 	} else {
-		countQuery = `SELECT COUNT(*) FROM users`
+		countQuery = `SELECT COUNT(*) FROM users WHERE ` + countDel
 	}
 
 	if err := r.pool.QueryRow(ctx, countQuery, countArgs...).Scan(&total); err != nil {
@@ -465,19 +471,20 @@ func (r *UserRepo) ListUsers(ctx context.Context, search string, page, limit int
 		if phoneSearchRegex.MatchString(search) {
 			phoneHash := r.crypto.Hash(search)
 			dataQuery = `SELECT ` + userColumns + `, users.is_internal, sub.sub_expires_at FROM users` + subExpiryJoin + `
-				WHERE phone_hash = $1
+				WHERE phone_hash = $1 AND ` + dataDel + `
 				ORDER BY users.created_at DESC LIMIT $2 OFFSET $3`
 			dataArgs = []interface{}{phoneHash, limit, offset}
 		} else {
 			escaped := strings.ReplaceAll(search, "%", "\\%")
 			escaped = strings.ReplaceAll(escaped, "_", "\\_")
 			dataQuery = `SELECT ` + userColumns + `, users.is_internal, sub.sub_expires_at FROM users` + subExpiryJoin + `
-				WHERE name ILIKE $1
+				WHERE name ILIKE $1 AND ` + dataDel + `
 				ORDER BY users.created_at DESC LIMIT $2 OFFSET $3`
 			dataArgs = []interface{}{"%" + escaped + "%", limit, offset}
 		}
 	} else {
 		dataQuery = `SELECT ` + userColumns + `, users.is_internal, sub.sub_expires_at FROM users` + subExpiryJoin + `
+			WHERE ` + dataDel + `
 			ORDER BY users.created_at DESC LIMIT $1 OFFSET $2`
 		dataArgs = []interface{}{limit, offset}
 	}

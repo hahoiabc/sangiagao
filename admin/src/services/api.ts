@@ -208,8 +208,9 @@ export interface PaginatedResponse<T> {
   limit: number;
 }
 
-export async function listUsers(token: string, search: string, page: number, limit: number) {
+export async function listUsers(token: string, search: string, page: number, limit: number, deleted = false) {
   const params = new URLSearchParams({ search, page: String(page), limit: String(limit) });
+  if (deleted) params.set("deleted", "true");
   return request<PaginatedResponse<User>>(`/admin/users?${params}`, { token });
 }
 

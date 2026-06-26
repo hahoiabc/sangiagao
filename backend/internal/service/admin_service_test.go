@@ -94,7 +94,7 @@ func (m *mockAdminUserRepo) UnblockUser(ctx context.Context, id string) (*model.
 	}
 	return args.Get(0).(*model.User), args.Error(1)
 }
-func (m *mockAdminUserRepo) ListUsers(ctx context.Context, search string, page, limit int) ([]*model.User, int, error) {
+func (m *mockAdminUserRepo) ListUsers(ctx context.Context, search string, page, limit int, onlyDeleted bool) ([]*model.User, int, error) {
 	args := m.Called(ctx, search, page, limit)
 	if args.Get(0) == nil {
 		return nil, args.Int(1), args.Error(2)
@@ -322,7 +322,7 @@ func TestAdminListUsers_Success(t *testing.T) {
 	users := []*model.User{{ID: "u-1", Name: strPtr("Nguyen Van A")}}
 	userRepo.On("ListUsers", mock.Anything, "nguyen", 1, 20).Return(users, 1, nil)
 
-	result, total, err := svc.ListUsers(context.Background(), "nguyen", 1, 20)
+	result, total, err := svc.ListUsers(context.Background(), "nguyen", 1, 20, false)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, total)
 	assert.Len(t, result, 1)
@@ -335,7 +335,7 @@ func TestAdminListUsers_DefaultsInvalidPage(t *testing.T) {
 	users := []*model.User{{ID: "u-1"}}
 	userRepo.On("ListUsers", mock.Anything, "", 1, 20).Return(users, 1, nil)
 
-	result, total, err := svc.ListUsers(context.Background(), "", 0, 0)
+	result, total, err := svc.ListUsers(context.Background(), "", 0, 0, false)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, total)
 	assert.Len(t, result, 1)

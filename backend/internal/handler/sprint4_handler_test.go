@@ -207,7 +207,7 @@ func (m *mockAdminService) GetDashboardStats(ctx context.Context) (map[string]in
 	}
 	return args.Get(0).(map[string]int), args.Error(1)
 }
-func (m *mockAdminService) ListUsers(ctx context.Context, search string, page, limit int) ([]*model.User, int, error) {
+func (m *mockAdminService) ListUsers(ctx context.Context, search string, page, limit int, onlyDeleted bool) ([]*model.User, int, error) {
 	args := m.Called(ctx, search, page, limit)
 	if args.Get(0) == nil {
 		return nil, args.Int(1), args.Error(2)
