@@ -36,12 +36,13 @@ var (
 	ErrRoleNotEligible      = errors.New("vai trò hiện tại không thể tự nâng cấp")
 )
 
-// BecomeAffiliate opt-in vào chương trình affiliate. Mọi role có quyền đăng tin
-// (member/aff/owner/admin/editor) đều opt-in được.
-//   - member → đổi role = 'aff' (aff matrix giờ inherit hết permissions của member)
+// BecomeAffiliate opt-in vào chương trình affiliate. MỌI tài khoản đăng nhập
+// đều opt-in được (kể cả nội bộ, hết hạn).
+//   - member/seller → đổi role = 'aff' (chuyển sang aff matrix có dashboard)
 //   - admin/editor/owner → GIỮ role gốc, chỉ tạo referral code. Không xuống cấp.
 //   - aff → idempotent
-//   - guest / expired → reject
+//   - chỉ guest (không có user_id) bị chặn ở handler (401)
+//
 // Sau khi opt-in, user có referral code để share. Commission tính theo aff role
 // hoặc theo "có referral code". Xem AttributeReferral cho gate cuối.
 func (s *ReferralService) BecomeAffiliate(ctx context.Context, userID string) error {
@@ -50,26 +51,23 @@ func (s *ReferralService) BecomeAffiliate(ctx context.Context, userID string) er
 		return err
 	}
 	switch currentRole {
-	case "aff":
-		// Đã opt-in rồi — chỉ đảm bảo code tồn tại
-		_, _ = s.GetOrCreateCode(ctx, userID)
-		return nil
-	case "member":
-		// Member → upgrade role thành aff (chuyển sang aff matrix có sẵn dashboard + referrals)
+	case "member", "seller":
+		// Member/seller → upgrade role thành aff (chuyển sang aff matrix có sẵn
+		// dashboard + referrals). Tài khoản nội bộ tạo với vai trò "Người bán"
+		// (seller) trước đây rơi vào default → bị chặn; nay cho opt-in.
 		if _, err := s.pool.Exec(ctx,
-			`UPDATE users SET role = 'aff', updated_at = NOW() WHERE id = $1 AND role = 'member'`,
+			`UPDATE users SET role = 'aff', updated_at = NOW() WHERE id = $1 AND role IN ('member', 'seller')`,
 			userID,
 		); err != nil {
 			return err
 		}
 		_, _ = s.GetOrCreateCode(ctx, userID)
 		return nil
-	case "owner", "admin", "editor":
-		// Staff giữ role gốc, chỉ tạo code — không hạ cấp xuống aff.
+	default:
+		// aff (idempotent) + staff (owner/admin/editor) + mọi role khác:
+		// giữ role gốc, chỉ tạo code → MỌI tài khoản đều tham gia aff được.
 		_, _ = s.GetOrCreateCode(ctx, userID)
 		return nil
-	default:
-		return ErrRoleNotEligible
 	}
 }
 
