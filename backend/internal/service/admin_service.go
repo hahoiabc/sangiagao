@@ -15,6 +15,7 @@ import (
 var (
 	ErrInvalidAdminRole  = errors.New("invalid role")
 	ErrCannotModifyAdmin = errors.New("không thể thao tác trên tài khoản quản trị viên")
+	ErrCreatePassword    = errors.New("mật khẩu phải có ít nhất 6 ký tự")
 )
 
 // adminCreatableRoles — vai trò admin/owner được phép tạo thủ công (KHÔNG tạo owner).
@@ -32,8 +33,10 @@ func (s *AdminService) CreateUser(ctx context.Context, phone, name, password, ro
 	if n := utf8.RuneCountInString(strings.TrimSpace(name)); n < 4 || n > 60 {
 		return nil, ErrInvalidName
 	}
-	if err := validatePassword(password); err != nil {
-		return nil, err
+	// Admin tự đặt mật khẩu → chỉ yêu cầu tối thiểu 6 ký tự (không bắt buộc
+	// hoa/thường/ký tự đặc biệt như luồng tự đăng ký).
+	if utf8.RuneCountInString(password) < 6 {
+		return nil, ErrCreatePassword
 	}
 	if !adminCreatableRoles[role] {
 		return nil, ErrInvalidAdminRole

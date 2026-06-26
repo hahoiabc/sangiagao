@@ -402,7 +402,7 @@ function CreateMemberTab({ onCreated }: { onCreated: () => void }) {
             <Label>Mật khẩu <span className="text-destructive">*</span></Label>
             <div className="relative">
               <Input type={showPw ? "text" : "password"} value={password} className="pr-16"
-                placeholder="≥6 ký tự, có hoa/thường/đặc biệt"
+                placeholder="Tối thiểu 6 ký tự"
                 onChange={e => setPassword(e.target.value)} />
               <div className="absolute right-1 top-1/2 -translate-y-1/2 flex">
                 <button type="button" onClick={() => setShowPw(v => !v)}
