@@ -7,11 +7,6 @@
     <key>teamID</key>
     <string>4398LD7T8U</string>
     <key>signingStyle</key>
-    <string>manual</string>
-    <key>provisioningProfiles</key>
-    <dict>
-        <key>com.sangiagao.riceMarketplace</key>
-        <string>SanGiaGao AppStore</string>
-    </dict>
+    <string>automatic</string>
 </dict>
 </plist>
