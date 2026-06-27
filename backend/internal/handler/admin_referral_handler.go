@@ -16,8 +16,10 @@ import (
 //   - referrals.view_all     (see all partners)
 //   - referrals.manage_rules (edit commission rule defaults / overrides)
 //   - referrals.create_payout (create + mark payout sent)
+//
 // Aff role typically has:
 //   - referrals.view_own (filtered to own referrer_user_id)
+//
 // Admin can re-assign these per role via /users → "Vai trò & Quyền hạn".
 type AdminReferralHandler struct {
 	repo            *repository.AffiliateRepo
@@ -54,8 +56,8 @@ func (h *AdminReferralHandler) can(role, key string) bool {
 
 // Permission keys (must match keys configured in /users → Vai trò & Quyền hạn).
 const (
-	permViewAll     = "referrals.view_all"
-	permManageRules = "referrals.manage_rules"
+	permViewAll      = "referrals.view_all"
+	permManageRules  = "referrals.manage_rules"
 	permCreatePayout = "referrals.create_payout"
 )
 
@@ -93,14 +95,15 @@ func (h *AdminReferralHandler) ListRules(c *gin.Context) {
 }
 
 type upsertRuleRequest struct {
-	ReferralCodeID *string `json:"referral_code_id"` // nil = default
-	Stage1Days     int     `json:"stage1_days" binding:"required,min=1"`
-	Stage1Pct      float64 `json:"stage1_pct" binding:"required,min=0,max=1"`
-	Stage2Days     int     `json:"stage2_days" binding:"required,min=1"`
-	Stage2Pct      float64 `json:"stage2_pct" binding:"min=0,max=1"`
-	Stage3Pct      float64 `json:"stage3_pct" binding:"min=0,max=1"`
-	BaseType       string  `json:"base_type" binding:"oneof=gross net"`
-	MinimumPayout  int64   `json:"minimum_payout" binding:"min=0"`
+	ReferralCodeID  *string `json:"referral_code_id"` // nil = default
+	Stage1Days      int     `json:"stage1_days" binding:"required,min=1"`
+	Stage1Pct       float64 `json:"stage1_pct" binding:"required,min=0,max=1"`
+	Stage2Days      int     `json:"stage2_days" binding:"required,min=1"`
+	Stage2Pct       float64 `json:"stage2_pct" binding:"min=0,max=1"`
+	Stage3Pct       float64 `json:"stage3_pct" binding:"min=0,max=1"`
+	Stage3CapMonths int     `json:"stage3_cap_months" binding:"min=0,max=600"` // 0 = vĩnh viễn
+	BaseType        string  `json:"base_type" binding:"oneof=gross net"`
+	MinimumPayout   int64   `json:"minimum_payout" binding:"min=0"`
 }
 
 // UpsertRule — gated by referrals.manage_rules. Creates new active version, expires previous.
@@ -116,20 +119,41 @@ func (h *AdminReferralHandler) UpsertRule(c *gin.Context) {
 		return
 	}
 	rule := &model.CommissionRule{
-		ReferralCodeID: req.ReferralCodeID,
-		Stage1Days:     req.Stage1Days,
-		Stage1Pct:      req.Stage1Pct,
-		Stage2Days:     req.Stage2Days,
-		Stage2Pct:      req.Stage2Pct,
-		Stage3Pct:      req.Stage3Pct,
-		BaseType:       req.BaseType,
-		MinimumPayout:  req.MinimumPayout,
+		ReferralCodeID:  req.ReferralCodeID,
+		Stage1Days:      req.Stage1Days,
+		Stage1Pct:       req.Stage1Pct,
+		Stage2Days:      req.Stage2Days,
+		Stage2Pct:       req.Stage2Pct,
+		Stage3Pct:       req.Stage3Pct,
+		Stage3CapMonths: req.Stage3CapMonths,
+		BaseType:        req.BaseType,
+		MinimumPayout:   req.MinimumPayout,
 	}
 	if err := h.repo.UpsertRule(c.Request.Context(), rule); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save rule: " + err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, rule)
+}
+
+// DeleteRule revert override riêng của 1 đối tác về quy tắc mặc định.
+// Gated by referrals.manage_rules.
+func (h *AdminReferralHandler) DeleteRule(c *gin.Context) {
+	role := c.GetString("user_role")
+	if !h.can(role, permManageRules) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "permission denied"})
+		return
+	}
+	codeID := c.Param("codeId")
+	if codeID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "referral_code_id required"})
+		return
+	}
+	if err := h.repo.DeleteRule(c.Request.Context(), codeID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete rule: " + err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
 // Leaderboard lists all aff-role users + anyone with at least 1 commission,
@@ -142,6 +166,7 @@ func (h *AdminReferralHandler) Leaderboard(c *gin.Context) {
 	q := `SELECT u.id AS referrer_user_id,
 	             u.phone, COALESCE(u.name, '') AS name,
 	             COALESCE(rc.code, '') AS code,
+	             rc.id AS referral_code_id,
 	             COUNT(DISTINCT cr.referee_user_id) AS total_referrals,
 	             COALESCE(SUM(cr.commission_amount), 0) AS total_earned,
 	             COALESCE(SUM(CASE WHEN cr.status='payable' THEN cr.commission_amount END), 0) AS payable_amount,
@@ -159,7 +184,7 @@ func (h *AdminReferralHandler) Leaderboard(c *gin.Context) {
 		         OR EXISTS (SELECT 1 FROM commission_records WHERE referrer_user_id = u.id)
 		         OR rc.id IS NOT NULL`
 	}
-	q += ` GROUP BY u.id, u.phone, u.name, rc.code
+	q += ` GROUP BY u.id, u.phone, u.name, rc.code, rc.id
 	       ORDER BY total_earned DESC, u.created_at DESC`
 
 	rows, err := h.repo.Pool().Query(c.Request.Context(), q, args...)
@@ -170,20 +195,21 @@ func (h *AdminReferralHandler) Leaderboard(c *gin.Context) {
 	defer rows.Close()
 
 	type row struct {
-		ReferrerUserID string `json:"referrer_user_id"`
-		Phone          string `json:"phone"`
-		Name           string `json:"name"`
-		Code           string `json:"code"`
-		TotalReferrals int    `json:"total_referrals"`
-		TotalEarned    int64  `json:"total_earned"`
-		PayableAmount  int64  `json:"payable_amount"`
-		PendingAmount  int64  `json:"pending_amount"`
-		PaidAmount     int64  `json:"paid_amount"`
+		ReferrerUserID string  `json:"referrer_user_id"`
+		Phone          string  `json:"phone"`
+		Name           string  `json:"name"`
+		Code           string  `json:"code"`
+		ReferralCodeID *string `json:"referral_code_id"`
+		TotalReferrals int     `json:"total_referrals"`
+		TotalEarned    int64   `json:"total_earned"`
+		PayableAmount  int64   `json:"payable_amount"`
+		PendingAmount  int64   `json:"pending_amount"`
+		PaidAmount     int64   `json:"paid_amount"`
 	}
 	out := []row{}
 	for rows.Next() {
 		var r row
-		if err := rows.Scan(&r.ReferrerUserID, &r.Phone, &r.Name, &r.Code,
+		if err := rows.Scan(&r.ReferrerUserID, &r.Phone, &r.Name, &r.Code, &r.ReferralCodeID,
 			&r.TotalReferrals, &r.TotalEarned, &r.PayableAmount, &r.PendingAmount, &r.PaidAmount); err != nil {
 			continue
 		}
@@ -196,6 +222,7 @@ func (h *AdminReferralHandler) Leaderboard(c *gin.Context) {
 			if out[i].Code == "" {
 				if rc, err := h.referralService.GetOrCreateCode(c.Request.Context(), out[i].ReferrerUserID); err == nil && rc != nil {
 					out[i].Code = rc.Code
+					out[i].ReferralCodeID = &rc.ID
 				}
 			}
 		}
@@ -304,8 +331,8 @@ func (h *AdminReferralHandler) CreatePayout(c *gin.Context) {
 		`SELECT aff_terms_version FROM users WHERE id = $1`, req.ReferrerUserID).Scan(&acceptedVer)
 	if acceptedVer == nil || *acceptedVer != "1.0" {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error":        "aff_terms_not_accepted",
-			"message":      "Đối tác chưa đồng ý điều khoản phiên bản hiện hành",
+			"error":   "aff_terms_not_accepted",
+			"message": "Đối tác chưa đồng ý điều khoản phiên bản hiện hành",
 		})
 		return
 	}

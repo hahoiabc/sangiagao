@@ -24,6 +24,7 @@ class _AffTermsScreenState extends ConsumerState<AffTermsScreen> {
   int _stage2Days = 1;
   double _stage2Pct = 0.30;
   double _stage3Pct = 0.15;
+  int _stage3CapMonths = 24;
   int _minimumPayout = 100000;
 
   @override
@@ -45,6 +46,7 @@ class _AffTermsScreenState extends ConsumerState<AffTermsScreen> {
         _stage2Days = (rule['stage2_days'] as num?)?.toInt() ?? _stage2Days;
         _stage2Pct = (rule['stage2_pct'] as num?)?.toDouble() ?? _stage2Pct;
         _stage3Pct = (rule['stage3_pct'] as num?)?.toDouble() ?? _stage3Pct;
+        _stage3CapMonths = (rule['stage3_cap_months'] as num?)?.toInt() ?? _stage3CapMonths;
         _minimumPayout = (rule['minimum_payout'] as num?)?.toInt() ?? _minimumPayout;
       });
     } catch (_) {}
@@ -92,7 +94,7 @@ class _AffTermsScreenState extends ConsumerState<AffTermsScreen> {
                       'Đối tác (Aff) nhận hoa hồng theo 3 mức dựa trên lần thanh toán của người được giới thiệu (Referee):\n'
                       '• Lần thanh toán đầu tiên: ${_pct(_stage1Pct)} doanh thu ròng\n'
                       '• Lần thanh toán thứ 2: ${_pct(_stage2Pct)} doanh thu ròng\n'
-                      '• Từ lần thứ 3 trở đi (vĩnh viễn): ${_pct(_stage3Pct)} doanh thu ròng\n\n'
+                      '• Từ lần thứ 3 trở đi ${_stage3CapMonths > 0 ? "(trong $_stage3CapMonths tháng kể từ khi giới thiệu)" : "(vĩnh viễn)"}: ${_pct(_stage3Pct)} doanh thu ròng\n\n'
                       'Doanh thu ròng = số tiền Sàn thực nhận sau khi trừ phí nền tảng (Apple 30%, SePay 0%).'),
                   _section('2. Thanh toán',
                       '• Ngưỡng tối thiểu hiện hành: ${(_minimumPayout / 1000).toStringAsFixed(0)}.000đ. Sàn có thể điều chỉnh theo nhu cầu vận hành.\n'

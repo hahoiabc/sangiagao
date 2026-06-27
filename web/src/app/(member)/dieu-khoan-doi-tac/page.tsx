@@ -96,7 +96,7 @@ export default function AffTermsPage() {
             <ul className="list-disc list-inside mt-1 space-y-0.5">
               <li>Lần thanh toán đầu tiên: <strong>{fmtPct(r.stage1_pct)}</strong> doanh thu ròng</li>
               <li>Lần thanh toán thứ 2: <strong>{fmtPct(r.stage2_pct)}</strong> doanh thu ròng</li>
-              <li>Từ lần thứ 3 trở đi (vĩnh viễn): <strong>{fmtPct(r.stage3_pct)}</strong> doanh thu ròng</li>
+              <li>Từ lần thứ 3 trở đi {r.stage3_cap_months > 0 ? `(trong vòng ${r.stage3_cap_months} tháng kể từ khi giới thiệu)` : "(vĩnh viễn)"}: <strong>{fmtPct(r.stage3_pct)}</strong> doanh thu ròng</li>
             </ul>
             <p className="mt-2">
               Doanh thu ròng = số tiền Sàn thực nhận sau khi trừ phí nền tảng (Apple 30%, SePay 0%).

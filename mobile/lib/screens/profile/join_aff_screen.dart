@@ -21,6 +21,7 @@ class _JoinAffScreenState extends ConsumerState<JoinAffScreen> {
   int _stage2Days = 1;
   double _stage2Pct = 0.30;
   double _stage3Pct = 0.15;
+  int _stage3CapMonths = 24;
   int _minimumPayout = 100000;
 
   @override
@@ -40,6 +41,7 @@ class _JoinAffScreenState extends ConsumerState<JoinAffScreen> {
         _stage2Days = (rule['stage2_days'] as num?)?.toInt() ?? _stage2Days;
         _stage2Pct = (rule['stage2_pct'] as num?)?.toDouble() ?? _stage2Pct;
         _stage3Pct = (rule['stage3_pct'] as num?)?.toDouble() ?? _stage3Pct;
+        _stage3CapMonths = (rule['stage3_cap_months'] as num?)?.toInt() ?? _stage3CapMonths;
         _minimumPayout = (rule['minimum_payout'] as num?)?.toInt() ?? _minimumPayout;
       });
     } catch (_) {}
@@ -111,7 +113,7 @@ class _JoinAffScreenState extends ConsumerState<JoinAffScreen> {
           _benefit('Hoa hồng theo lần thanh toán',
               'Lần đầu tiên: ${_pct(_stage1Pct)} doanh thu ròng\n'
               'Lần thứ 2: ${_pct(_stage2Pct)}\n'
-              'Từ lần thứ 3 (vĩnh viễn): ${_pct(_stage3Pct)}'),
+              'Từ lần thứ 3 ${_stage3CapMonths > 0 ? "(trong $_stage3CapMonths tháng kể từ khi giới thiệu)" : "(vĩnh viễn)"}: ${_pct(_stage3Pct)}'),
           _benefit('Mã giới thiệu riêng',
               'Mỗi đối tác có 1 mã + link riêng. Sàn tự động ghi nhận hoa hồng khi referee đăng ký qua link.'),
           _benefit('Theo dõi minh bạch',

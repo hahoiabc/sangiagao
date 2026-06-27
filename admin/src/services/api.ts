@@ -901,6 +901,7 @@ export interface CommissionRule {
   stage2_days: number;
   stage2_pct: number;
   stage3_pct: number;
+  stage3_cap_months: number; // 0 = vĩnh viễn; >0 = số tháng kể từ ngày TV đăng ký
   base_type: "gross" | "net";
   minimum_payout: number;
   active_from: string;
@@ -912,6 +913,7 @@ export interface LeaderboardRow {
   phone: string;
   name: string;
   code: string;
+  referral_code_id: string | null;
   total_referrals: number;
   total_earned: number;
   payable_amount: number;
@@ -950,6 +952,12 @@ export async function upsertCommissionRule(body: Partial<CommissionRule>) {
   return request<CommissionRule>("/admin/referrals/rules", {
     method: "POST",
     body: JSON.stringify(body),
+  });
+}
+
+export async function deleteCommissionRule(referralCodeId: string) {
+  return request<{ ok: boolean }>(`/admin/referrals/rules/${referralCodeId}`, {
+    method: "DELETE",
   });
 }
 

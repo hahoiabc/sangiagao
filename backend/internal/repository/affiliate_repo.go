@@ -75,7 +75,7 @@ func (r *AffiliateRepo) GetActiveRule(ctx context.Context, referralCodeID *strin
 	if referralCodeID != nil {
 		row := r.pool.QueryRow(ctx,
 			`SELECT id, referral_code_id, stage1_days, stage1_pct, stage2_days, stage2_pct,
-			        stage3_pct, base_type, minimum_payout, active_from, active_to, created_at, updated_at
+			        stage3_pct, stage3_cap_months, base_type, minimum_payout, active_from, active_to, created_at, updated_at
 			   FROM commission_rules
 			  WHERE referral_code_id = $1 AND active_to IS NULL
 			  LIMIT 1`, *referralCodeID)
@@ -90,7 +90,7 @@ func (r *AffiliateRepo) GetActiveRule(ctx context.Context, referralCodeID *strin
 	// Fallback to default
 	row := r.pool.QueryRow(ctx,
 		`SELECT id, referral_code_id, stage1_days, stage1_pct, stage2_days, stage2_pct,
-		        stage3_pct, base_type, minimum_payout, active_from, active_to, created_at, updated_at
+		        stage3_pct, stage3_cap_months, base_type, minimum_payout, active_from, active_to, created_at, updated_at
 		   FROM commission_rules
 		  WHERE referral_code_id IS NULL AND active_to IS NULL
 		  LIMIT 1`)
@@ -107,7 +107,7 @@ func (r *AffiliateRepo) GetActiveRule(ctx context.Context, referralCodeID *strin
 func (r *AffiliateRepo) ListRules(ctx context.Context) ([]*model.CommissionRule, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, referral_code_id, stage1_days, stage1_pct, stage2_days, stage2_pct,
-		        stage3_pct, base_type, minimum_payout, active_from, active_to, created_at, updated_at
+		        stage3_pct, stage3_cap_months, base_type, minimum_payout, active_from, active_to, created_at, updated_at
 		   FROM commission_rules
 		  ORDER BY referral_code_id NULLS FIRST, created_at DESC`)
 	if err != nil {
@@ -150,16 +150,27 @@ func (r *AffiliateRepo) UpsertRule(ctx context.Context, rule *model.CommissionRu
 	row := tx.QueryRow(ctx,
 		`INSERT INTO commission_rules
 		    (referral_code_id, stage1_days, stage1_pct, stage2_days, stage2_pct,
-		     stage3_pct, base_type, minimum_payout, active_from)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		     stage3_pct, stage3_cap_months, base_type, minimum_payout, active_from)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		 RETURNING id, created_at, updated_at`,
 		rule.ReferralCodeID, rule.Stage1Days, rule.Stage1Pct, rule.Stage2Days, rule.Stage2Pct,
-		rule.Stage3Pct, rule.BaseType, rule.MinimumPayout, now)
+		rule.Stage3Pct, rule.Stage3CapMonths, rule.BaseType, rule.MinimumPayout, now)
 	if err := row.Scan(&rule.ID, &rule.CreatedAt, &rule.UpdatedAt); err != nil {
 		return err
 	}
 	rule.ActiveFrom = now
 	return tx.Commit(ctx)
+}
+
+// DeleteRule revert override riêng của 1 đối tác về quy tắc mặc định bằng cách
+// đóng (active_to) bản ghi đang active của referral_code_id đó. Không xóa cứng
+// để giữ lịch sử + giữ rule_id cho các commission_records đã tham chiếu.
+func (r *AffiliateRepo) DeleteRule(ctx context.Context, referralCodeID string) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE commission_rules SET active_to = $1, updated_at = $1
+		   WHERE referral_code_id = $2 AND active_to IS NULL`,
+		time.Now().UTC(), referralCodeID)
+	return err
 }
 
 // --- commission_records ---
@@ -327,7 +338,7 @@ func scanRule(scanner interface{ Scan(...any) error }) (*model.CommissionRule, e
 	var rule model.CommissionRule
 	if err := scanner.Scan(
 		&rule.ID, &rule.ReferralCodeID, &rule.Stage1Days, &rule.Stage1Pct, &rule.Stage2Days, &rule.Stage2Pct,
-		&rule.Stage3Pct, &rule.BaseType, &rule.MinimumPayout, &rule.ActiveFrom, &rule.ActiveTo,
+		&rule.Stage3Pct, &rule.Stage3CapMonths, &rule.BaseType, &rule.MinimumPayout, &rule.ActiveFrom, &rule.ActiveTo,
 		&rule.CreatedAt, &rule.UpdatedAt,
 	); err != nil {
 		return nil, err

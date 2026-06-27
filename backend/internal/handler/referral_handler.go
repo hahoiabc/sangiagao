@@ -220,23 +220,24 @@ func (h *ReferralHandler) GetTerms(c *gin.Context) {
 		   FROM users WHERE id = $1`, userID).Scan(&acceptedAt, &acceptedVer)
 
 	// Pull active default rule (referral_code_id IS NULL, active_to IS NULL)
-	var stage1Days, stage2Days int
+	var stage1Days, stage2Days, stage3CapMonths int
 	var stage1Pct, stage2Pct, stage3Pct float64
 	var minimumPayout int64
 	var baseType string
 	err := h.svc.Pool().QueryRow(c.Request.Context(),
 		`SELECT stage1_days, stage1_pct, stage2_days, stage2_pct, stage3_pct,
-		        minimum_payout, base_type
+		        stage3_cap_months, minimum_payout, base_type
 		   FROM commission_rules
 		  WHERE referral_code_id IS NULL AND active_to IS NULL
 		  LIMIT 1`).
 		Scan(&stage1Days, &stage1Pct, &stage2Days, &stage2Pct, &stage3Pct,
-			&minimumPayout, &baseType)
+			&stage3CapMonths, &minimumPayout, &baseType)
 	if err != nil {
 		// Fallback defaults if no rule found (shouldn't happen post-mig 026)
 		stage1Days, stage1Pct = 90, 0.5
 		stage2Days, stage2Pct = 180, 0.3
 		stage3Pct = 0.2
+		stage3CapMonths = 24
 		minimumPayout = 100000
 		baseType = "net"
 	}
@@ -249,13 +250,14 @@ func (h *ReferralHandler) GetTerms(c *gin.Context) {
 		"accepted_at":      acceptedAt,
 		"accepted_version": acceptedVer,
 		"rule": gin.H{
-			"stage1_days":    stage1Days,
-			"stage1_pct":     stage1Pct,
-			"stage2_days":    stage2Days,
-			"stage2_pct":     stage2Pct,
-			"stage3_pct":     stage3Pct,
-			"minimum_payout": minimumPayout,
-			"base_type":      baseType,
+			"stage1_days":       stage1Days,
+			"stage1_pct":        stage1Pct,
+			"stage2_days":       stage2Days,
+			"stage2_pct":        stage2Pct,
+			"stage3_pct":        stage3Pct,
+			"stage3_cap_months": stage3CapMonths,
+			"minimum_payout":    minimumPayout,
+			"base_type":         baseType,
 		},
 	})
 }

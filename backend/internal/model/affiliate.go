@@ -17,19 +17,20 @@ type ReferralCode struct {
 // CommissionRule defines 3-stage rate by member age. referral_code_id = NULL
 // is the global default. Per-partner override created when admin negotiates.
 type CommissionRule struct {
-	ID             string     `json:"id"`
-	ReferralCodeID *string    `json:"referral_code_id"` // nil = default
-	Stage1Days     int        `json:"stage1_days"`
-	Stage1Pct      float64    `json:"stage1_pct"`
-	Stage2Days     int        `json:"stage2_days"`
-	Stage2Pct      float64    `json:"stage2_pct"`
-	Stage3Pct      float64    `json:"stage3_pct"` // perpetual after stage1+stage2 days
-	BaseType       string     `json:"base_type"`  // gross | net
-	MinimumPayout  int64      `json:"minimum_payout"`
-	ActiveFrom     time.Time  `json:"active_from"`
-	ActiveTo       *time.Time `json:"active_to,omitempty"`
-	CreatedAt      time.Time  `json:"created_at"`
-	UpdatedAt      time.Time  `json:"updated_at"`
+	ID              string     `json:"id"`
+	ReferralCodeID  *string    `json:"referral_code_id"` // nil = default
+	Stage1Days      int        `json:"stage1_days"`
+	Stage1Pct       float64    `json:"stage1_pct"`
+	Stage2Days      int        `json:"stage2_days"`
+	Stage2Pct       float64    `json:"stage2_pct"`
+	Stage3Pct       float64    `json:"stage3_pct"`        // lần 3+ (giới hạn bởi stage3_cap_months)
+	Stage3CapMonths int        `json:"stage3_cap_months"` // 0 = vĩnh viễn; >0 = số tháng kể từ referred_at
+	BaseType        string     `json:"base_type"`         // gross | net
+	MinimumPayout   int64      `json:"minimum_payout"`
+	ActiveFrom      time.Time  `json:"active_from"`
+	ActiveTo        *time.Time `json:"active_to,omitempty"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
 // CommissionRecord is 1 row per payment event (Apple SUBSCRIBED/DID_RENEW or
@@ -62,7 +63,7 @@ type Payout struct {
 	ID             string          `json:"id"`
 	ReferrerUserID string          `json:"referrer_user_id"`
 	TotalAmount    int64           `json:"total_amount"`
-	TransferFee    int64           `json:"transfer_fee"`   // paid by aff, deducted from total
+	TransferFee    int64           `json:"transfer_fee"` // paid by aff, deducted from total
 	RecordCount    int             `json:"record_count"`
 	Method         string          `json:"method"` // bank | momo | cash | other
 	BankInfo       json.RawMessage `json:"bank_info,omitempty"`
@@ -75,13 +76,13 @@ type Payout struct {
 
 // AffBankInfo is the bank account where commission payouts are sent.
 type AffBankInfo struct {
-	UserID      string    `json:"user_id"`
-	AccountNo   string    `json:"account_no"`
-	BankName    string    `json:"bank_name"`
-	HolderName  string    `json:"holder_name"`
-	Note        *string   `json:"note,omitempty"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	UserID     string    `json:"user_id"`
+	AccountNo  string    `json:"account_no"`
+	BankName   string    `json:"bank_name"`
+	HolderName string    `json:"holder_name"`
+	Note       *string   `json:"note,omitempty"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 // CurrentTermsVersion is the live affiliate T&C version. Bump when content changes.
@@ -90,12 +91,12 @@ const CurrentTermsVersion = "1.0"
 
 // ReferralStats is the aggregated view shown to a referrer (mobile + web).
 type ReferralStats struct {
-	Code            string `json:"code"`
-	TotalReferrals  int    `json:"total_referrals"`
-	ActiveReferees  int    `json:"active_referees"` // referees with active subscription
-	TotalEarned     int64  `json:"total_earned"`
-	PayableAmount   int64  `json:"payable_amount"` // status='payable', not yet paid
-	PendingAmount   int64  `json:"pending_amount"` // status='pending'
-	PaidAmount      int64  `json:"paid_amount"`
-	MinimumPayout   int64  `json:"minimum_payout"`
+	Code           string `json:"code"`
+	TotalReferrals int    `json:"total_referrals"`
+	ActiveReferees int    `json:"active_referees"` // referees with active subscription
+	TotalEarned    int64  `json:"total_earned"`
+	PayableAmount  int64  `json:"payable_amount"` // status='payable', not yet paid
+	PendingAmount  int64  `json:"pending_amount"` // status='pending'
+	PaidAmount     int64  `json:"paid_amount"`
+	MinimumPayout  int64  `json:"minimum_payout"`
 }

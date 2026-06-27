@@ -501,6 +501,7 @@ export interface AffTermsResponse {
     stage2_days: number;
     stage2_pct: number;
     stage3_pct: number;
+    stage3_cap_months: number;
     minimum_payout: number;
     base_type: "net" | "gross";
   };

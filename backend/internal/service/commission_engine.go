@@ -126,10 +126,12 @@ func (e *CommissionEngine) RecordForPayment(ctx context.Context, ev PaymentEvent
 	defer tx.Rollback(ctx)
 
 	// Lock referee row → serialize concurrent webhook cho cùng referee.
+	// referred_at (≈ ngày TV đăng ký) dùng để tính giới hạn thời gian hoa hồng.
 	var referrerUserID *string
+	var refereeAnchor time.Time
 	err = tx.QueryRow(ctx,
-		`SELECT referrer_user_id FROM users WHERE id = $1 FOR UPDATE`, ev.RefereeUserID).
-		Scan(&referrerUserID)
+		`SELECT referrer_user_id, COALESCE(referred_at, created_at) FROM users WHERE id = $1 FOR UPDATE`, ev.RefereeUserID).
+		Scan(&referrerUserID, &refereeAnchor)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("commission: referee %s not found", ev.RefereeUserID)
@@ -180,6 +182,19 @@ func (e *CommissionEngine) RecordForPayment(ctx context.Context, ev PaymentEvent
 	rule, err := e.affRepo.GetActiveRule(ctx, referralCodeID)
 	if err != nil {
 		return nil, fmt.Errorf("commission: load rule: %w", err)
+	}
+
+	// Giới hạn thời gian hoa hồng (chính sách từng thời kỳ): quá stage3_cap_months
+	// kể từ ngày TV được giới thiệu/đăng ký → KHÔNG trả hoa hồng nữa (mọi lần
+	// thanh toán sau mốc = 0, không tạo bản ghi). 0 = vĩnh viễn.
+	if rule.Stage3CapMonths > 0 {
+		capEnd := refereeAnchor.AddDate(0, rule.Stage3CapMonths, 0)
+		if ev.OccurredAt.After(capEnd) {
+			slog.Info("commission: quá hạn cap → bỏ qua",
+				"referee", ev.RefereeUserID, "cap_months", rule.Stage3CapMonths,
+				"anchor", refereeAnchor, "occurred_at", ev.OccurredAt)
+			return nil, nil
+		}
 	}
 
 	calc := Calculate(rule, ev.GrossAmount, ev.PlatformFeePct, paymentSequence)
