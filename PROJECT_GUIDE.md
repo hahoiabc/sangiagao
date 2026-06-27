@@ -99,6 +99,8 @@ Migration gần nhất: **037**. Số kế tiếp = **038**.
 
 ## 6. Thanh toán & Hoa hồng (Affiliate)
 
+> **Tài liệu đầy đủ về affiliate: [`docs/AFFILIATE.md`](docs/AFFILIATE.md)** — công thức tính, vai trò/đăng ký, cap stage 3 (24 tháng), quy tắc riêng từng đối tác, vòng đời pending→payable→paid, thỏa thuận 1.1.
+
 - **3 nguồn:** `sepay` (QR chuyển khoản — ACTIVE), `apple`/`google` IAP (TẮT trên prod).
 - **Commission engine** (`service/commission_engine.go`): stage theo **số lần thanh toán** (lần 1→45%, lần 2→30%, lần 3+→15%, cấu hình ở `commission_rules`). Idempotent theo `(payment_source, payment_event_id)` + `FOR UPDATE` lock referee. `PayableDelayDays = 45` (T+45 mới `pending`→`payable`).
 - **Clawback khi refund:** `CancelCommissionsForSubscription` — gọi từ webhook REFUND/REVOKE Apple/Google. *(Bug #1 đã fix: trước UPDATE sai bảng.)* SePay KHÔNG có refund tự động (xử lý tay).
