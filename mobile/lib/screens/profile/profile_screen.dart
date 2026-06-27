@@ -385,7 +385,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => context.push('/share-app'),
               ),
-              if (ref.watch(authProvider).user?.role == 'aff')
+              // Dashboard hoa hồng: aff + staff (owner/admin/editor) đều có mã nên
+              // đều xem được link/thống kê.
+              if (const ['aff', 'owner', 'admin', 'editor'].contains(ref.watch(authProvider).user?.role))
                 ListTile(
                   leading: const Icon(Icons.handshake_outlined, color: Colors.amber),
                   title: const Text('Hoa hồng giới thiệu'),
@@ -451,9 +453,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => context.push('/user-guide'),
               ),
-              // Hiện cho mọi vai trò CHƯA phải aff (member/seller/staff…), ẩn khi
-              // đã là 'aff' hoặc chưa đăng nhập (role null → coi như 'aff' → ẩn).
-              if ((ref.watch(authProvider).user?.role ?? 'aff') != 'aff')
+              // Nút đăng ký chỉ cho member/seller (sẽ đổi role → aff). Staff/owner
+              // không cần đăng ký — họ xem trực tiếp ở "Hoa hồng giới thiệu".
+              if (const ['member', 'seller'].contains(ref.watch(authProvider).user?.role))
                 ListTile(
                   leading: const Icon(Icons.star_outline, color: Colors.amber),
                   title: const Text('Đăng ký làm Đối tác Affiliate'),

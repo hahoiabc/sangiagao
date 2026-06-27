@@ -35,7 +35,8 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
 
 export default function GioiThieuBanPage() {
   const { user } = useAuth();
-  const isAff = user?.role === "aff";
+  // Dashboard hoa hồng cho aff + staff (owner/admin/editor) — đều có mã.
+  const isAff = ["aff", "owner", "admin", "editor"].includes(user?.role ?? "");
   const [stats, setStats] = useState<ReferralStats | null>(null);
   const [history, setHistory] = useState<CommissionRecord[]>([]);
   const [needReaccept, setNeedReaccept] = useState(false);

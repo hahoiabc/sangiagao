@@ -72,7 +72,9 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
-    final isAff = user?.role == 'aff';
+    // Dashboard hoa hồng hiển thị cho aff + staff (owner/admin/editor) — họ đều
+    // có mã giới thiệu. member/seller chưa tham gia → thấy lời mời đăng ký.
+    final isAff = const ['aff', 'owner', 'admin', 'editor'].contains(user?.role);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Giới thiệu bạn bè')),
