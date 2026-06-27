@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth";
 import {
   getReferralStats,
   getReferralHistory,
+  getAffTerms,
   type ReferralStats,
   type CommissionRecord,
 } from "@/services/api";
@@ -37,14 +38,16 @@ export default function GioiThieuBanPage() {
   const isAff = user?.role === "aff";
   const [stats, setStats] = useState<ReferralStats | null>(null);
   const [history, setHistory] = useState<CommissionRecord[]>([]);
+  const [needReaccept, setNeedReaccept] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [s, h] = await Promise.all([getReferralStats(), getReferralHistory(50)]);
+      const [s, h, t] = await Promise.all([getReferralStats(), getReferralHistory(50), getAffTerms()]);
       setStats(s);
       setHistory(h.data ?? []);
+      setNeedReaccept(!t.accepted);
     } catch {
       toast.error("Không tải được dữ liệu giới thiệu");
     } finally {
@@ -91,6 +94,23 @@ export default function GioiThieuBanPage() {
   return (
     <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
       <h1 className="text-2xl font-bold">Giới thiệu bạn bè</h1>
+
+      {isAff && needReaccept && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
+          <div className="flex items-start gap-3">
+            <Star className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-900">Thỏa thuận Đối tác đã cập nhật</p>
+              <p className="text-sm text-amber-800 mt-0.5">
+                Chính sách hoa hồng có thay đổi. Vui lòng đọc và đồng ý lại thỏa thuận mới để tiếp tục nhận hoa hồng.
+              </p>
+              <Link href="/dieu-khoan-doi-tac">
+                <Button size="sm" className="mt-2 bg-amber-600 hover:bg-amber-700">Đọc & đồng ý lại</Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {!isAff && (
         <Card id="activate" className="bg-amber-50 border-amber-200 scroll-mt-20">

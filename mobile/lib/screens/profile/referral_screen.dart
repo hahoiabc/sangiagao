@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import '../../providers/providers.dart';
+import 'aff_terms_screen.dart';
 
 class ReferralScreen extends ConsumerStatefulWidget {
   const ReferralScreen({super.key});
@@ -18,6 +19,7 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
   List<Map<String, dynamic>> _history = const [];
   Map<String, dynamic>? _bankInfo;
   bool _loading = true;
+  bool _needReaccept = false;
   String? _error;
 
   @override
@@ -35,11 +37,17 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
       try {
         bank = await api.getBankInfo();
       } catch (_) {}
+      bool needReaccept = false;
+      try {
+        final terms = await api.getAffTerms();
+        needReaccept = terms['accepted'] != true;
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
         _stats = stats;
         _history = hist;
         _bankInfo = bank;
+        _needReaccept = needReaccept;
         _loading = false;
         _error = null;
       });
@@ -100,6 +108,8 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
                             ],
                           ),
                         ),
+                      if (isAff && _needReaccept) _buildReacceptBanner(),
+                      if (isAff && _needReaccept) const SizedBox(height: 12),
                       if (isAff && _needBankInfoBanner()) _buildBankInfoBanner(),
                       if (isAff && _needBankInfoBanner()) const SizedBox(height: 12),
                       if (isAff) _buildCodeCard(),
@@ -121,6 +131,50 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
                         ),
                     ],
                   ),
+      ),
+    );
+  }
+
+  Widget _buildReacceptBanner() {
+    return Card(
+      color: Colors.amber.shade50,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.star, color: Colors.amber, size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text('Thỏa thuận Đối tác đã cập nhật',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Chính sách hoa hồng có thay đổi. Vui lòng đọc và đồng ý lại thỏa thuận mới để tiếp tục nhận hoa hồng.',
+              style: TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: Colors.amber.shade700),
+                onPressed: () async {
+                  final ok = await Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AffTermsScreen(requireAccept: true)),
+                  );
+                  if (ok == true) _load();
+                },
+                child: const Text('Đọc & đồng ý lại'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

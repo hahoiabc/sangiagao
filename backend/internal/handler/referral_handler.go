@@ -242,7 +242,9 @@ func (h *ReferralHandler) GetTerms(c *gin.Context) {
 		baseType = "net"
 	}
 
-	current := "1.0"
+	// 1.1 (27/06/2026): hoa hồng lần 3 không còn vĩnh viễn — giới hạn theo
+	// stage3_cap_months. Bump version → đối tác cũ phải đồng ý lại thỏa thuận.
+	current := "1.1"
 	accepted := acceptedVer != nil && *acceptedVer == current
 	c.JSON(http.StatusOK, gin.H{
 		"current_version":  current,

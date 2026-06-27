@@ -34,7 +34,10 @@ export default function AffTermsPage() {
 
   const isAff = user?.role === "aff";
   const alreadyAccepted = terms?.accepted ?? false;
-  const showAccept = !isAff && !alreadyAccepted;
+  // Hiện nút đồng ý cho cả đối tác CŨ chưa chấp nhận phiên bản hiện hành
+  // (thỏa thuận nâng version → bắt ký lại). handleAccept chỉ becomeAffiliate
+  // khi chưa là aff; đối tác cũ chỉ ghi nhận đồng ý phiên bản mới.
+  const showAccept = !alreadyAccepted;
 
   const handleAccept = async () => {
     if (!checked || !terms) return;
