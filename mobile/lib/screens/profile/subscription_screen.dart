@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../providers/providers.dart';
 import '../../services/iap_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/paginated_list_view.dart';
 
 class SubscriptionScreen extends ConsumerStatefulWidget {
   const SubscriptionScreen({super.key});
@@ -18,10 +19,10 @@ class SubscriptionScreen extends ConsumerStatefulWidget {
 class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   Map<String, dynamic>? _status;
   List<Map<String, dynamic>> _plans = [];
-  List<Map<String, dynamic>> _history = [];
   int _historyTotal = 0;
   bool _loading = true;
   String? _error;
+  final _historyKey = GlobalKey<PaginatedListViewState>();
 
   final _currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
 
@@ -41,18 +42,15 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       final results = await Future.wait([
         api.getSubscriptionStatus(),
         api.getSubscriptionPlans(),
-        api.getSubscriptionHistory(),
       ]);
       if (mounted) {
         final plansData = results[1];
-        final historyData = results[2];
         setState(() {
           _status = results[0];
           _plans = (plansData['plans'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-          _history = (historyData['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-          _historyTotal = historyData['total'] ?? 0;
           _loading = false;
         });
+        _historyKey.currentState?.refresh();
       }
     } catch (e) {
       if (mounted) {
@@ -81,7 +79,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                     ],
                   ),
                 )
-              : RefreshIndicator(onRefresh: _load, child: _buildContent()),
+              : _buildContent(),
     );
   }
 
@@ -90,38 +88,53 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     final isActive = _status?['is_active'] == true;
     final daysLeft = _status?['days_left'] ?? 0;
 
-    return ListView(
+    return PaginatedListView<Map<String, dynamic>>(
+      key: _historyKey,
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
-      children: [
-        // Status card
-        _buildStatusCard(sub, isActive, daysLeft),
-        const SizedBox(height: 24),
+      pageSize: 20,
+      fetcher: (page) async {
+        final res = await ref.read(apiServiceProvider).getSubscriptionHistory(page: page, limit: 20);
+        if (page == 1 && mounted) setState(() => _historyTotal = res['total'] ?? 0);
+        return (res['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      },
+      header: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Status card
+          _buildStatusCard(sub, isActive, daysLeft),
+          const SizedBox(height: 24),
 
-        // Plans section — iOS + Android use IAP (StoreKit / Play Billing).
-        // Web/SePay is still available via /goi-thanh-vien on web.
-        const Text('Bảng giá gia hạn', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 12),
-        if (Platform.isIOS || Platform.isAndroid) ...[
-          _buildIAPSection(),
-        ] else ...[
-          _buildPlansGrid(),
-          const SizedBox(height: 8),
-          _buildInfoCard(),
-        ],
+          // Plans section — iOS + Android use IAP (StoreKit / Play Billing).
+          // Web/SePay is still available via /goi-thanh-vien on web.
+          const Text('Bảng giá gia hạn', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          if (Platform.isIOS || Platform.isAndroid) ...[
+            _buildIAPSection(),
+          ] else ...[
+            _buildPlansGrid(),
+            const SizedBox(height: 8),
+            _buildInfoCard(),
+          ],
 
-        if (!isActive) ...[
-          const SizedBox(height: 16),
-          _buildWarningCard(),
-        ],
+          if (!isActive) ...[
+            const SizedBox(height: 16),
+            _buildWarningCard(),
+          ],
 
-        // History section
-        if (_history.isNotEmpty) ...[
+          // History section header
           const SizedBox(height: 24),
           Text('Lịch sử gia hạn ($_historyTotal)', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
-          ..._history.map(_buildHistoryItem),
         ],
-      ],
+      ),
+      emptyState: const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Text('Chưa có lịch sử gia hạn', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textHint)),
+      ),
+      itemBuilder: (context, sub, index) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: _buildHistoryItem(sub),
+      ),
     );
   }
 
@@ -299,13 +312,6 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                   product.price,
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primary),
                 ),
-                if (months > 1) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    '${storeFmt.format((amount / months))}/tháng',
-                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                  ),
-                ],
                 if (isOneMonth) ...[
                   const SizedBox(height: 6),
                   Container(

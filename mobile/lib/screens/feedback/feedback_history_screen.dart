@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../providers/providers.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/paginated_list_view.dart';
 
 class FeedbackHistoryScreen extends ConsumerStatefulWidget {
   const FeedbackHistoryScreen({super.key});
@@ -12,31 +13,6 @@ class FeedbackHistoryScreen extends ConsumerStatefulWidget {
 }
 
 class _FeedbackHistoryScreenState extends ConsumerState<FeedbackHistoryScreen> {
-  List<dynamic> _items = [];
-  bool _loading = true;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final result = await ref.read(apiServiceProvider).getMyFeedbacks();
-      if (mounted) setState(() => _items = result);
-    } catch (e) {
-      if (mounted) setState(() => _error = 'Không thể tải lịch sử góp ý');
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -46,28 +22,18 @@ class _FeedbackHistoryScreenState extends ConsumerState<FeedbackHistoryScreen> {
       appBar: AppBar(
         title: const Text('Lịch sử góp ý'),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(_error!, style: TextStyle(color: AppColors.textSecondary)),
-                      const SizedBox(height: 12),
-                      FilledButton.tonal(onPressed: _load, child: const Text('Thử lại')),
-                    ],
-                  ),
-                )
-              : _items.isEmpty
-                  ? const Center(child: Text('Chưa có góp ý nào', style: TextStyle(color: AppColors.textHint)))
-                  : RefreshIndicator(
-                      onRefresh: _load,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(12),
-                        itemCount: _items.length,
-                        itemBuilder: (context, index) {
-                          final item = _items[index];
+      body: PaginatedListView<dynamic>(
+        padding: const EdgeInsets.all(12),
+        pageSize: 20,
+        fetcher: (page) async =>
+            await ref.read(apiServiceProvider).getMyFeedbacks(page: page, limit: 20),
+        emptyState: const Center(
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 48),
+            child: Text('Chưa có góp ý nào', style: TextStyle(color: AppColors.textHint)),
+          ),
+        ),
+        itemBuilder: (context, item, index) {
                           final content = item['content'] as String? ?? '';
                           final reply = item['reply'] as String?;
                           final createdAt = DateTime.tryParse(item['created_at'] ?? '');
@@ -132,9 +98,8 @@ class _FeedbackHistoryScreenState extends ConsumerState<FeedbackHistoryScreen> {
                               ),
                             ),
                           );
-                        },
-                      ),
-                    ),
+        },
+      ),
     );
   }
 }
