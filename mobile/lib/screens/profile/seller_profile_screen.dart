@@ -8,6 +8,7 @@ import '../../models/rating.dart';
 import '../../providers/providers.dart';
 import '../../providers/user_block_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/paginated_list_view.dart';
 
 class SellerProfileScreen extends ConsumerStatefulWidget {
   final String sellerId;
@@ -20,8 +21,9 @@ class SellerProfileScreen extends ConsumerStatefulWidget {
 class _SellerProfileScreenState extends ConsumerState<SellerProfileScreen> {
   PublicProfile? _seller;
   RatingSummary? _ratingSummary;
-  List<Rating> _ratings = [];
   bool _loading = true;
+
+  final _listKey = GlobalKey<PaginatedListViewState<Rating>>();
 
   // Rating form
   int _newStars = 5;
@@ -46,17 +48,16 @@ class _SellerProfileScreenState extends ConsumerState<SellerProfileScreen> {
       final results = await Future.wait([
         api.getPublicProfile(widget.sellerId),
         api.getRatingSummary(widget.sellerId),
-        api.getSellerRatings(widget.sellerId),
       ]);
+      if (!mounted) return;
       setState(() {
         _seller = results[0] as PublicProfile;
         _ratingSummary = results[1] as RatingSummary;
-        _ratings = (results[2] as dynamic).data as List<Rating>;
       });
     } catch (e) {
       debugPrint('Load seller profile error: $e');
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -83,6 +84,7 @@ class _SellerProfileScreenState extends ConsumerState<SellerProfileScreen> {
         );
       }
       _load();
+      _listKey.currentState?.refresh();
     } catch (e) {
       if (mounted) {
         String msg = e.toString();
@@ -195,9 +197,16 @@ class _SellerProfileScreenState extends ConsumerState<SellerProfileScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: PaginatedListView<Rating>(
+        key: _listKey,
         padding: const EdgeInsets.all(16),
-        child: Column(
+        fetcher: (page) async =>
+            (await ref.read(apiServiceProvider).getSellerRatings(widget.sellerId, page: page, limit: 20)).data,
+        emptyState: const Padding(
+          padding: EdgeInsets.symmetric(vertical: 24),
+          child: Text('Chưa có nhận xét nào', style: TextStyle(color: AppColors.textHint)),
+        ),
+        header: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Seller info
@@ -332,42 +341,40 @@ class _SellerProfileScreenState extends ConsumerState<SellerProfileScreen> {
               ),
             const SizedBox(height: 16),
 
-            // Reviews list
-            if (_ratings.isNotEmpty) ...[
-              const Text('Nhận xét', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              ..._ratings.map((r) => Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              RatingBarIndicator(
-                                rating: r.stars.toDouble(),
-                                itemBuilder: (_, __) => const Icon(Icons.star, color: AppColors.secondary),
-                                itemCount: 5,
-                                itemSize: 16,
-                              ),
-                              const Spacer(),
-                              Text(
-                                _formatDate(r.createdAt),
-                                style: TextStyle(fontSize: 12, color: AppColors.textHint),
-                              ),
-                            ],
-                          ),
-                          if (r.comment != null && r.comment!.isNotEmpty) ...[
-                            const SizedBox(height: 6),
-                            Text(r.comment!),
-                          ],
-                        ],
-                      ),
-                    ),
-                  )),
-            ],
+            // Reviews list header
+            const Text('Nhận xét', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
           ],
+        ),
+        itemBuilder: (context, r, i) => Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    RatingBarIndicator(
+                      rating: r.stars.toDouble(),
+                      itemBuilder: (_, __) => const Icon(Icons.star, color: AppColors.secondary),
+                      itemCount: 5,
+                      itemSize: 16,
+                    ),
+                    const Spacer(),
+                    Text(
+                      _formatDate(r.createdAt),
+                      style: TextStyle(fontSize: 12, color: AppColors.textHint),
+                    ),
+                  ],
+                ),
+                if (r.comment != null && r.comment!.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(r.comment!),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );

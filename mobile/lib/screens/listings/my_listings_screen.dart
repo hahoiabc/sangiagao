@@ -7,7 +7,7 @@ import 'package:intl/intl.dart';
 import '../../models/listing.dart';
 import '../../providers/providers.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/shimmer_loading.dart';
+import '../../widgets/paginated_list_view.dart';
 
 class MyListingsScreen extends ConsumerStatefulWidget {
   const MyListingsScreen({super.key});
@@ -17,46 +17,17 @@ class MyListingsScreen extends ConsumerStatefulWidget {
 }
 
 class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
-  List<Listing> _listings = [];
-  bool _loading = true;
-  int _page = 1;
-  int _total = 0;
-  static const _pageSize = 20;
+  final _listKey = GlobalKey<PaginatedListViewState>();
 
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load({int page = 1}) async {
-    setState(() => _loading = true);
-    try {
-      final result = await ref.read(apiServiceProvider).getMyListings(page: page, limit: _pageSize);
-      if (mounted) setState(() { _listings = result.data; _total = result.total; _page = page; });
-    } catch (e) {
-      debugPrint('My listings error: $e');
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
+  void _refresh() => _listKey.currentState?.refresh();
 
   Future<void> _bump(Listing listing) async {
     try {
       final res = await ref.read(apiServiceProvider).bumpListing(listing.id);
       if (!mounted) return;
-      final newBumpedAt = res['bumped_at'] as String?;
       final newBumpCount = (res['bump_count'] as int?) ?? listing.bumpCount + 1;
       final remaining = (res['bump_remaining'] as int?) ?? (bumpLifetimeCap - newBumpCount);
-      setState(() {
-        // Đưa tin lên đầu list để phản ánh ranking mới ngay lập tức.
-        final idx = _listings.indexWhere((l) => l.id == listing.id);
-        if (idx >= 0) {
-          final updated = _listings[idx].copyWith(bumpedAt: newBumpedAt, bumpCount: newBumpCount);
-          _listings.removeAt(idx);
-          _listings.insert(0, updated);
-        }
-      });
+      _refresh(); // tải lại để phản ánh ranking mới (tin lên đầu)
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Đã làm mới tin — còn $remaining/$bumpLifetimeCap lần')),
       );
@@ -112,7 +83,7 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Đã xóa tin đăng')),
         );
-        _load();
+        _refresh();
       }
     } catch (e) {
       if (mounted) {
@@ -156,65 +127,45 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Tin đăng của tôi')),
-      body: _loading
-          ? const ListSkeleton()
-          : _listings.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.inventory_2_outlined, size: 64, color: AppColors.textHint),
-                      const SizedBox(height: 12),
-                      Text('Chưa có tin đăng nào', style: TextStyle(fontSize: 16, color: AppColors.textSecondary)),
-                      const SizedBox(height: 8),
-                      FilledButton.icon(
-                        onPressed: () async {
-                          await context.push('/create-listing');
-                          _load();
-                        },
-                        icon: const Icon(Icons.add),
-                        label: const Text('Đăng tin ngay'),
-                      ),
-                    ],
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: () => _load(page: _page),
-                  child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                    itemCount: _listings.length + (_total > _pageSize ? 1 : 0),
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (_, i) {
-                      if (i < _listings.length) return _buildListingCard(_listings[i]);
-                      // Pagination row
-                      final totalPages = (_total + _pageSize - 1) ~/ _pageSize;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            IconButton(
-                              onPressed: _page > 1 ? () => _load(page: _page - 1) : null,
-                              icon: const Icon(Icons.chevron_left),
-                            ),
-                            Text('Trang $_page / $totalPages', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                            IconButton(
-                              onPressed: _page < totalPages ? () => _load(page: _page + 1) : null,
-                              icon: const Icon(Icons.chevron_right),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+      body: PaginatedListView<Listing>(
+        key: _listKey,
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        fetcher: (page) async =>
+            (await ref.read(apiServiceProvider).getMyListings(page: page, limit: 20)).data,
+        emptyState: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 48),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.inventory_2_outlined, size: 64, color: AppColors.textHint),
+                const SizedBox(height: 12),
+                Text('Chưa có tin đăng nào', style: TextStyle(fontSize: 16, color: AppColors.textSecondary)),
+                const SizedBox(height: 8),
+                FilledButton.icon(
+                  onPressed: () async {
+                    await context.push('/create-listing');
+                    _refresh();
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text('Đăng tin ngay'),
                 ),
+              ],
+            ),
+          ),
+        ),
+        itemBuilder: (context, l, i) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _buildListingCard(l),
+        ),
+      ),
       floatingActionButton: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 FilledButton.tonal(
                   onPressed: () async {
                     await context.push('/quick-batch');
-                    _load();
+                    _refresh();
                   },
                   style: FilledButton.styleFrom(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -236,7 +187,7 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
                 FilledButton(
                   onPressed: () async {
                     await context.push('/create-listing');
-                    _load();
+                    _refresh();
                   },
                   style: FilledButton.styleFrom(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -326,7 +277,7 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
                           _bump(l);
                         } else if (v == 'edit') {
                           context.push('/edit-listing/${l.id}').then((result) {
-                            if (result == true) _load();
+                            if (result == true) _refresh();
                           });
                         } else if (v == 'delete') {
                           _delete(l.id);

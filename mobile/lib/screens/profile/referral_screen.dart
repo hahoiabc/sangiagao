@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import '../../providers/providers.dart';
+import '../../widgets/paginated_list_view.dart';
 import 'aff_terms_screen.dart';
 
 class ReferralScreen extends ConsumerStatefulWidget {
@@ -16,11 +17,14 @@ class ReferralScreen extends ConsumerStatefulWidget {
 
 class _ReferralScreenState extends ConsumerState<ReferralScreen> {
   Map<String, dynamic>? _stats;
-  List<Map<String, dynamic>> _history = const [];
   Map<String, dynamic>? _bankInfo;
   bool _loading = true;
   bool _needReaccept = false;
   String? _error;
+
+  // Key để tải lại lịch sử hoa hồng (history) khi kéo-làm-mới hoặc sau khi
+  // dữ liệu đổi (vd cập nhật bank, đồng ý lại thỏa thuận).
+  final _historyKey = GlobalKey<PaginatedListViewState<Map<String, dynamic>>>();
 
   @override
   void initState() {
@@ -32,7 +36,6 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
     final api = ref.read(apiServiceProvider);
     try {
       final stats = await api.getReferralStats();
-      final hist = await api.getReferralHistory(limit: 20);
       Map<String, dynamic>? bank;
       try {
         bank = await api.getBankInfo();
@@ -45,18 +48,46 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
       if (!mounted) return;
       setState(() {
         _stats = stats;
-        _history = hist;
         _bankInfo = bank;
         _needReaccept = needReaccept;
         _loading = false;
         _error = null;
       });
+      // Tải lại lịch sử hoa hồng (nếu widget đã gắn) khi nạp lại stats.
+      _historyKey.currentState?.refresh();
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _error = 'Không tải được dữ liệu';
         _loading = false;
       });
+    }
+  }
+
+  /// Nạp lại stats/bank/thỏa-thuận (KHÔNG đụng tới history, KHÔNG bật cờ _loading
+  /// toàn màn). Dùng khi kéo-làm-mới: PaginatedListView tự tải lại history, hàm này
+  /// chỉ cập nhật phần dashboard. Tách khỏi _load() để tránh đệ quy refresh history.
+  Future<void> _refreshStatsSilently() async {
+    final api = ref.read(apiServiceProvider);
+    try {
+      final stats = await api.getReferralStats();
+      Map<String, dynamic>? bank;
+      try {
+        bank = await api.getBankInfo();
+      } catch (_) {}
+      bool needReaccept = false;
+      try {
+        final terms = await api.getAffTerms();
+        needReaccept = terms['accepted'] != true;
+      } catch (_) {}
+      if (!mounted) return;
+      setState(() {
+        _stats = stats;
+        _bankInfo = bank;
+        _needReaccept = needReaccept;
+      });
+    } catch (_) {
+      // Bỏ qua lỗi nạp lại stats khi kéo-làm-mới — giữ dữ liệu cũ.
     }
   }
 
@@ -78,62 +109,96 @@ class _ReferralScreenState extends ConsumerState<ReferralScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Giới thiệu bạn bè')),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _error != null
-                ? Center(child: Text(_error!))
-                : ListView(
-                    padding: const EdgeInsets.all(16),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? RefreshIndicator(
+                  onRefresh: _load,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
                     children: [
-                      // Aff-only dashboard. Members are redirected to /referral/join
-                      // from the Profile menu instead (see profile_screen.dart).
-                      if (!isAff)
-                        Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Column(
-                            children: [
-                              const Icon(Icons.lock_outline, size: 48, color: Colors.grey),
-                              const SizedBox(height: 12),
-                              const Text(
-                                'Cần đăng ký làm Đối tác Affiliate để xem thông tin hoa hồng.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: Colors.grey),
-                              ),
-                              const SizedBox(height: 12),
-                              // Mọi vai trò chưa phải aff đều thấy nút (đang ở nhánh !isAff).
-                              FilledButton(
-                                onPressed: () => context.push('/referral/join'),
-                                child: const Text('Đăng ký làm Đối tác'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      if (isAff && _needReaccept) _buildReacceptBanner(),
-                      if (isAff && _needReaccept) const SizedBox(height: 12),
-                      if (isAff && _needBankInfoBanner()) _buildBankInfoBanner(),
-                      if (isAff && _needBankInfoBanner()) const SizedBox(height: 12),
-                      if (isAff) _buildCodeCard(),
-                      if (isAff) const SizedBox(height: 16),
-                      if (isAff) _buildStatsCard(),
-                      if (isAff) const SizedBox(height: 16),
-                      if (isAff) _buildQuickNav(),
-                      if (isAff) const SizedBox(height: 16),
-                      if (isAff) _buildHistoryHeader(),
-                      if (isAff) ..._history.map(_buildHistoryItem),
-                      if (isAff && _history.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
-                          child: Text(
-                            'Chưa có hoa hồng nào. Hãy chia sẻ link để bắt đầu kiếm tiền!',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.grey),
-                          ),
-                        ),
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.7,
+                        child: Center(child: Text(_error!)),
+                      ),
                     ],
                   ),
+                )
+              : isAff
+                  ? _buildAffDashboard()
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      // Member/seller chưa tham gia → lời mời đăng ký (giữ nguyên UI cũ,
+                      // KHÔNG dùng PaginatedListView vì không có danh sách lịch sử).
+                      child: ListView(
+                        padding: const EdgeInsets.all(16),
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              children: [
+                                const Icon(Icons.lock_outline, size: 48, color: Colors.grey),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Cần đăng ký làm Đối tác Affiliate để xem thông tin hoa hồng.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                                const SizedBox(height: 12),
+                                FilledButton(
+                                  onPressed: () => context.push('/referral/join'),
+                                  child: const Text('Đăng ký làm Đối tác'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+    );
+  }
+
+  /// Dashboard aff/staff: phần dashboard (banner + thẻ mã + thống kê + nav +
+  /// tiêu đề) làm header cố định, lịch sử hoa hồng cuộn vô hạn bên dưới.
+  Widget _buildAffDashboard() {
+    return PaginatedListView<Map<String, dynamic>>(
+      key: _historyKey,
+      padding: const EdgeInsets.all(16),
+      pageSize: 20,
+      fetcher: (page) async {
+        // Kéo-làm-mới (page==1) → nạp lại stats/bank/thỏa-thuận song song với history.
+        // KHÔNG await _load để không chặn việc tải history; refresh() của widget chỉ
+        // tải lại history, stats sẽ tự setState khi _load xong.
+        if (page == 1) _refreshStatsSilently();
+        return await ref
+            .read(apiServiceProvider)
+            .getReferralHistory(limit: 20, offset: (page - 1) * 20);
+      },
+      header: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_needReaccept) _buildReacceptBanner(),
+          if (_needReaccept) const SizedBox(height: 12),
+          if (_needBankInfoBanner()) _buildBankInfoBanner(),
+          if (_needBankInfoBanner()) const SizedBox(height: 12),
+          _buildCodeCard(),
+          const SizedBox(height: 16),
+          _buildStatsCard(),
+          const SizedBox(height: 16),
+          _buildQuickNav(),
+          const SizedBox(height: 16),
+          _buildHistoryHeader(),
+        ],
       ),
+      emptyState: const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Text(
+          'Chưa có hoa hồng nào. Hãy chia sẻ link để bắt đầu kiếm tiền!',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.grey),
+        ),
+      ),
+      itemBuilder: (context, item, index) => _buildHistoryItem(item),
     );
   }
 

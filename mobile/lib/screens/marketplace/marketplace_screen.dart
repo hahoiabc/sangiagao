@@ -10,6 +10,7 @@ import '../../providers/providers.dart';
 import '../../providers/user_block_provider.dart';
 import '../../services/location_service.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/paginated_list_view.dart';
 
 class MarketplaceScreen extends ConsumerStatefulWidget {
   final String? initialCategory;
@@ -22,12 +23,9 @@ class MarketplaceScreen extends ConsumerStatefulWidget {
 }
 
 class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
-  List<Listing> _listings = [];
-  bool _loading = true;
-  String? _error;
-  int _page = 1;
+  final _listKey = GlobalKey<PaginatedListViewState>();
   int _total = 0;
-  static const _limit = 20;
+  String? _firstTitle;
 
   // Location filter
   final _locationService = LocationService();
@@ -40,13 +38,10 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
   bool _hasPhotoOnly = false;
   int _postedWithinDays = 0; // 0 = không lọc; 1 / 7 / 30 ngày
 
-  int get _totalPages => (_total / _limit).ceil();
-
   @override
   void initState() {
     super.initState();
     _loadProvinces();
-    _loadListings();
   }
 
   Future<void> _loadProvinces() async {
@@ -54,43 +49,29 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
     if (mounted) setState(() => _provinces = provinces);
   }
 
-  void _goToPage(int page) {
-    if (page < 1 || page > _totalPages || page == _page) return;
-    setState(() => _page = page);
-    _loadListings();
-  }
+  void _refresh() => _listKey.currentState?.refresh();
 
-  Future<void> _loadListings() async {
-    if (!mounted) return;
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final api = ref.read(apiServiceProvider);
-      final result = await api.searchMarketplace(
-        category: widget.initialCategory,
-        type: widget.initialType,
-        sort: widget.initialSort,
-        province: _selectedProvince?.name,
-        ward: _selectedWard?.name,
-        hasPhoto: _hasPhotoOnly,
-        postedWithinDays: _postedWithinDays > 0 ? _postedWithinDays : null,
-        page: _page,
-      );
-      if (!mounted) return;
+  /// Lấy 1 trang tin theo bộ lọc hiện tại + lọc người bị chặn.
+  Future<List<Listing>> _fetch(int page) async {
+    final api = ref.read(apiServiceProvider);
+    final result = await api.searchMarketplace(
+      category: widget.initialCategory,
+      type: widget.initialType,
+      sort: widget.initialSort,
+      province: _selectedProvince?.name,
+      ward: _selectedWard?.name,
+      hasPhoto: _hasPhotoOnly,
+      postedWithinDays: _postedWithinDays > 0 ? _postedWithinDays : null,
+      page: page,
+    );
+    if (page == 1 && mounted) {
       setState(() {
-        _listings = result.data;
         _total = result.total;
+        _firstTitle = result.data.isNotEmpty ? result.data.first.title : null;
       });
-    } catch (e) {
-      debugPrint('Load listings error: $e');
-      if (mounted) {
-        setState(() => _error = 'Không thể tải dữ liệu. Kiểm tra kết nối mạng và thử lại.');
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
     }
+    final blocked = ref.read(userBlockProvider);
+    return result.data.where((l) => !blocked.contains(l.userId)).toList();
   }
 
   void _onProvinceChanged(Province? province) async {
@@ -98,21 +79,17 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
       _selectedProvince = province;
       _selectedWard = null;
       _wards = [];
-      _page = 1;
     });
     if (province != null) {
       final wards = await _locationService.getWards(province.code);
       if (mounted) setState(() => _wards = wards);
     }
-    _loadListings();
+    _refresh();
   }
 
   void _onWardChanged(Ward? ward) {
-    setState(() {
-      _selectedWard = ward;
-      _page = 1;
-    });
-    _loadListings();
+    setState(() => _selectedWard = ward);
+    _refresh();
   }
 
   final _priceFormat = NumberFormat('#,###', 'vi_VN');
@@ -120,7 +97,7 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
   String get _title {
     String name;
     if (widget.initialType != null) {
-      name = (_listings.isNotEmpty) ? _listings.first.title : widget.initialType!;
+      name = _firstTitle ?? widget.initialType!;
     } else {
       name = 'Kết quả tìm kiếm';
     }
@@ -129,7 +106,8 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    // Khi danh sách người bị chặn đổi → tải lại để ẩn ngay (Apple GL 1.2).
+    ref.listen(userBlockProvider, (_, __) => _refresh());
     return Scaffold(
       appBar: AppBar(
         title: Text(_title),
@@ -154,60 +132,28 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Content
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _error != null
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(32),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.wifi_off, size: 48, color: Colors.grey),
-                              const SizedBox(height: 12),
-                              Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
-                              const SizedBox(height: 16),
-                              ElevatedButton.icon(
-                                onPressed: _loadListings,
-                                icon: const Icon(Icons.refresh, size: 18),
-                                label: const Text('Thử lại'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    : _listings.isEmpty
-                        ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(32),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.search_off, size: 48, color: Colors.grey.shade400),
-                                  const SizedBox(height: 12),
-                                  const Text('Không tìm thấy tin đăng nào', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-                                  const SizedBox(height: 4),
-                                  Text('Thử thay đổi từ khóa hoặc bộ lọc', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
-                                ],
-                              ),
-                            ),
-                          )
-                        : RefreshIndicator(
-                        onRefresh: _loadListings,
-                        child: Builder(builder: (context) {
-                          final blocked = ref.watch(userBlockProvider);
-                          final visible = _listings.where((l) => !blocked.contains(l.userId)).toList();
-                          return ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                          itemCount: visible.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 10),
-                          itemBuilder: (context, index) {
-                            final listing = visible[index];
-                            return Card(
+      body: PaginatedListView<Listing>(
+        key: _listKey,
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        fetcher: _fetch,
+        emptyState: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.search_off, size: 48, color: Colors.grey.shade400),
+                const SizedBox(height: 12),
+                const Text('Không tìm thấy tin đăng nào', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+                const SizedBox(height: 4),
+                Text('Thử thay đổi từ khóa hoặc bộ lọc', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
+              ],
+            ),
+          ),
+        ),
+        itemBuilder: (context, listing, index) => Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Card(
                               clipBehavior: Clip.antiAlias,
                               margin: EdgeInsets.zero,
                               child: InkWell(
@@ -313,50 +259,10 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                                   ],
                                 ),
                               ),
-                            );
-                          },
-                        );
-                        }),
-                      ),
+                            ),
           ),
-          // Pagination
-          if (_totalPages > 1)
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                border: Border(top: BorderSide(color: theme.dividerColor)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    height: 28,
-                    width: 28,
-                    child: IconButton(
-                      onPressed: _page > 1 ? () => _goToPage(_page - 1) : null,
-                      icon: const Icon(Icons.chevron_left),
-                      iconSize: 16,
-                      padding: EdgeInsets.zero,
-                    ),
-                  ),
-                  ..._buildPageButtons(),
-                  SizedBox(
-                    height: 28,
-                    width: 28,
-                    child: IconButton(
-                      onPressed: _page < _totalPages ? () => _goToPage(_page + 1) : null,
-                      icon: const Icon(Icons.chevron_right),
-                      iconSize: 16,
-                      padding: EdgeInsets.zero,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
+        ),
+      );
   }
 
   Future<void> _showFilterSheet() async {
@@ -385,9 +291,8 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                             _wards = [];
                             _hasPhotoOnly = false;
                             _postedWithinDays = 0;
-                            _page = 1;
                           });
-                          _loadListings();
+                          _refresh();
                           Navigator.pop(context);
                         },
                         child: const Text('Xoá bộ lọc'),
@@ -471,8 +376,7 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                   child: FilledButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      setState(() => _page = 1);
-                      _loadListings();
+                      _refresh();
                     },
                     child: const Text('Áp dụng'),
                   ),
@@ -513,50 +417,6 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
     if (result != null) _onWardChanged(result);
   }
 
-  List<Widget> _buildPageButtons() {
-    final pages = <int>[];
-    for (var i = 1; i <= _totalPages; i++) {
-      if (i == 1 || i == _totalPages || (i >= _page - 1 && i <= _page + 1)) {
-        pages.add(i);
-      }
-    }
-    final widgets = <Widget>[];
-    int? prev;
-    for (final p in pages) {
-      if (prev != null && p - prev > 1) {
-        widgets.add(const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 2),
-          child: Text('...', style: TextStyle(fontSize: 13, color: AppColors.textHint)),
-        ));
-      }
-      final isActive = p == _page;
-      widgets.add(
-        InkWell(
-          onTap: isActive ? null : () => _goToPage(p),
-          borderRadius: BorderRadius.circular(6),
-          child: Container(
-            constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
-            alignment: Alignment.center,
-            margin: const EdgeInsets.symmetric(horizontal: 2),
-            decoration: BoxDecoration(
-              color: isActive ? Theme.of(context).colorScheme.primary : null,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              '$p',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                color: isActive ? Colors.white : null,
-              ),
-            ),
-          ),
-        ),
-      );
-      prev = p;
-    }
-    return widgets;
-  }
 }
 
 class _FilterChip extends StatelessWidget {

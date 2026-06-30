@@ -60,6 +60,10 @@ func (h *ReferralHandler) GetMyReferees(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
+	page, limit, offset := parsePageLimit(c)
+	var total int
+	_ = h.svc.Pool().QueryRow(c.Request.Context(),
+		`SELECT COUNT(*) FROM users WHERE referrer_user_id = $1`, userID).Scan(&total)
 	rows, err := h.svc.Pool().Query(c.Request.Context(),
 		`SELECT u.phone, COALESCE(u.name, ''),
 		        to_char(u.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS registered_at,
@@ -76,7 +80,7 @@ func (h *ReferralHandler) GetMyReferees(c *gin.Context) {
 		   ) s ON true
 		  WHERE u.referrer_user_id = $1
 		  ORDER BY u.created_at DESC
-		  LIMIT 200`, userID)
+		  LIMIT $2 OFFSET $3`, userID, limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "query failed"})
 		return
@@ -110,7 +114,20 @@ func (h *ReferralHandler) GetMyReferees(c *gin.Context) {
 		it.Name = maskName(it.Name)
 		out = append(out, it)
 	}
-	c.JSON(http.StatusOK, gin.H{"data": out})
+	c.JSON(http.StatusOK, gin.H{"data": out, "total": total, "page": page, "limit": limit})
+}
+
+// parsePageLimit đọc query ?page&limit (mặc định 1/20, trần 50) → page, limit, offset.
+func parsePageLimit(c *gin.Context) (int, int, int) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 50 {
+		limit = 20
+	}
+	return page, limit, (page - 1) * limit
 }
 
 // GET /api/v1/me/payouts — caller's own payouts.
@@ -120,11 +137,15 @@ func (h *ReferralHandler) GetMyPayouts(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
+	page, limit, offset := parsePageLimit(c)
+	var total int
+	_ = h.svc.Pool().QueryRow(c.Request.Context(),
+		`SELECT COUNT(*) FROM payouts WHERE referrer_user_id = $1`, userID).Scan(&total)
 	rows, err := h.svc.Pool().Query(c.Request.Context(),
 		`SELECT id, total_amount, transfer_fee, record_count, method, status,
 		        to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at,
 		        to_char(sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS sent_at
-		   FROM payouts WHERE referrer_user_id = $1 ORDER BY created_at DESC LIMIT 100`, userID)
+		   FROM payouts WHERE referrer_user_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`, userID, limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "query failed"})
 		return
@@ -152,7 +173,7 @@ func (h *ReferralHandler) GetMyPayouts(c *gin.Context) {
 		}
 		out = append(out, it)
 	}
-	c.JSON(http.StatusOK, gin.H{"data": out})
+	c.JSON(http.StatusOK, gin.H{"data": out, "total": total, "page": page, "limit": limit})
 }
 
 // GET /api/v1/me/bank-info — current bank info (404 if not set)

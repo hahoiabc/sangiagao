@@ -8,7 +8,7 @@ import '../../models/user.dart';
 import '../../providers/providers.dart';
 import '../../providers/user_block_provider.dart';
 import '../../widgets/empty_state.dart';
-import '../../widgets/shimmer_loading.dart';
+import '../../widgets/paginated_list_view.dart';
 import '../../theme/app_theme.dart';
 
 class InboxScreen extends ConsumerStatefulWidget {
@@ -19,40 +19,23 @@ class InboxScreen extends ConsumerStatefulWidget {
 }
 
 class _InboxScreenState extends ConsumerState<InboxScreen> {
-  List<Conversation> _conversations = [];
-  bool _loading = true;
+  final _listKey = GlobalKey<PaginatedListViewState<Conversation>>();
   Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
-    _load();
-    _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) => _poll());
+    // Polling tự cập nhật: tải lại danh sách từ trang đầu mỗi 15s.
+    _pollTimer = Timer.periodic(
+      const Duration(seconds: 15),
+      (_) => _listKey.currentState?.refresh(),
+    );
   }
 
   @override
   void dispose() {
     _pollTimer?.cancel();
     super.dispose();
-  }
-
-  Future<void> _load() async {
-    try {
-      final result = await ref.read(apiServiceProvider).getConversations();
-      setState(() => _conversations = result.data);
-    } catch (e) {
-      debugPrint('Load conversations error: $e');
-    } finally {
-      setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _poll() async {
-    if (!mounted) return;
-    try {
-      final result = await ref.read(apiServiceProvider).getConversations();
-      if (mounted) setState(() => _conversations = result.data);
-    } catch (_) {}
   }
 
   Future<void> _deleteConversation(Conversation conv) async {
@@ -74,7 +57,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
 
     try {
       await ref.read(apiServiceProvider).deleteConversation(conv.id);
-      setState(() => _conversations.removeWhere((c) => c.id == conv.id));
+      _listKey.currentState?.refresh();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Đã xóa cuộc trò chuyện')),
@@ -208,6 +191,12 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Apple Guideline 1.2: chặn người dùng phải ẩn hội thoại ngay → tải lại khi
+    // tập bị-chặn đổi.
+    ref.listen<Set<String>>(userBlockProvider, (_, __) {
+      _listKey.currentState?.refresh();
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tin nhắn'),
@@ -219,136 +208,135 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
           ),
         ],
       ),
-      body: _loading
-          ? const ListSkeleton()
-          : Builder(builder: (context) {
-              final blocked = ref.watch(userBlockProvider);
-              final visible = _conversations
-                  .where((c) => c.otherUser == null || !blocked.contains(c.otherUser!.id))
-                  .toList();
-              if (visible.isEmpty) {
-                return const EmptyState(
-                  icon: Icons.chat_bubble_outline,
-                  title: 'Chưa có cuộc trò chuyện',
-                  subtitle: 'Khi bạn liên hệ với người bán, tin nhắn sẽ hiển thị ở đây',
-                );
-              }
-              return RefreshIndicator(
-                  onRefresh: _load,
-                  child: ListView.separated(
-                    itemCount: visible.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1, indent: 72),
-                    itemBuilder: (_, i) {
-                      final conv = visible[i];
-                      final other = conv.otherUser;
-                      final hasUnread = conv.unreadCount > 0;
-                      final isOnline = other?.isOnline ?? false;
+      body: PaginatedListView<Conversation>(
+        key: _listKey,
+        fetcher: (page) async {
+          final result = await ref
+              .read(apiServiceProvider)
+              .getConversations(page: page, limit: 20);
+          final blocked = ref.read(userBlockProvider);
+          return result.data
+              .where((c) => c.otherUser == null || !blocked.contains(c.otherUser!.id))
+              .toList();
+        },
+        emptyState: const EmptyState(
+          icon: Icons.chat_bubble_outline,
+          title: 'Chưa có cuộc trò chuyện',
+          subtitle: 'Khi bạn liên hệ với người bán, tin nhắn sẽ hiển thị ở đây',
+        ),
+        itemBuilder: (context, conv, i) {
+          final other = conv.otherUser;
+          final hasUnread = conv.unreadCount > 0;
+          final isOnline = other?.isOnline ?? false;
 
-                      return Dismissible(
-                        key: Key(conv.id),
-                        direction: DismissDirection.endToStart,
-                        confirmDismiss: (_) async {
-                          _deleteConversation(conv);
-                          return false; // We handle removal ourselves
-                        },
-                        background: Container(
-                          alignment: Alignment.centerRight,
-                          padding: const EdgeInsets.only(right: 20),
-                          color: AppColors.error,
-                          child: const Icon(Icons.delete, color: Colors.white),
-                        ),
-                        child: ListTile(
-                          tileColor: hasUnread
-                              ? AppColors.primary.withValues(alpha: 0.06)
-                              : null,
-                          leading: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              CircleAvatar(
-                                backgroundImage: other?.avatarUrl != null
-                                    ? CachedNetworkImageProvider(other!.avatarUrl!)
-                                    : null,
-                                child: other?.avatarUrl == null
-                                    ? const Icon(Icons.person)
-                                    : null,
-                              ),
-                              Positioned(
-                                bottom: 0,
-                                right: 0,
-                                child: Container(
-                                  width: 12,
-                                  height: 12,
-                                  decoration: BoxDecoration(
-                                    color: isOnline ? AppColors.onlineGreen : AppColors.offlineGrey,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: Colors.white, width: 2),
-                                  ),
-                                ),
-                              ),
-                              if (hasUnread)
-                                Positioned(
-                                  top: -4,
-                                  right: -4,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: const BoxDecoration(
-                                      color: AppColors.error,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                                    child: Text(
-                                      '${conv.unreadCount}',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                ),
-                            ],
+          return Column(
+            children: [
+              Dismissible(
+                key: Key(conv.id),
+                direction: DismissDirection.endToStart,
+                confirmDismiss: (_) async {
+                  _deleteConversation(conv);
+                  return false; // We handle removal ourselves
+                },
+                background: Container(
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.only(right: 20),
+                  color: AppColors.error,
+                  child: const Icon(Icons.delete, color: Colors.white),
+                ),
+                child: ListTile(
+                  tileColor: hasUnread
+                      ? AppColors.primary.withValues(alpha: 0.06)
+                      : null,
+                  leading: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      CircleAvatar(
+                        backgroundImage: other?.avatarUrl != null
+                            ? CachedNetworkImageProvider(other!.avatarUrl!)
+                            : null,
+                        child: other?.avatarUrl == null
+                            ? const Icon(Icons.person)
+                            : null,
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: isOnline ? AppColors.onlineGreen : AppColors.offlineGrey,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
                           ),
-                          title: Text(
-                            other?.name ?? other?.id ?? 'Người dùng',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontWeight: hasUnread ? FontWeight.bold : FontWeight.normal,
-                              color: hasUnread ? AppColors.primary : null,
+                        ),
+                      ),
+                      if (hasUnread)
+                        Positioned(
+                          top: -4,
+                          right: -4,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: AppColors.error,
+                              shape: BoxShape.circle,
+                            ),
+                            constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                            child: Text(
+                              '${conv.unreadCount}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
                           ),
-                          subtitle: Text(
-                            _formatTime(conv.lastMessageAt),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: hasUnread ? AppColors.primary : AppColors.textSecondary,
-                            ),
-                          ),
-                          trailing: hasUnread
-                              ? Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.primary,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Text(
-                                    '${conv.unreadCount}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                )
-                              : null,
-                          onTap: () => context.push('/chat/${conv.id}'),
                         ),
-                      );
-                    },
+                    ],
                   ),
-                );
-            }),
+                  title: Text(
+                    other?.name ?? other?.id ?? 'Người dùng',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: hasUnread ? FontWeight.bold : FontWeight.normal,
+                      color: hasUnread ? AppColors.primary : null,
+                    ),
+                  ),
+                  subtitle: Text(
+                    _formatTime(conv.lastMessageAt),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: hasUnread ? AppColors.primary : AppColors.textSecondary,
+                    ),
+                  ),
+                  trailing: hasUnread
+                      ? Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            '${conv.unreadCount}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        )
+                      : null,
+                  onTap: () => context.push('/chat/${conv.id}'),
+                ),
+              ),
+              const Divider(height: 1, indent: 72),
+            ],
+          );
+        },
+      ),
     );
   }
 }

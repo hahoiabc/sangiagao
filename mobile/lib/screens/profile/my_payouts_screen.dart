@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../providers/providers.dart';
+import '../../widgets/paginated_list_view.dart';
 
 class MyPayoutsScreen extends ConsumerStatefulWidget {
   const MyPayoutsScreen({super.key});
@@ -11,75 +12,59 @@ class MyPayoutsScreen extends ConsumerStatefulWidget {
 }
 
 class _MyPayoutsScreenState extends ConsumerState<MyPayoutsScreen> {
-  List<Map<String, dynamic>> _payouts = const [];
-  bool _loading = true;
+  final _fmt = NumberFormat('#,###', 'vi_VN');
 
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final api = ref.read(apiServiceProvider);
-    try {
-      final list = await api.getMyPayouts();
-      if (!mounted) return;
-      setState(() {
-        _payouts = list;
-        _loading = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _loading = false);
-    }
-  }
+  // Tổng dồn theo các trang đã tải (cập nhật khi cuộn-tải-thêm).
+  int _totalSent = 0;
+  int _totalPending = 0;
 
   @override
   Widget build(BuildContext context) {
-    final fmt = NumberFormat('#,###', 'vi_VN');
-    final totalSent = _payouts
-        .where((p) => p['status'] == 'sent')
-        .fold<int>(0, (s, p) => s + ((p['total_amount'] as num?)?.toInt() ?? 0));
-    final totalPending = _payouts
-        .where((p) => p['status'] == 'pending')
-        .fold<int>(0, (s, p) => s + ((p['total_amount'] as num?)?.toInt() ?? 0));
-
     return Scaffold(
       appBar: AppBar(title: const Text('Lịch sử thanh toán')),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(
-                padding: const EdgeInsets.all(16),
+      body: PaginatedListView<Map<String, dynamic>>(
+        padding: const EdgeInsets.all(16),
+        fetcher: (page) async {
+          final list = await ref.read(apiServiceProvider).getMyPayouts(page: page, limit: 20);
+          if (page == 1) {
+            _totalSent = 0;
+            _totalPending = 0;
+          }
+          for (final p in list) {
+            final amount = (p['total_amount'] as num?)?.toInt() ?? 0;
+            if (p['status'] == 'sent') {
+              _totalSent += amount;
+            } else if (p['status'] == 'pending') {
+              _totalPending += amount;
+            }
+          }
+          if (mounted) setState(() {});
+          return list;
+        },
+        header: Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _row('Đã nhận', '${fmt.format(totalSent)} đ', color: Colors.blue),
-                          _row('Chờ chuyển', '${fmt.format(totalPending)} đ', color: Colors.orange),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  if (_payouts.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 32),
-                      child: Text(
-                        'Chưa có khoản thanh toán nào.\nHoa hồng đạt ngưỡng tối thiểu sẽ được admin tạo payout cho bạn.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    )
-                  else
-                    ..._payouts.map(_buildPayout),
+                  _row('Đã nhận', '${_fmt.format(_totalSent)} đ', color: Colors.blue),
+                  _row('Chờ chuyển', '${_fmt.format(_totalPending)} đ', color: Colors.orange),
                 ],
               ),
+            ),
+          ),
+        ),
+        emptyState: const Padding(
+          padding: EdgeInsets.symmetric(vertical: 32),
+          child: Text(
+            'Chưa có khoản thanh toán nào.\nHoa hồng đạt ngưỡng tối thiểu sẽ được admin tạo payout cho bạn.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey),
+          ),
+        ),
+        itemBuilder: (context, p, index) => _buildPayout(p),
       ),
     );
   }
@@ -93,7 +78,6 @@ class _MyPayoutsScreenState extends ConsumerState<MyPayoutsScreen> {
       );
 
   Widget _buildPayout(Map<String, dynamic> p) {
-    final fmt = NumberFormat('#,###', 'vi_VN');
     final amount = (p['total_amount'] as num?)?.toInt() ?? 0;
     final count = p['record_count'] ?? 0;
     final method = (p['method'] ?? '').toString();
@@ -127,7 +111,7 @@ class _MyPayoutsScreenState extends ConsumerState<MyPayoutsScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('${fmt.format(amount)} đ', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text('${_fmt.format(amount)} đ', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(

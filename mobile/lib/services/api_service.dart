@@ -663,13 +663,13 @@ class ApiService {
     await _dio.post('/me/become-affiliate');
   }
 
-  Future<List<Map<String, dynamic>>> getMyReferees() async {
-    final res = await _dio.get('/me/referees');
+  Future<List<Map<String, dynamic>>> getMyReferees({int page = 1, int limit = 20}) async {
+    final res = await _dio.get('/me/referees', queryParameters: {'page': page, 'limit': limit});
     return ((res.data['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
   }
 
-  Future<List<Map<String, dynamic>>> getMyPayouts() async {
-    final res = await _dio.get('/me/payouts');
+  Future<List<Map<String, dynamic>>> getMyPayouts({int page = 1, int limit = 20}) async {
+    final res = await _dio.get('/me/payouts', queryParameters: {'page': page, 'limit': limit});
     return ((res.data['data'] as List?) ?? const []).cast<Map<String, dynamic>>();
   }
 

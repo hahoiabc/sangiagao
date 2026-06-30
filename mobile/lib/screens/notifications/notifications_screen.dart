@@ -5,7 +5,7 @@ import '../../models/rating.dart';
 import '../../providers/providers.dart';
 import '../../widgets/empty_state.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/shimmer_loading.dart';
+import '../../widgets/paginated_list_view.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
@@ -15,45 +15,10 @@ class NotificationsScreen extends ConsumerStatefulWidget {
 }
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
-  List<AppNotification> _notifications = [];
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    try {
-      final result = await ref.read(apiServiceProvider).getNotifications();
-      setState(() => _notifications = result.data);
-    } catch (e) {
-      debugPrint('Load notifications error: $e');
-    } finally {
-      setState(() => _loading = false);
-    }
-  }
-
   Future<void> _markRead(AppNotification notif) async {
     if (notif.isRead) return;
     try {
       await ref.read(apiServiceProvider).markNotificationRead(notif.id);
-      setState(() {
-        final idx = _notifications.indexWhere((n) => n.id == notif.id);
-        if (idx != -1) {
-          _notifications[idx] = AppNotification(
-            id: notif.id,
-            userId: notif.userId,
-            type: notif.type,
-            title: notif.title,
-            body: notif.body,
-            data: notif.data,
-            isRead: true,
-            createdAt: notif.createdAt,
-          );
-        }
-      });
     } catch (e) {
       debugPrint('Mark read error: $e');
     }
@@ -105,52 +70,45 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Thông báo')),
-      body: _loading
-          ? const ListSkeleton()
-          : _notifications.isEmpty
-              ? const EmptyState(
-                  icon: Icons.notifications_none,
-                  title: 'Chưa có thông báo',
-                  subtitle: 'Thông báo mới sẽ hiển thị ở đây',
-                )
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: ListView.separated(
-                    itemCount: _notifications.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemBuilder: (_, i) {
-                      final notif = _notifications[i];
-                      return ListTile(
-                        leading: Icon(
-                          _iconForType(notif.type),
-                          color: notif.isRead ? AppColors.textHint : Theme.of(context).colorScheme.primary,
-                        ),
-                        title: Text(
-                          notif.title,
-                          style: TextStyle(
-                            fontWeight: notif.isRead ? FontWeight.normal : FontWeight.bold,
-                          ),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(notif.body, maxLines: 2, overflow: TextOverflow.ellipsis),
-                            const SizedBox(height: 4),
-                            Text(
-                              _formatTime(notif.createdAt),
-                              style: TextStyle(fontSize: 12, color: AppColors.textHint),
-                            ),
-                          ],
-                        ),
-                        tileColor: notif.isRead ? null : Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
-                        onTap: () {
-                          _markRead(notif);
-                          _navigate(notif);
-                        },
-                      );
-                    },
-                  ),
+      body: PaginatedListView<AppNotification>(
+        fetcher: (page) async =>
+            (await ref.read(apiServiceProvider).getNotifications(page: page, limit: 20)).data,
+        emptyState: const EmptyState(
+          icon: Icons.notifications_none,
+          title: 'Chưa có thông báo',
+          subtitle: 'Thông báo mới sẽ hiển thị ở đây',
+        ),
+        itemBuilder: (context, notif, i) {
+          return Column(
+            children: [
+              ListTile(
+                leading: Icon(
+                  _iconForType(notif.type),
+                  color: notif.isRead ? AppColors.textHint : Theme.of(context).colorScheme.primary,
                 ),
+                title: Text(
+                  notif.title,
+                  style: TextStyle(fontWeight: notif.isRead ? FontWeight.normal : FontWeight.bold),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(notif.body, maxLines: 2, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 4),
+                    Text(_formatTime(notif.createdAt), style: TextStyle(fontSize: 12, color: AppColors.textHint)),
+                  ],
+                ),
+                tileColor: notif.isRead ? null : Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
+                onTap: () {
+                  _markRead(notif);
+                  _navigate(notif);
+                },
+              ),
+              const Divider(height: 1),
+            ],
+          );
+        },
+      ),
     );
   }
 }
