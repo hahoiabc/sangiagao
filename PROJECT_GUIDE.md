@@ -8,6 +8,8 @@
 
 ## 1. Kiến trúc tổng thể
 
+> Tài liệu chuyên đề: [`docs/AFFILIATE.md`](docs/AFFILIATE.md) (hoa hồng/đối tác) · [`docs/MOBILE_PAGINATION.md`](docs/MOBILE_PAGINATION.md) (cuộn vô hạn — widget `PaginatedListView`, danh sách màn, quy ước backend page/limit).
+
 Monorepo 4 service + hạ tầng:
 
 | Service | Công nghệ | Port nội bộ | Thư mục | Ghi chú |
