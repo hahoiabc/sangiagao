@@ -14,9 +14,9 @@ import (
 )
 
 var (
-	ErrListingNotFound     = errors.New("listing not found")
-	ErrBumpCooldown        = errors.New("bump cooldown not elapsed")
-	ErrBumpQuotaExhausted  = errors.New("bump quota exhausted")
+	ErrListingNotFound    = errors.New("listing not found")
+	ErrBumpCooldown       = errors.New("bump cooldown not elapsed")
+	ErrBumpQuotaExhausted = errors.New("bump quota exhausted")
 )
 
 type ListingRepo struct {
@@ -37,11 +37,21 @@ const listingColumns = `id, user_id, title, category, rice_type, province, distr
 // không ảnh hưởng GREATEST.
 const lastActivityExpr = `GREATEST(created_at, updated_at, COALESCE(bumped_at, '1970-01-01'::timestamptz))`
 
+// normDiaDanhSQL chuẩn hóa tên địa danh khi SO KHỚP lọc tỉnh/xã: bỏ tiền tố hành
+// chính (Tỉnh/Thành phố/TP/Xã/Phường/Thị trấn/Quận/Huyện) + trim + lowercase.
+// Lý do: tin cũ lưu "Đồng Nai"/"Nhơn Trạch" còn danh sách địa danh mới (sau sáp
+// nhập 2025) lưu "Tỉnh Đồng Nai"/"Xã Nhơn Trạch" → so BẰNG ĐÚNG rớt ~nửa số tin.
+// Áp cho cả cột lẫn tham số để "Tỉnh Đồng Nai" == "Đồng Nai".
+func normDiaDanhSQL(expr string) string {
+	return "lower(btrim(regexp_replace(" + expr + ", '^(tỉnh|thành phố|tp\\.?|xã|phường|thị trấn|quận|huyện)\\s+', '', 'i')))"
+}
+
 // contentScore — bổ sung khi nhiều tin cùng mức giá và freshness, ưu tiên tin
 // có nhiều thông tin (ảnh, mô tả, district, vụ thu hoạch, chứng nhận). KHÔNG dùng
 // title vì hệ thống generate title đồng nhất từ rice_type catalog (không phân biệt).
 //   - completeness 0-90 (5 signal × ≤25đ)
 //   - engagement 0-10 (view_count chuẩn hoá, cap ở 100 view)
+//
 // Tổng 0-100.
 const contentScore = `(
 	(CASE WHEN images != '[]'::jsonb THEN 25 ELSE 0 END
@@ -53,10 +63,11 @@ const contentScore = `(
 )`
 
 // marketplaceOrderBy — sort mặc định cho /san-giao-dich. Chiến lược "Sàn GIÁ Gạo":
-//   1. Giá thấp nhất trước — buyer đến tìm giá tốt
-//   2. Tin hoạt động gần nhất (created/updated/bumped trong vài phút trước thắng)
-//   3. Content score tiebreaker — tin có ảnh + mô tả xếp trên tin minimal
-//   4. created_at DESC — tin mới nhất khi mọi thứ khác bằng
+//  1. Giá thấp nhất trước — buyer đến tìm giá tốt
+//  2. Tin hoạt động gần nhất (created/updated/bumped trong vài phút trước thắng)
+//  3. Content score tiebreaker — tin có ảnh + mô tả xếp trên tin minimal
+//  4. created_at DESC — tin mới nhất khi mọi thứ khác bằng
+//
 // Không tham chiếu user/subscription → công bằng giữa free + premium subscriber.
 const marketplaceOrderBy = `price_per_kg ASC, ` + lastActivityExpr + ` DESC, ` + contentScore + ` DESC, created_at DESC`
 
@@ -302,13 +313,14 @@ func (r *ListingRepo) Search(ctx context.Context, filter *model.ListingFilter) (
 	}
 
 	if filter.Province != "" {
-		where = append(where, fmt.Sprintf("province = $%d", argIdx))
+		// So khớp chuẩn hóa (bỏ tiền tố + lowercase) — chịu được lệch "Tỉnh X" vs "X".
+		where = append(where, fmt.Sprintf("%s = %s", normDiaDanhSQL("province"), normDiaDanhSQL(fmt.Sprintf("$%d", argIdx))))
 		args = append(args, filter.Province)
 		argIdx++
 	}
 
 	if filter.Ward != "" {
-		where = append(where, fmt.Sprintf("district = $%d", argIdx))
+		where = append(where, fmt.Sprintf("%s = %s", normDiaDanhSQL("district"), normDiaDanhSQL(fmt.Sprintf("$%d", argIdx))))
 		args = append(args, filter.Ward)
 		argIdx++
 	}
