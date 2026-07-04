@@ -60,7 +60,7 @@ class ApiService {
         _storage = storage ?? const FlutterSecureStorage() {
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
-        final token = await _storage.read(key: 'access_token');
+        final token = await _safeRead('access_token');
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }
@@ -74,7 +74,7 @@ class ApiService {
           final refreshed = await _refreshToken();
           if (refreshed) {
             final opts = error.requestOptions;
-            final token = await _storage.read(key: 'access_token');
+            final token = await _safeRead('access_token');
             opts.headers['Authorization'] = 'Bearer $token';
             final response = await _dio.fetch(opts);
             return handler.resolve(response);
@@ -131,10 +131,27 @@ class ApiService {
     );
   }
 
+  /// Đọc secure storage AN TOÀN. Sau khi cài lại app / khôi phục sao lưu máy,
+  /// Android Keystore sinh khoá mới nhưng dữ liệu mã hoá cũ còn sót → read() ném
+  /// PlatformException(BadPaddingException: BAD_DECRYPT). Nếu KHÔNG bắt, lỗi làm
+  /// hỏng interceptor Dio → MỌI request chết → bị map nhầm thành "không kết nối
+  /// được máy chủ" (kể cả login/đăng ký dù không cần token) → user kẹt cứng.
+  /// Bắt lỗi → xoá entry hỏng (tự lành) + coi như chưa có.
+  Future<String?> _safeRead(String key) async {
+    try {
+      return await _storage.read(key: key);
+    } catch (_) {
+      try {
+        await _storage.delete(key: key);
+      } catch (_) {}
+      return null;
+    }
+  }
+
   /// Get or generate a persistent device ID for spam protection
   Future<String> _getDeviceId() async {
     if (_cachedDeviceId != null) return _cachedDeviceId!;
-    var id = await _storage.read(key: 'device_id');
+    var id = await _safeRead('device_id');
     if (id == null) {
       // Generate UUID v4 using secure random
       final rng = Random.secure();
@@ -162,7 +179,7 @@ class ApiService {
 
   Future<bool> _doRefreshToken() async {
     try {
-      final refreshToken = await _storage.read(key: 'refresh_token');
+      final refreshToken = await _safeRead('refresh_token');
       if (refreshToken == null) return false;
 
       final res = await _createDio().post(
@@ -250,7 +267,7 @@ class ApiService {
     await _storage.deleteAll();
   }
 
-  Future<String?> getToken() => _storage.read(key: 'access_token');
+  Future<String?> getToken() => _safeRead('access_token');
 
   // --- User ---
   Future<User> getMe() async {

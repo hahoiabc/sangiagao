@@ -18,12 +18,16 @@ class AffiliateAttributionService {
   /// Safe to call multiple times — Play Install Referrer queries only run
   /// once. After consuming, call [clear] to prevent re-attribution.
   static Future<String?> getCode() async {
-    // Cached?
-    final cached = await _storage.read(key: _storageKey);
+    // Bọc try/catch: secure storage có thể ném BadPaddingException sau khi cài
+    // lại app / khôi phục sao lưu → coi như chưa có, không để văng.
+    String? cached, checked;
+    try {
+      cached = await _storage.read(key: _storageKey);
+      checked = await _storage.read(key: _storageCheckedKey);
+    } catch (_) {}
     if (cached != null && cached.isNotEmpty) return cached;
 
     // Only fetch from Play API once per install (idempotent best-effort).
-    final checked = await _storage.read(key: _storageCheckedKey);
     if (checked == 'true') return null;
     await _storage.write(key: _storageCheckedKey, value: 'true');
 

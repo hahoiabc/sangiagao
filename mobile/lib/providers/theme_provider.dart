@@ -39,7 +39,12 @@ class ThemeNotifier extends StateNotifier<ThemeOption> {
   }
 
   Future<void> _load() async {
-    final key = await _storage.read(key: _storageKey) ?? 'blue';
+    // Bọc try/catch: sau cài lại app/khôi phục sao lưu, secure storage có thể ném
+    // BadPaddingException (BAD_DECRYPT) → nếu không bắt sẽ vỡ lúc khởi động.
+    String key = 'blue';
+    try {
+      key = await _storage.read(key: _storageKey) ?? 'blue';
+    } catch (_) {}
     final option = themeOptions.firstWhere((t) => t.key == key, orElse: () => themeOptions[0]);
     state = option;
   }
