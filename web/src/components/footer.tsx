@@ -22,11 +22,11 @@ export function Footer() {
             </Link>
           </div>
         </div>
-        <div className="mt-4 pt-4 border-t border-muted text-center text-xs text-muted-foreground leading-relaxed">
-          <p className="font-medium">Công ty TNHH MTV GẠO HÀ ÂN</p>
-          <p>MST: 3602984885</p>
-          <p>Đường Trần Phú, Tổ 18, Ấp Bến Cam, Xã Phước Thiền, Huyện Nhơn Trạch, Tỉnh Đồng Nai, Việt Nam</p>
-          <p className="mt-1">&copy; {new Date().getFullYear()} SanGiaGao.Vn — Sàn Giá Gạo</p>
+        <div className="mt-4 pt-4 border-t border-muted text-center leading-relaxed">
+          <div className="mx-auto w-fit rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white">
+            Trường Sơn Connect
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">&copy; {new Date().getFullYear()} SanGiaGao.Vn — Sàn Giá Gạo</p>
         </div>
       </div>
     </footer>
