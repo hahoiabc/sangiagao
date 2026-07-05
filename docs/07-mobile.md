@@ -136,7 +136,7 @@ flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
 ## C. Quy ước version
 
 - `mobile/pubspec.yaml` dòng `version: X.Y.Z+build`. Build number PHẢI tăng mỗi lần upload (Google từ chối nếu trùng mã build đã publish).
-- **Lịch sử:** 1.6.6(52) đã duyệt · **1.6.7 BỎ QUA** (lỡ dùng trên Apple) · 1.6.8(53) · **1.6.9(54)** đã XUẤT BẢN công khai Google Play (04/07) · **1.6.10(55)** iOS đã submit → *Waiting for Review* (05/07); AAB Google chờ up tay.
+- **Lịch sử:** 1.6.6(52) đã duyệt · **1.6.7 BỎ QUA** (lỡ dùng trên Apple) · 1.6.8(53) · **1.6.9(54)** đã XUẤT BẢN công khai Google Play (04/07) · **1.6.10(55)** đã gửi CẢ 2 nền tảng (05/07): Google Play đang xem xét (phát hành đầy đủ) + App Store *Waiting for Review*.
 - Số kế tiếp khi build: **1.6.11+56**.
 
 ---
