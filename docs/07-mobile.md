@@ -121,6 +121,13 @@ flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
 ```
 - `ExportOptions.plist` để ký **TỰ ĐỘNG** (Xcode tự tạo profile). ĐỪNG đổi về manual (từng lỗi thiếu Associated Domains). Cần đăng nhập Apple ID trong Xcode.
 - Mở app **Transporter** → kéo `.ipa` vào → **Deliver**. Sau ~5–30 phút build hiện ở App Store Connect (TestFlight/Distribution). Cài thử qua TestFlight trước khi duyệt.
+- **Up bằng CLI (thay Transporter):** có App Store Connect API key `~/.appstoreconnect/private_keys/AuthKey_9GA49RN64H.p8` (Key ID `9GA49RN64H`). Chạy:
+  ```bash
+  xcrun altool --upload-app --type ios -f build/ios/ipa/SanGiaGao.vn.ipa \
+    --apiKey 9GA49RN64H --apiIssuer <ISSUER_ID>
+  ```
+  `ISSUER_ID` (UUID) KHÔNG lưu trong máy — lấy ở App Store Connect → Users and Access → Integrations → App Store Connect API (dòng Issuer ID).
+- **Google Play chưa có service account JSON** → AAB phải up TAY qua Play Console (không CLI được). Muốn tự động hoá thì tạo service account + cấp quyền trong Play Console.
 
 **Định danh store:** App ID Apple `6761744869` · Team `4398LD7T8U` · Bundle `com.sangiagao.riceMarketplace`. Chữ ký Android: `mobile/android/app/upload-keystore.jks` (mật khẩu ở `key.properties`) — **mất là không cập nhật được app**, backup kỹ (xem [02-trien-khai](02-trien-khai.md)).
 
@@ -128,9 +135,9 @@ flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
 
 ## C. Quy ước version
 
-- `mobile/pubspec.yaml` dòng `version: X.Y.Z+build`. Build number PHẢI tăng mỗi lần upload.
-- **Hiện tại:** 1.6.6(52) đã duyệt · **1.6.7 BỎ QUA** (lỡ dùng trên Apple) · 1.6.8(53) chờ duyệt · **1.6.9(54)** đã commit chờ build.
-- Số kế tiếp khi build: **1.6.9+54**.
+- `mobile/pubspec.yaml` dòng `version: X.Y.Z+build`. Build number PHẢI tăng mỗi lần upload (Google từ chối nếu trùng mã build đã publish).
+- **Lịch sử:** 1.6.6(52) đã duyệt · **1.6.7 BỎ QUA** (lỡ dùng trên Apple) · 1.6.8(53) · **1.6.9(54)** đã XUẤT BẢN công khai Google Play (04/07) · **1.6.10(55)** iOS đã submit → *Waiting for Review* (05/07); AAB Google chờ up tay.
+- Số kế tiếp khi build: **1.6.11+56**.
 
 ---
 
