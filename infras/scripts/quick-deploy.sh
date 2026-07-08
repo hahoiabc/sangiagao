@@ -10,7 +10,8 @@ set -euo pipefail
 # Script tự động:
 # 1. git pull
 # 2. Build image --no-cache
-# 3. Stop → rm → run container mới (đúng pattern)
+# 3. Stop → rm → run container mới (đúng pattern, --restart unless-stopped để
+#    tự bật lại khi VPS reboot — tránh Error 521 sau bảo trì)
 # 4. Restart nginx
 # 5. Verify health + tất cả containers
 # 6. Dọn build cache
@@ -53,6 +54,7 @@ deploy_service() {
         --name "$name" \
         --hostname "$name" \
         --network "$NETWORK" \
+        --restart unless-stopped \
         -p "$port" \
         "${extra_args[@]}" \
         "$image"
