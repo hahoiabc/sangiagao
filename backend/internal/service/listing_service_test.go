@@ -253,13 +253,44 @@ func TestListingCreate_RepoError(t *testing.T) {
 	catRepo := new(mockCatalogRepo)
 	svc := NewListingService(repo, nil, nil, catRepo)
 
-	req := &model.CreateListingRequest{Title: "Test", Category: "gao_deo_thom", RiceType: "st_25", QuantityKG: 1, PricePerKG: 1}
+	req := &model.CreateListingRequest{Title: "Test", Category: "gao_deo_thom", RiceType: "st_25", QuantityKG: 1, PricePerKG: 28000}
 	repo.On("CountTodayByUserAndType", mock.Anything, "user-1", "st_25").Return(0, nil)
 	catRepo.On("GetCatalogForAPI", mock.Anything).Return(testCatalog(), nil)
 	repo.On("Create", mock.Anything, "user-1", req).Return(nil, assert.AnError)
 
 	_, err := svc.Create(context.Background(), "user-1", req)
 	assert.Error(t, err)
+}
+
+// --- Price guard tests (5.000 < giá < 99.000 đ/kg, enforce ở backend) ---
+
+func TestListingCreate_PriceOutOfRange(t *testing.T) {
+	// Biên không hợp lệ: <=5000 hoặc >=99000 (khớp form web/app).
+	for _, p := range []float64{1, 5000, 99000, 150000} {
+		repo := new(mockListingRepo)
+		svc := NewListingService(repo, nil, nil, nil)
+		req := &model.CreateListingRequest{Category: "gao_deo_thom", RiceType: "st_25", QuantityKG: 500, PricePerKG: p}
+		repo.On("CountTodayByUserAndType", mock.Anything, "user-1", "st_25").Return(0, nil)
+
+		_, err := svc.Create(context.Background(), "user-1", req)
+		assert.ErrorIs(t, err, ErrInvalidPrice, "giá=%v phải bị chặn", p)
+	}
+}
+
+func TestListingCreate_PriceValidBoundaries(t *testing.T) {
+	// Biên hợp lệ: ngay trên 5000 và ngay dưới 99000.
+	for _, p := range []float64{5001, 50000, 98999} {
+		repo := new(mockListingRepo)
+		catRepo := new(mockCatalogRepo)
+		svc := NewListingService(repo, nil, nil, catRepo)
+		req := &model.CreateListingRequest{Title: "x", Category: "gao_deo_thom", RiceType: "st_25", QuantityKG: 500, PricePerKG: p}
+		repo.On("CountTodayByUserAndType", mock.Anything, "user-1", "st_25").Return(0, nil)
+		catRepo.On("GetCatalogForAPI", mock.Anything).Return(testCatalog(), nil)
+		repo.On("Create", mock.Anything, "user-1", req).Return(sampleListing("user-1"), nil)
+
+		_, err := svc.Create(context.Background(), "user-1", req)
+		assert.NoError(t, err, "giá=%v phải hợp lệ", p)
+	}
 }
 
 // --- GetByID Tests ---
@@ -327,6 +358,19 @@ func TestListingUpdate_NotFound(t *testing.T) {
 	req := &model.UpdateListingRequest{}
 	_, err := svc.Update(context.Background(), "user-1", "bad-id", req)
 	assert.ErrorIs(t, err, repository.ErrListingNotFound)
+}
+
+func TestListingUpdate_PriceInvalid(t *testing.T) {
+	repo := new(mockListingRepo)
+	svc := NewListingService(repo, nil, nil, nil)
+
+	existing := sampleListing("user-1")
+	repo.On("GetByID", mock.Anything, "listing-1").Return(existing, nil)
+
+	badPrice := float64(1)
+	req := &model.UpdateListingRequest{PricePerKG: &badPrice}
+	_, err := svc.Update(context.Background(), "user-1", "listing-1", req)
+	assert.ErrorIs(t, err, ErrInvalidPrice)
 }
 
 // --- Delete Tests ---

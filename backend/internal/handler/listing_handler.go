@@ -39,6 +39,8 @@ func (h *ListingHandler) Create(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		case errors.Is(err, service.ErrDailyLimitReached):
 			c.JSON(http.StatusTooManyRequests, gin.H{"error": err.Error()})
+		case errors.Is(err, service.ErrInvalidPrice):
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create listing"})
 		}
@@ -122,6 +124,8 @@ func (h *ListingHandler) Update(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "listing not found"})
 		case errors.Is(err, service.ErrNotListingOwner):
 			c.JSON(http.StatusForbidden, gin.H{"error": "you don't own this listing"})
+		case errors.Is(err, service.ErrInvalidPrice):
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update listing"})
 		}

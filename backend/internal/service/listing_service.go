@@ -38,8 +38,21 @@ const (
 var ErrInvalidCategory = errors.New("phân loại gạo không hợp lệ")
 var ErrInvalidProduct = errors.New("loại gạo không hợp lệ hoặc không thuộc phân loại đã chọn")
 var ErrDailyLimitReached = errors.New("loại gạo này đã đăng tối đa 3 lần hôm nay")
+var ErrInvalidPrice = errors.New("giá phải trên 5.000đ và dưới 99.000đ mỗi kg")
 
 const maxPerProductPerDay = 3
+
+// Khoảng giá hợp lệ mỗi kg — PHẢI khớp form web/app (`price <= 5000 || price >= 99000`
+// là không hợp lệ). Enforce ở backend để không thể thao túng bảng giá qua API trực tiếp.
+const (
+	minPricePerKG = 5000.0
+	maxPricePerKG = 99000.0
+)
+
+// validPricePerKG: hợp lệ khi 5.000 < giá < 99.000 (khớp client).
+func validPricePerKG(p float64) bool {
+	return p > minPricePerKG && p < maxPricePerKG
+}
 
 // catalogCache holds in-memory catalog data to avoid DB queries on every listing create.
 type catalogCache struct {
@@ -175,6 +188,12 @@ func (s *ListingService) Create(ctx context.Context, userID string, req *model.C
 		return nil, ErrDailyLimitReached
 	}
 
+	// Chốt chặn giá ở BACKEND (khớp form web/app): 5.000 < giá < 99.000 đ/kg.
+	// Client đã chặn nhưng backend PHẢI enforce để tránh thao túng bảng giá qua API.
+	if !validPricePerKG(req.PricePerKG) {
+		return nil, ErrInvalidPrice
+	}
+
 	// Validate category and product from in-memory cache (avoids 2-3 DB queries per create)
 	catOK, prodOK, productLabel := s.validateCatalog(ctx, req.Category, req.RiceType)
 	if !catOK {
@@ -237,6 +256,10 @@ func (s *ListingService) Update(ctx context.Context, userID, id string, req *mod
 	}
 	if listing.UserID != userID {
 		return nil, ErrNotListingOwner
+	}
+	// Chốt chặn giá khi sửa (nếu có đổi giá) — khớp Create + form client.
+	if req.PricePerKG != nil && !validPricePerKG(*req.PricePerKG) {
+		return nil, ErrInvalidPrice
 	}
 	updated, err := s.listingRepo.Update(ctx, id, req)
 	if err == nil {
