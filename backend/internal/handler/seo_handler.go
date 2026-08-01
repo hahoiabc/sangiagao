@@ -92,7 +92,7 @@ func (h *SEOHandler) GetListingsByProvinceAndRiceType(c *gin.Context) {
 		    l.price_per_kg,
 		    l.quantity_kg,
 		    l.province,
-		    l.ward,
+		    l.district AS ward,
 		    l.created_at,
 		    COALESCE(u.name, '') AS seller_name
 		 FROM listings l
