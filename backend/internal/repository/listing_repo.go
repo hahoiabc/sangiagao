@@ -63,6 +63,16 @@ func (r *ListingRepo) freshnessCond(ctx context.Context, alias string) string {
 	return fmt.Sprintf("%s > NOW() - interval '%d days'", displayFreshnessExpr(alias), n)
 }
 
+// FreshnessAndClause — mệnh đề "AND <độ tươi> > NOW()-interval 'N days'" (kèm tiền
+// tố " AND ") cho các query đọc tin NGOÀI repo (vd SEO handler tự query pgPool) áp
+// CÙNG filter số-ngày-hiển-thị. Trả "" khi không giới hạn. alias = tiền tố bảng.
+func (r *ListingRepo) FreshnessAndClause(ctx context.Context, alias string) string {
+	if c := r.freshnessCond(ctx, alias); c != "" {
+		return " AND " + c
+	}
+	return ""
+}
+
 const listingColumns = `id, user_id, title, category, rice_type, province, district,
 	quantity_kg, price_per_kg, harvest_season, description, certifications,
 	images, status, view_count, bumped_at, bump_count, created_at, updated_at`

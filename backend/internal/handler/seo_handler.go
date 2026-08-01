@@ -83,6 +83,8 @@ func (h *SEOHandler) GetListingsByProvinceAndRiceType(c *gin.Context) {
 		return
 	}
 
+	// Áp CÙNG filter "số ngày hiển thị" như marketplace/bảng giá (đồng bộ; alias l).
+	fresh := h.listingRepo.FreshnessAndClause(c.Request.Context(), "l")
 	rows, err := h.pool.Query(c.Request.Context(),
 		`SELECT
 		    l.id,
@@ -97,7 +99,7 @@ func (h *SEOHandler) GetListingsByProvinceAndRiceType(c *gin.Context) {
 		 LEFT JOIN users u ON u.id = l.user_id
 		 WHERE l.status = 'active'
 		   AND lower(unaccent(TRIM(regexp_replace(l.province, '^(Tỉnh|Thành phố|TP\.?|TP|Tỉnh\.?)\s+', '', 'i')))) = lower(unaccent($1))
-		   AND lower(unaccent(l.rice_type)) = lower(unaccent($2))
+		   AND lower(unaccent(l.rice_type)) = lower(unaccent($2))`+fresh+`
 		 ORDER BY l.created_at DESC
 		 LIMIT $3`,
 		unslugify(provinceSlug), unslugify(riceTypeSlug), limit,
