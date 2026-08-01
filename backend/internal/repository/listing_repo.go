@@ -41,12 +41,18 @@ func (r *ListingRepo) SetDisplayDaysFn(fn func(context.Context) int) {
 // trigger listings_updated_at bump updated_at trên MỌI update — kể cả tăng
 // view_count khi có người XEM tin → sẽ làm tin cũ "tươi giả" và không bao giờ ẩn.
 // Renew hợp lệ chỉ qua nút "Làm mới" (bump). (Khác lastActivityExpr dùng cho SORT.)
-const displayFreshnessExpr = `GREATEST(created_at, COALESCE(bumped_at, '1970-01-01'::timestamptz))`
+// alias: "" = cột trần (Browse/Search/PriceBoard); "l" = có bảng nối (GetSEOPriceBoard).
+func displayFreshnessExpr(alias string) string {
+	if alias != "" {
+		alias += "."
+	}
+	return fmt.Sprintf("GREATEST(%screated_at, COALESCE(%sbumped_at, '1970-01-01'::timestamptz))", alias, alias)
+}
 
 // freshnessCond trả về điều kiện SQL "<displayFreshness> > NOW() - interval 'N days'"
 // (không có tiền tố AND) khi số ngày hiển thị > 0, ngược lại chuỗi rỗng. N là số
 // nguyên từ cấu hình của ta (0-365) nên nhúng thẳng an toàn (không phải input user).
-func (r *ListingRepo) freshnessCond(ctx context.Context) string {
+func (r *ListingRepo) freshnessCond(ctx context.Context, alias string) string {
 	if r.displayDaysFn == nil {
 		return ""
 	}
@@ -54,7 +60,7 @@ func (r *ListingRepo) freshnessCond(ctx context.Context) string {
 	if n <= 0 {
 		return ""
 	}
-	return fmt.Sprintf("%s > NOW() - interval '%d days'", displayFreshnessExpr, n)
+	return fmt.Sprintf("%s > NOW() - interval '%d days'", displayFreshnessExpr(alias), n)
 }
 
 const listingColumns = `id, user_id, title, category, rice_type, province, district,
@@ -290,7 +296,7 @@ func (r *ListingRepo) Browse(ctx context.Context, page, limit int) ([]*model.Lis
 	offset := (page - 1) * limit
 
 	fresh := ""
-	if c := r.freshnessCond(ctx); c != "" {
+	if c := r.freshnessCond(ctx, ""); c != "" {
 		fresh = " AND " + c
 	}
 
@@ -326,7 +332,7 @@ func (r *ListingRepo) Search(ctx context.Context, filter *model.ListingFilter) (
 	argIdx := 1
 
 	// Số ngày hiển thị tin (site_settings): chỉ hiện tin còn "tươi" trong N ngày.
-	if c := r.freshnessCond(ctx); c != "" {
+	if c := r.freshnessCond(ctx, ""); c != "" {
 		where = append(where, c)
 	}
 
@@ -452,6 +458,8 @@ func (r *ListingRepo) GetDetailWithSeller(ctx context.Context, id string) (*mode
 			u.id, u.phone, u.role, u.name, u.avatar_url, u.province, u.district, u.ward, u.description, u.org_name, u.created_at
 		 FROM listings l
 		 JOIN users u ON u.id = l.user_id
+		 -- CỐ Ý không áp filter "số ngày hiển thị": chi tiết 1 tin qua link trực tiếp
+		 -- / chat / chủ tin xem lại vẫn phải mở được dù tin đã quá hạn khỏi danh sách.
 		 WHERE l.id = $1 AND l.status = 'active'`, id,
 	).Scan(
 		&d.ID, &d.UserID, &d.Title, &d.Category, &d.RiceType, &d.Province, &d.Ward,
@@ -532,7 +540,7 @@ type PriceBoardRow struct {
 // GetPriceBoardData returns MIN(price_per_kg) and COUNT grouped by (category, rice_type).
 func (r *ListingRepo) GetPriceBoardData(ctx context.Context) ([]PriceBoardRow, error) {
 	fresh := ""
-	if c := r.freshnessCond(ctx); c != "" {
+	if c := r.freshnessCond(ctx, ""); c != "" {
 		fresh = " AND " + c
 	}
 	rows, err := r.pool.Query(ctx,
@@ -575,6 +583,10 @@ type SEOPriceRow struct {
 // rice_type) for static SEO landing pages. Province name is normalized
 // to deduplicate "Tỉnh X" and "X" entries from inconsistent user input.
 func (r *ListingRepo) GetSEOPriceBoard(ctx context.Context) ([]SEOPriceRow, error) {
+	fresh := ""
+	if c := r.freshnessCond(ctx, "l"); c != "" {
+		fresh = " AND " + c
+	}
 	rows, err := r.pool.Query(ctx,
 		`SELECT
 		    TRIM(regexp_replace(l.province, '^(Tỉnh|Thành phố|TP\.?|TP|Tỉnh\.?)\s+', '', 'i')) AS province_norm,
@@ -593,7 +605,7 @@ func (r *ListingRepo) GetSEOPriceBoard(ctx context.Context) ([]SEOPriceRow, erro
 		 WHERE l.status = 'active'
 		   AND l.category IS NOT NULL
 		   AND l.province IS NOT NULL
-		   AND TRIM(l.province) <> ''
+		   AND TRIM(l.province) <> ''`+fresh+`
 		 GROUP BY province_norm, l.category, c.label, l.rice_type, p.label
 		 ORDER BY province_norm, l.category, l.rice_type`)
 	if err != nil {
