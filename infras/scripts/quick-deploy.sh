@@ -70,7 +70,7 @@ verify() {
     sleep 2
 
     # Check all containers
-    local required=("backend" "web" "admin" "chat" "rice_postgres" "rice_redis" "rice_mongodb" "minio" "rice_nginx")
+    local required=("backend" "web" "admin" "rice_chat" "rice_postgres" "rice_redis" "rice_mongodb" "minio" "rice_nginx")
     for c in "${required[@]}"; do
         if docker ps --format '{{.Names}}' | grep -q "^${c}$"; then
             ok "$c: running"
