@@ -66,13 +66,14 @@ type catalogCache struct {
 const catalogCacheTTL = 1 * time.Hour
 
 type ListingService struct {
-	listingRepo  ListingRepository
-	sponsorRepo  SponsorRepository
-	userRepo     UserRepository
-	catalogRepo  CatalogRepository
-	cache        cache.Cache
-	catCache     catalogCache
-	mediaBaseURL string
+	listingRepo   ListingRepository
+	sponsorRepo   SponsorRepository
+	userRepo      UserRepository
+	catalogRepo   CatalogRepository
+	cache         cache.Cache
+	catCache      catalogCache
+	mediaBaseURL  string
+	displayDaysFn func(context.Context) int
 }
 
 func NewListingService(listingRepo ListingRepository, sponsorRepo SponsorRepository, userRepo UserRepository, catalogRepo CatalogRepository) *ListingService {
@@ -85,6 +86,25 @@ func (s *ListingService) SetMediaBaseURL(u string) { s.mediaBaseURL = u }
 // SetCache enables caching for marketplace queries (optional).
 func (s *ListingService) SetCache(c cache.Cache) {
 	s.cache = c
+}
+
+// SetDisplayDaysFn tiêm hàm đọc "số ngày hiển thị tin" để ĐƯA vào khóa cache →
+// đổi số ngày trong admin ăn NGAY (khóa đổi, khóa cũ tự hết hạn), khỏi chờ TTL 5'.
+func (s *ListingService) SetDisplayDaysFn(fn func(context.Context) int) {
+	s.displayDaysFn = fn
+}
+
+// currentDisplayDays trả về số ngày hiển thị hiện tại (0 nếu chưa tiêm).
+func (s *ListingService) currentDisplayDays(ctx context.Context) int {
+	if s.displayDaysFn == nil {
+		return 0
+	}
+	return s.displayDaysFn(ctx)
+}
+
+// priceboardCacheKey — khóa cache bảng giá GẮN số ngày hiển thị để đổi N ăn ngay.
+func (s *ListingService) priceboardCacheKey(ctx context.Context) string {
+	return fmt.Sprintf("priceboard:v1:d%d", s.currentDisplayDays(ctx))
 }
 
 // loadCatalogCache loads catalog data into memory. Thread-safe, skips if cache is fresh.
@@ -340,7 +360,7 @@ func (s *ListingService) InvalidateMarketplaceCache(ctx context.Context) {
 		// Only invalidate priceboard (aggregate data changes).
 		// Marketplace listing pages use TTL-based expiry (5 min) — no need to
 		// scan+delete all marketplace:* keys on every create/update/delete.
-		_ = s.cache.Delete(ctx, "priceboard:v1")
+		_ = s.cache.Delete(ctx, s.priceboardCacheKey(ctx))
 	}
 }
 
@@ -394,7 +414,7 @@ func (s *ListingService) Browse(ctx context.Context, page, limit int) ([]*model.
 
 	// Try cache
 	if s.cache != nil {
-		cacheKey := fmt.Sprintf("%spage:%d:limit:%d", marketplaceCachePrefix, page, limit)
+		cacheKey := fmt.Sprintf("%sd%d:page:%d:limit:%d", marketplaceCachePrefix, s.currentDisplayDays(ctx), page, limit)
 		if data, err := s.cache.Get(ctx, cacheKey); err == nil && data != nil {
 			var result struct {
 				Data  []*model.Listing `json:"data"`
@@ -433,7 +453,7 @@ func (s *ListingService) Search(ctx context.Context, filter *model.ListingFilter
 
 	// Try cache
 	if s.cache != nil {
-		cacheKey := s.searchCacheKey(filter)
+		cacheKey := s.searchCacheKey(ctx, filter)
 		if data, err := s.cache.Get(ctx, cacheKey); err == nil && data != nil {
 			var result struct {
 				Data  []*model.Listing `json:"data"`
@@ -461,9 +481,9 @@ func (s *ListingService) Search(ctx context.Context, filter *model.ListingFilter
 	return s.listingRepo.Search(ctx, filter)
 }
 
-func (s *ListingService) searchCacheKey(f *model.ListingFilter) string {
-	key := fmt.Sprintf("%ssearch:q=%s:cat=%s:rt=%s:prov=%s:ward=%s:sort=%s:p=%d:l=%d",
-		marketplaceCachePrefix, f.Query, f.Category, f.RiceType, f.Province, f.Ward, f.Sort, f.Page, f.Limit)
+func (s *ListingService) searchCacheKey(ctx context.Context, f *model.ListingFilter) string {
+	key := fmt.Sprintf("%sd%d:search:q=%s:cat=%s:rt=%s:prov=%s:ward=%s:sort=%s:p=%d:l=%d",
+		marketplaceCachePrefix, s.currentDisplayDays(ctx), f.Query, f.Category, f.RiceType, f.Province, f.Ward, f.Sort, f.Page, f.Limit)
 	if f.MinPrice != nil {
 		key += fmt.Sprintf(":minP=%.0f", *f.MinPrice)
 	}
@@ -488,7 +508,7 @@ func (s *ListingService) GetDetail(ctx context.Context, id string) (*model.Listi
 func (s *ListingService) GetPriceBoard(ctx context.Context) (*model.PriceBoardResponse, error) {
 	// Try cache
 	if s.cache != nil {
-		if data, err := s.cache.Get(ctx, "priceboard:v1"); err == nil && data != nil {
+		if data, err := s.cache.Get(ctx, s.priceboardCacheKey(ctx)); err == nil && data != nil {
 			var result model.PriceBoardResponse
 			if json.Unmarshal(data, &result) == nil {
 				return &result, nil
@@ -568,7 +588,7 @@ func (s *ListingService) GetPriceBoard(ctx context.Context) (*model.PriceBoardRe
 	// Cache result
 	if s.cache != nil {
 		if encoded, e := json.Marshal(result); e == nil {
-			_ = s.cache.Set(ctx, "priceboard:v1", encoded, marketplaceCacheTTL)
+			_ = s.cache.Set(ctx, s.priceboardCacheKey(ctx), encoded, marketplaceCacheTTL)
 		}
 	}
 

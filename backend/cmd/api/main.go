@@ -214,8 +214,10 @@ func main() {
 	if appCache != nil {
 		siteSettingsService.SetCache(appCache)
 	}
-	// Tiêm "số ngày hiển thị tin" vào listingRepo để lọc marketplace/bảng giá.
+	// Tiêm "số ngày hiển thị tin": repo dùng để LỌC, service dùng để GẮN vào khóa
+	// cache (đổi số ngày trong admin ăn ngay, khỏi chờ TTL 5 phút).
 	listingRepo.SetDisplayDaysFn(siteSettingsService.GetListingDisplayDays)
+	listingService.SetDisplayDaysFn(siteSettingsService.GetListingDisplayDays)
 
 	var uploadService *service.UploadService
 	if storageClient != nil {
