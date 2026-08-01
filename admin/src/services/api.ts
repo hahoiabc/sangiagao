@@ -872,6 +872,18 @@ export async function updateAboutPage(value: string): Promise<SiteSetting> {
   });
 }
 
+// Số ngày tin đăng được hiển thị (0 = không giới hạn).
+export async function getListingDisplayDays(): Promise<{ key: string; value: number }> {
+  return request<{ key: string; value: number }>("/site-settings/listing-display-days");
+}
+
+export async function updateListingDisplayDays(value: number): Promise<SiteSetting> {
+  return request<SiteSetting>("/admin/site-settings/listing-display-days", {
+    method: "PUT",
+    body: JSON.stringify({ value }),
+  });
+}
+
 // --- Payments ---
 export interface PaymentOrder {
   id: string;

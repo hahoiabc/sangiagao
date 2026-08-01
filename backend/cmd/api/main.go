@@ -214,6 +214,8 @@ func main() {
 	if appCache != nil {
 		siteSettingsService.SetCache(appCache)
 	}
+	// Tiêm "số ngày hiển thị tin" vào listingRepo để lọc marketplace/bảng giá.
+	listingRepo.SetDisplayDaysFn(siteSettingsService.GetListingDisplayDays)
 
 	var uploadService *service.UploadService
 	if storageClient != nil {
@@ -425,6 +427,7 @@ func main() {
 		v1.GET("/site-settings/slogan-color", siteSettingsHandler.GetSloganColor)
 		v1.GET("/site-settings/guide-video", siteSettingsHandler.GetGuideVideo)
 		v1.GET("/site-settings/about-page", siteSettingsHandler.GetAboutPage)
+		v1.GET("/site-settings/listing-display-days", siteSettingsHandler.GetListingDisplayDays)
 
 		// SEO landing pages data (public, cached) — powers static blog
 		// pages at sangiagao.vn/bang-gia-gao/...
@@ -644,6 +647,7 @@ func main() {
 				// Site settings management
 				ss := middleware.RequirePermission(permissionService, "site_settings.manage") // BUG #5
 				admin.PUT("/site-settings/slogan", ss, siteSettingsHandler.UpdateSlogan)
+				admin.PUT("/site-settings/listing-display-days", ss, siteSettingsHandler.UpdateListingDisplayDays)
 				admin.PUT("/site-settings/slogan-color", ss, siteSettingsHandler.UpdateSloganColor)
 				admin.PUT("/site-settings/guide-video", ss, siteSettingsHandler.UpdateGuideVideo)
 				admin.PUT("/site-settings/about-page", ss, siteSettingsHandler.UpdateAboutPage)

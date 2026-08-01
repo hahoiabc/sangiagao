@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { getSlogan, updateSlogan, getSloganColor, updateSloganColor, getGuideVideo, updateGuideVideo } from "@/services/api";
+import { getSlogan, updateSlogan, getSloganColor, updateSloganColor, getGuideVideo, updateGuideVideo, getListingDisplayDays, updateListingDisplayDays } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Save, Eye, Palette, Video } from "lucide-react";
+import { Save, Eye, Palette, Video, CalendarClock } from "lucide-react";
 
 const PRESET_COLORS = [
   { label: "Indigo", value: "#4F46E5" },
@@ -27,19 +27,24 @@ export default function SloganPage() {
   const [savedColor, setSavedColor] = useState("#4F46E5");
   const [videoUrl, setVideoUrl] = useState("");
   const [savedVideoUrl, setSavedVideoUrl] = useState("");
+  const [displayDays, setDisplayDays] = useState("0");
+  const [savedDisplayDays, setSavedDisplayDays] = useState("0");
+  const [savingDays, setSavingDays] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingVideo, setSavingVideo] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
-      const [sloganData, colorData, videoData] = await Promise.all([getSlogan(), getSloganColor(), getGuideVideo()]);
+      const [sloganData, colorData, videoData, daysData] = await Promise.all([getSlogan(), getSloganColor(), getGuideVideo(), getListingDisplayDays()]);
       setSlogan(sloganData.value);
       setSavedSlogan(sloganData.value);
       setColor(colorData.value);
       setSavedColor(colorData.value);
       setVideoUrl(videoData.value || "");
       setSavedVideoUrl(videoData.value || "");
+      setDisplayDays(String(daysData.value ?? 0));
+      setSavedDisplayDays(String(daysData.value ?? 0));
     } catch {
       toast.error("Không thể tải slogan");
     } finally {
@@ -210,6 +215,55 @@ export default function SloganPage() {
           >
             <Save className="h-4 w-4" />
             {savingVideo ? "Đang lưu..." : "Lưu video"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Số ngày hiển thị tin đăng */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CalendarClock className="h-4 w-4" />
+            Số ngày hiển thị tin đăng
+          </CardTitle>
+          <CardDescription>
+            Tin quá số ngày này (tính từ lần đăng/sửa/làm mới gần nhất) sẽ tự ẩn khỏi sàn và bảng giá,
+            cho tới khi chủ tin bấm &quot;Làm mới&quot;. Đặt <b>0 = không giới hạn</b> (tin hiển thị đến khi xoá).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              min={0}
+              max={365}
+              value={displayDays}
+              onChange={(e) => setDisplayDays(e.target.value)}
+              className="text-sm w-28"
+            />
+            <span className="text-sm text-muted-foreground">ngày (0–365)</span>
+          </div>
+          <Button
+            onClick={async () => {
+              const n = Number(displayDays);
+              if (!Number.isInteger(n) || n < 0 || n > 365) {
+                toast.error("Số ngày phải là số nguyên từ 0 đến 365");
+                return;
+              }
+              setSavingDays(true);
+              try {
+                const r = await updateListingDisplayDays(n);
+                setSavedDisplayDays(r.value);
+                setDisplayDays(r.value);
+                toast.success(n === 0 ? "Đã đặt: không giới hạn" : `Đã đặt hiển thị ${n} ngày`);
+              } catch { toast.error("Cập nhật thất bại"); }
+              finally { setSavingDays(false); }
+            }}
+            disabled={savingDays || displayDays === savedDisplayDays}
+            className="gap-2"
+          >
+            <Save className="h-4 w-4" />
+            {savingDays ? "Đang lưu..." : "Lưu số ngày"}
           </Button>
         </CardContent>
       </Card>

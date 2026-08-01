@@ -165,6 +165,8 @@ type SiteSettingsServiceInterface interface {
 	UpdateGuideVideo(ctx context.Context, value string) (*model.SiteSetting, error)
 	GetAboutPage(ctx context.Context) (*model.SiteSetting, error)
 	UpdateAboutPage(ctx context.Context, value string) (*model.SiteSetting, error)
+	GetListingDisplayDays(ctx context.Context) int
+	UpdateListingDisplayDays(ctx context.Context, days int) (*model.SiteSetting, error)
 }
 
 type ChatServiceInterface interface {

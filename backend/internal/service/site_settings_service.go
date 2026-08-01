@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/sangiagao/rice-marketplace/internal/model"
@@ -12,6 +14,7 @@ const sloganCacheKey = "site:slogan"
 const sloganColorCacheKey = "site:slogan_color"
 const guideVideoCacheKey = "site:guide_video"
 const aboutPageCacheKey = "site:about_page"
+const listingDisplayDaysCacheKey = "site:listing_display_days"
 const sloganCacheTTL = 10 * time.Minute
 
 type SiteSettingsService struct {
@@ -59,6 +62,49 @@ func (s *SiteSettingsService) UpdateSlogan(ctx context.Context, value string) (*
 		_ = s.cache.Delete(ctx, sloganCacheKey)
 	}
 
+	return setting, nil
+}
+
+// GetListingDisplayDays trả về số ngày tin đăng được hiển thị trên sàn.
+// 0 = KHÔNG giới hạn (mặc định). Thiếu key / lỗi parse → 0 (an toàn, không ẩn tin).
+// Chữ ký func(ctx) int khớp callback tiêm vào ListingRepo.SetDisplayDaysFn.
+func (s *SiteSettingsService) GetListingDisplayDays(ctx context.Context) int {
+	if s.cache != nil {
+		if cached, err := s.cache.Get(ctx, listingDisplayDaysCacheKey); err == nil && cached != nil {
+			if n, e := strconv.Atoi(string(cached)); e == nil {
+				return n
+			}
+		}
+	}
+	setting, err := s.repo.Get(ctx, "listing_display_days")
+	if err != nil || setting == nil {
+		return 0
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(setting.Value))
+	if err != nil || n < 0 {
+		n = 0
+	}
+	if s.cache != nil {
+		_ = s.cache.Set(ctx, listingDisplayDaysCacheKey, []byte(strconv.Itoa(n)), sloganCacheTTL)
+	}
+	return n
+}
+
+// UpdateListingDisplayDays lưu số ngày (kẹp 0-365; 0 = không giới hạn).
+func (s *SiteSettingsService) UpdateListingDisplayDays(ctx context.Context, days int) (*model.SiteSetting, error) {
+	if days < 0 {
+		days = 0
+	}
+	if days > 365 {
+		days = 365
+	}
+	setting, err := s.repo.Set(ctx, "listing_display_days", strconv.Itoa(days))
+	if err != nil {
+		return nil, err
+	}
+	if s.cache != nil {
+		_ = s.cache.Delete(ctx, listingDisplayDaysCacheKey)
+	}
 	return setting, nil
 }
 

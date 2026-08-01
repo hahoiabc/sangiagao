@@ -20,11 +20,34 @@ var (
 )
 
 type ListingRepo struct {
-	pool *pgxpool.Pool
+	pool          *pgxpool.Pool
+	displayDaysFn func(context.Context) int
 }
 
 func NewListingRepo(pool *pgxpool.Pool) *ListingRepo {
 	return &ListingRepo{pool: pool}
+}
+
+// SetDisplayDaysFn tiêm hàm đọc "số ngày hiển thị tin" (từ site_settings). Khi
+// N > 0 → chỉ hiện tin có hoạt động (tạo/sửa/bump) trong N ngày; 0/nil → không
+// giới hạn (mặc định, giữ nguyên hành vi cũ). Chủ tin bấm "Làm mới" (bump) để
+// làm tươi lại → tin hiện lại.
+func (r *ListingRepo) SetDisplayDaysFn(fn func(context.Context) int) {
+	r.displayDaysFn = fn
+}
+
+// freshnessCond trả về điều kiện SQL "<lastActivity> > NOW() - interval 'N days'"
+// (không có tiền tố AND) khi số ngày hiển thị > 0, ngược lại chuỗi rỗng. N là số
+// nguyên từ cấu hình của ta (0-365) nên nhúng thẳng an toàn (không phải input user).
+func (r *ListingRepo) freshnessCond(ctx context.Context) string {
+	if r.displayDaysFn == nil {
+		return ""
+	}
+	n := r.displayDaysFn(ctx)
+	if n <= 0 {
+		return ""
+	}
+	return fmt.Sprintf("%s > NOW() - interval '%d days'", lastActivityExpr, n)
 }
 
 const listingColumns = `id, user_id, title, category, rice_type, province, district,
@@ -259,9 +282,14 @@ func (r *ListingRepo) GetImageCount(ctx context.Context, id string) (int, error)
 func (r *ListingRepo) Browse(ctx context.Context, page, limit int) ([]*model.Listing, int, error) {
 	offset := (page - 1) * limit
 
+	fresh := ""
+	if c := r.freshnessCond(ctx); c != "" {
+		fresh = " AND " + c
+	}
+
 	var total int
 	err := r.pool.QueryRow(ctx,
-		`SELECT COUNT(*) FROM listings WHERE status = 'active'`,
+		`SELECT COUNT(*) FROM listings WHERE status = 'active'`+fresh,
 	).Scan(&total)
 	if err != nil {
 		return nil, 0, err
@@ -269,7 +297,7 @@ func (r *ListingRepo) Browse(ctx context.Context, page, limit int) ([]*model.Lis
 
 	rows, err := r.pool.Query(ctx,
 		`SELECT `+listingColumns+` FROM listings
-		 WHERE status = 'active'
+		 WHERE status = 'active'`+fresh+`
 		 ORDER BY `+marketplaceOrderBy+`
 		 LIMIT $1 OFFSET $2`,
 		limit, offset,
@@ -289,6 +317,11 @@ func (r *ListingRepo) Search(ctx context.Context, filter *model.ListingFilter) (
 	where := []string{"status = 'active'"}
 	args := []interface{}{}
 	argIdx := 1
+
+	// Số ngày hiển thị tin (site_settings): chỉ hiện tin còn "tươi" trong N ngày.
+	if c := r.freshnessCond(ctx); c != "" {
+		where = append(where, c)
+	}
 
 	if filter.Query != "" {
 		// search_vector được rebuild với unaccent ở mig 032 → match cả "gao st"
@@ -491,10 +524,14 @@ type PriceBoardRow struct {
 
 // GetPriceBoardData returns MIN(price_per_kg) and COUNT grouped by (category, rice_type).
 func (r *ListingRepo) GetPriceBoardData(ctx context.Context) ([]PriceBoardRow, error) {
+	fresh := ""
+	if c := r.freshnessCond(ctx); c != "" {
+		fresh = " AND " + c
+	}
 	rows, err := r.pool.Query(ctx,
 		`SELECT category, rice_type, MIN(price_per_kg), COUNT(*)
 		 FROM listings
-		 WHERE status = 'active' AND category IS NOT NULL
+		 WHERE status = 'active' AND category IS NOT NULL`+fresh+`
 		 GROUP BY category, rice_type`)
 	if err != nil {
 		return nil, err

@@ -42,6 +42,33 @@ func (h *SiteSettingsHandler) UpdateSlogan(c *gin.Context) {
 	c.JSON(http.StatusOK, setting)
 }
 
+// GetListingDisplayDays — public: số ngày tin đăng được hiển thị (0 = không giới hạn).
+func (h *SiteSettingsHandler) GetListingDisplayDays(c *gin.Context) {
+	days := h.service.GetListingDisplayDays(c.Request.Context())
+	c.JSON(http.StatusOK, gin.H{"key": "listing_display_days", "value": days})
+}
+
+// UpdateListingDisplayDays — admin only: đặt số ngày (0-365; 0 = không giới hạn).
+func (h *SiteSettingsHandler) UpdateListingDisplayDays(c *gin.Context) {
+	var req struct {
+		Value int `json:"value"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Số ngày không hợp lệ"})
+		return
+	}
+	if req.Value < 0 || req.Value > 365 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Số ngày phải từ 0 đến 365 (0 = không giới hạn)"})
+		return
+	}
+	setting, err := h.service.UpdateListingDisplayDays(c.Request.Context(), req.Value)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cập nhật số ngày hiển thị thất bại"})
+		return
+	}
+	c.JSON(http.StatusOK, setting)
+}
+
 // GetSloganColor — public, no auth required
 func (h *SiteSettingsHandler) GetSloganColor(c *gin.Context) {
 	setting, err := h.service.GetSloganColor(c.Request.Context())
