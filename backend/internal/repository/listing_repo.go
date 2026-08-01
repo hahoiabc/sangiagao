@@ -36,7 +36,14 @@ func (r *ListingRepo) SetDisplayDaysFn(fn func(context.Context) int) {
 	r.displayDaysFn = fn
 }
 
-// freshnessCond trả về điều kiện SQL "<lastActivity> > NOW() - interval 'N days'"
+// displayFreshnessExpr — mốc "độ tươi" cho tính năng SỐ NGÀY HIỂN THỊ tin: CHỈ
+// tính ngày ĐĂNG (created_at) và lần LÀM MỚI (bumped_at). KHÔNG dùng updated_at:
+// trigger listings_updated_at bump updated_at trên MỌI update — kể cả tăng
+// view_count khi có người XEM tin → sẽ làm tin cũ "tươi giả" và không bao giờ ẩn.
+// Renew hợp lệ chỉ qua nút "Làm mới" (bump). (Khác lastActivityExpr dùng cho SORT.)
+const displayFreshnessExpr = `GREATEST(created_at, COALESCE(bumped_at, '1970-01-01'::timestamptz))`
+
+// freshnessCond trả về điều kiện SQL "<displayFreshness> > NOW() - interval 'N days'"
 // (không có tiền tố AND) khi số ngày hiển thị > 0, ngược lại chuỗi rỗng. N là số
 // nguyên từ cấu hình của ta (0-365) nên nhúng thẳng an toàn (không phải input user).
 func (r *ListingRepo) freshnessCond(ctx context.Context) string {
@@ -47,7 +54,7 @@ func (r *ListingRepo) freshnessCond(ctx context.Context) string {
 	if n <= 0 {
 		return ""
 	}
-	return fmt.Sprintf("%s > NOW() - interval '%d days'", lastActivityExpr, n)
+	return fmt.Sprintf("%s > NOW() - interval '%d days'", displayFreshnessExpr, n)
 }
 
 const listingColumns = `id, user_id, title, category, rice_type, province, district,

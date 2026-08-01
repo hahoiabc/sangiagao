@@ -227,8 +227,9 @@ export default function SloganPage() {
             Số ngày hiển thị tin đăng
           </CardTitle>
           <CardDescription>
-            Tin quá số ngày này (tính từ lần đăng/sửa/làm mới gần nhất) sẽ tự ẩn khỏi sàn và bảng giá,
-            cho tới khi chủ tin bấm &quot;Làm mới&quot;. Đặt <b>0 = không giới hạn</b> (tin hiển thị đến khi xoá).
+            Tin quá số ngày này (tính từ <b>ngày đăng</b> hoặc lần <b>Làm mới</b> gần nhất — lượt xem không tính)
+            sẽ tự ẩn khỏi sàn và bảng giá, cho tới khi chủ tin bấm &quot;Làm mới&quot;.
+            Đặt <b>0 = không giới hạn</b> (tin hiển thị đến khi xoá).
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
