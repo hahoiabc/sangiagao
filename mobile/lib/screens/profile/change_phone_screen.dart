@@ -101,7 +101,7 @@ class _ChangePhoneScreenState extends ConsumerState<ChangePhoneScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Đổi số điện thoại')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + MediaQuery.of(context).viewPadding.bottom),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

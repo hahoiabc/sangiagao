@@ -120,7 +120,9 @@ class NhaPhatTrienScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Nhà phát triển')),
       body: ListView(
-        padding: EdgeInsets.zero,
+        // Edge-to-edge (Android 15+): chừa đáy đúng bằng thanh điều hướng hệ thống
+        // để footer/nội dung cuối không lọt sau nav bar.
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewPadding.bottom),
         children: [
           _banner(ct),
           const SizedBox(height: 8),

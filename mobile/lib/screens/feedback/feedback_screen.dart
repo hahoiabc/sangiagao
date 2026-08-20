@@ -64,7 +64,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
         title: const Text('Góp ý cho nhà phát triển'),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(context).viewPadding.bottom),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

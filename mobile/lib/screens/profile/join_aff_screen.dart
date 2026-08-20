@@ -83,7 +83,7 @@ class _JoinAffScreenState extends ConsumerState<JoinAffScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Đăng ký làm Đối tác')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(context).viewPadding.bottom),
         children: [
           Card(
             color: Colors.amber.shade50,
