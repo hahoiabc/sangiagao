@@ -120,7 +120,7 @@ class _UserGuideScreenState extends ConsumerState<UserGuideScreen> {
     ),
     (
       '4. Nhắn tin (Chat)',
-      'Bắt đầu: Xem chi tiết tin đăng → bấm "Chat với người bán" hoặc bấm SĐT để gọi trực tiếp.\n\n'
+      'Bắt đầu: Xem chi tiết tin đăng → bấm "Chat ngay" hoặc bấm SĐT để gọi trực tiếp.\n\n'
       'Trong chat: Gửi tin nhắn, hình ảnh, tin nhắn thoại. Chia sẻ link tin đăng. Thu hồi tin nhắn trong 24 giờ. Thả cảm xúc.\n\n'
       'Hộp thư: Vào tab "Tin nhắn" để xem tất cả cuộc trò chuyện. Badge đỏ hiển thị số tin chưa đọc.'
     ),
