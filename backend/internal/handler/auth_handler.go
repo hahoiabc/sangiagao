@@ -77,11 +77,17 @@ func (h *AuthHandler) SendOTP(c *gin.Context) {
 		return
 	}
 
-	// "reset" (quên mật khẩu): chỉ gửi OTP nếu SĐT có tài khoản; phản hồi luôn chung.
+	// Chọn luồng theo purpose:
+	//  - "reset" (quên MK): chỉ gửi nếu SĐT có TK; phản hồi luôn chung.
+	//  - "change_phone" (đổi số): chỉ gửi nếu số mới CHƯA có TK (đã có → báo rõ).
+	//  - mặc định: gửi bình thường.
 	var err error
-	if req.Purpose == "reset" {
+	switch req.Purpose {
+	case "reset":
 		err = h.authService.SendResetOTP(c.Request.Context(), req.Phone)
-	} else {
+	case "change_phone":
+		err = h.authService.SendChangePhoneOTP(c.Request.Context(), req.Phone)
+	default:
 		err = h.authService.SendOTP(c.Request.Context(), req.Phone)
 	}
 	h.spamService.LogAttempt(c.Request.Context(), ip, deviceID, req.Phone, "send_otp", err == nil)
@@ -89,6 +95,8 @@ func (h *AuthHandler) SendOTP(c *gin.Context) {
 		switch {
 		case errors.Is(err, service.ErrInvalidPhone):
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid phone number format"})
+		case errors.Is(err, service.ErrPhoneExists):
+			c.JSON(http.StatusConflict, gin.H{"error": "Số điện thoại này đã có tài khoản khác"})
 		case errors.Is(err, service.ErrOTPCooldown):
 			c.JSON(http.StatusTooManyRequests, gin.H{"error": "vui lòng chờ 60 giây trước khi gửi lại"})
 		case errors.Is(err, service.ErrRateLimited):

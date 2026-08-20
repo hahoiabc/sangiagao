@@ -14,11 +14,12 @@ import (
 
 type UserHandler struct {
 	userService UserServiceInterface
+	otpVerifier OTPVerifier
 	cache       cache.Cache
 }
 
-func NewUserHandler(userService UserServiceInterface) *UserHandler {
-	return &UserHandler{userService: userService}
+func NewUserHandler(userService UserServiceInterface, otpVerifier OTPVerifier) *UserHandler {
+	return &UserHandler{userService: userService, otpVerifier: otpVerifier}
 }
 
 // SetCache wires Redis for token revocation on password change (BUG #12).
@@ -152,8 +153,17 @@ func (h *UserHandler) ChangePhone(c *gin.Context) {
 		return
 	}
 
-	// NOTE: OTP verification for new phone should be done separately via /auth/send-otp + /auth/verify-otp
-	// Here we just verify the code matches the latest OTP for the new phone
+	// Verify OTP của SỐ MỚI (chứng minh user sở hữu số) TRƯỚC khi đổi — bịt lỗ hổng
+	// "đổi số không cần mã". Kiểm mã mới nhất của số mới.
+	if err := h.otpVerifier.VerifyOTPCode(c.Request.Context(), req.NewPhone, req.Code); err != nil {
+		if errors.Is(err, service.ErrTooManyAttempts) {
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "Nhập sai mã quá nhiều lần, vui lòng thử lại sau"})
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Mã xác nhận không đúng hoặc đã hết hạn"})
+		}
+		return
+	}
+
 	user, err := h.userService.ChangePhone(c.Request.Context(), userID, req.NewPhone)
 	if err != nil {
 		switch {

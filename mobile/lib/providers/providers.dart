@@ -51,8 +51,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<void> sendOTP(String phone) async {
-    await _api.sendOTP(phone);
+  Future<void> sendOTP(String phone, {String? purpose}) async {
+    await _api.sendOTP(phone, purpose: purpose);
   }
 
   Future<void> verifyOTP(String phone, String code) async {

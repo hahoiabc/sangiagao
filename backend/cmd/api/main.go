@@ -233,7 +233,7 @@ func main() {
 		authHandler.SetCache(appCache)
 	}
 	authHandler.SetReferralService(referralService)
-	userHandler := handler.NewUserHandler(userService)
+	userHandler := handler.NewUserHandler(userService, authService)
 	if appCache != nil {
 		userHandler.SetCache(appCache) // BUG #12: thu hồi token khi đổi mật khẩu
 	}

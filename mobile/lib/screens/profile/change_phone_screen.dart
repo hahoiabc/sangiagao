@@ -51,7 +51,7 @@ class _ChangePhoneScreenState extends ConsumerState<ChangePhoneScreen> {
 
     setState(() { _loading = true; _error = null; });
     try {
-      await ref.read(apiServiceProvider).sendOTP(phone);
+      await ref.read(apiServiceProvider).sendOTP(phone, purpose: 'change_phone');
       _startCooldown();
       setState(() => _otpStep = true);
     } catch (e) {

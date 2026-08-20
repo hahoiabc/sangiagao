@@ -209,7 +209,7 @@ export default function ProfilePage() {
     }
     setPhoneSaving(true);
     try {
-      await sendOTP(newPhone);
+      await sendOTP(newPhone, "change_phone"); // không gửi nếu số mới đã có TK khác
       setPhoneCooldown(60);
       setPhoneStep("otp");
       toast.success("Đã gửi mã OTP đến số mới");

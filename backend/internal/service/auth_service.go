@@ -169,6 +169,44 @@ func (s *AuthService) SendResetOTP(ctx context.Context, phone string) error {
 	return s.SendOTP(ctx, phone)
 }
 
+// VerifyOTP kiểm mã OTP mới nhất của một SĐT: hết hạn / quá 5 lần / sai mã → lỗi;
+// đúng → MarkVerified. Dùng chung cho quên mật khẩu + ĐỔI SỐ (chứng minh sở hữu số).
+func (s *AuthService) VerifyOTPCode(ctx context.Context, phone, code string) error {
+	otp, err := s.otpRepo.GetLatest(ctx, phone)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrInvalidOTP
+		}
+		return fmt.Errorf("get OTP: %w", err)
+	}
+	if time.Now().After(otp.ExpiresAt) {
+		return ErrInvalidOTP
+	}
+	if otp.Attempts >= 5 {
+		return ErrTooManyAttempts
+	}
+	if subtle.ConstantTimeCompare([]byte(otp.Code), []byte(code)) != 1 {
+		_ = s.otpRepo.IncrementAttempts(ctx, otp.ID)
+		return ErrInvalidOTP
+	}
+	_ = s.otpRepo.MarkVerified(ctx, otp.ID)
+	return nil
+}
+
+// SendChangePhoneOTP — gửi OTP cho luồng ĐỔI SỐ: CHỈ gửi khi số mới CHƯA có tài
+// khoản. Số đã có TK khác → ErrPhoneExists (không gửi, không tốn OTP, báo rõ sớm).
+func (s *AuthService) SendChangePhoneOTP(ctx context.Context, phone string) error {
+	if !phoneRegex.MatchString(phone) {
+		return ErrInvalidPhone
+	}
+	if _, err := s.userRepo.GetByPhone(ctx, phone); err == nil {
+		return ErrPhoneExists // số mới đã có tài khoản → không gửi
+	} else if !errors.Is(err, repository.ErrUserNotFound) {
+		return err
+	}
+	return s.SendOTP(ctx, phone)
+}
+
 type VerifyOTPResult struct {
 	User      *model.User       `json:"user"`
 	Tokens    *jwtpkg.TokenPair `json:"tokens"`
@@ -391,29 +429,9 @@ func (s *AuthService) ResetPassword(ctx context.Context, phone, code, newPasswor
 		return "", err
 	}
 
-	// Verify OTP
-	otp, err := s.otpRepo.GetLatest(ctx, phone)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return "", ErrInvalidOTP
-		}
-		return "", fmt.Errorf("get OTP: %w", err)
+	if err := s.VerifyOTPCode(ctx, phone, code); err != nil {
+		return "", err
 	}
-
-	if time.Now().After(otp.ExpiresAt) {
-		return "", ErrInvalidOTP
-	}
-
-	if otp.Attempts >= 5 {
-		return "", ErrTooManyAttempts
-	}
-
-	if subtle.ConstantTimeCompare([]byte(otp.Code), []byte(code)) != 1 {
-		_ = s.otpRepo.IncrementAttempts(ctx, otp.ID)
-		return "", ErrInvalidOTP
-	}
-
-	_ = s.otpRepo.MarkVerified(ctx, otp.ID)
 
 	// Check user exists
 	user, err := s.userRepo.GetByPhone(ctx, phone)

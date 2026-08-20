@@ -195,8 +195,10 @@ class ApiService {
   }
 
   // --- Auth ---
-  Future<Map<String, dynamic>> sendOTP(String phone) async {
-    final res = await _dio.post('/auth/send-otp', data: {'phone': phone});
+  Future<Map<String, dynamic>> sendOTP(String phone, {String? purpose}) async {
+    final data = <String, dynamic>{'phone': phone};
+    if (purpose != null) data['purpose'] = purpose;
+    final res = await _dio.post('/auth/send-otp', data: data);
     return res.data;
   }
 

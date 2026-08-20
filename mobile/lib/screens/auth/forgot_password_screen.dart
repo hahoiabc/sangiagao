@@ -59,7 +59,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
     setState(() { _loading = true; _error = null; });
     try {
-      await ref.read(authProvider.notifier).sendOTP(phone);
+      await ref.read(authProvider.notifier).sendOTP(phone, purpose: 'reset');
       _startCooldown();
       setState(() { _otpStep = true; });
     } catch (e) {

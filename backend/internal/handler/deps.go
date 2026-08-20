@@ -14,12 +14,18 @@ import (
 type AuthServiceInterface interface {
 	SendOTP(ctx context.Context, phone string) error
 	SendResetOTP(ctx context.Context, phone string) error
+	SendChangePhoneOTP(ctx context.Context, phone string) error
 	VerifyOTP(ctx context.Context, phone, code string) (*service.VerifyOTPResult, error)
 	RefreshToken(ctx context.Context, refreshToken string) (*jwtpkg.TokenPair, error)
 	CompleteRegister(ctx context.Context, phone, code, name, password, province, ward, address string) (*service.RegisterResult, error)
 	LoginPassword(ctx context.Context, phone, password string) (*service.RegisterResult, error)
 	ResetPassword(ctx context.Context, phone, code, newPassword string) (string, error)
 	CheckPhoneRegistered(ctx context.Context, phone string) error
+}
+
+// OTPVerifier — dùng ở UserHandler để verify OTP số mới trước khi ĐỔI SỐ.
+type OTPVerifier interface {
+	VerifyOTPCode(ctx context.Context, phone, code string) error
 }
 
 type UserServiceInterface interface {

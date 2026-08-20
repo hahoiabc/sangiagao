@@ -18,6 +18,13 @@ import (
 
 type mockUserService struct{ mock.Mock }
 
+type mockOTPVerifier struct{ mock.Mock }
+
+func (m *mockOTPVerifier) VerifyOTPCode(ctx context.Context, phone, code string) error {
+	args := m.Called(ctx, phone, code)
+	return args.Error(0)
+}
+
 func (m *mockUserService) GetMe(ctx context.Context, userID string) (*model.User, error) {
 	args := m.Called(ctx, userID)
 	if args.Get(0) == nil {
@@ -96,7 +103,7 @@ func testUser() *model.User {
 
 func TestGetMe_Success(t *testing.T) {
 	svc := new(mockUserService)
-	h := NewUserHandler(svc)
+	h := NewUserHandler(svc, new(mockOTPVerifier))
 	r := userRouter(h)
 
 	svc.On("GetMe", mock.Anything, "user-123").Return(testUser(), nil)
@@ -112,7 +119,7 @@ func TestGetMe_Success(t *testing.T) {
 
 func TestGetMe_Error(t *testing.T) {
 	svc := new(mockUserService)
-	h := NewUserHandler(svc)
+	h := NewUserHandler(svc, new(mockOTPVerifier))
 	r := userRouter(h)
 
 	svc.On("GetMe", mock.Anything, "user-123").Return(nil, assert.AnError)
@@ -129,7 +136,7 @@ func TestGetMe_Error(t *testing.T) {
 
 func TestUpdateMe_Success(t *testing.T) {
 	svc := new(mockUserService)
-	h := NewUserHandler(svc)
+	h := NewUserHandler(svc, new(mockOTPVerifier))
 	r := userRouter(h)
 
 	updated := testUser()
@@ -147,7 +154,7 @@ func TestUpdateMe_Success(t *testing.T) {
 }
 
 func TestUpdateMe_InvalidBody(t *testing.T) {
-	h := NewUserHandler(new(mockUserService))
+	h := NewUserHandler(new(mockUserService), new(mockOTPVerifier))
 	r := userRouter(h)
 
 	req := httptest.NewRequest("PUT", "/users/me", strings.NewReader("not json"))
@@ -163,7 +170,7 @@ func TestUpdateMe_InvalidBody(t *testing.T) {
 // the body is silently dropped at JSON binding (defense in depth).
 func TestUpdateMe_RoleFieldIgnored(t *testing.T) {
 	svc := new(mockUserService)
-	h := NewUserHandler(svc)
+	h := NewUserHandler(svc, new(mockOTPVerifier))
 	r := userRouter(h)
 
 	updated := &model.User{ID: "user-123", Role: "member"}
@@ -182,7 +189,7 @@ func TestUpdateMe_RoleFieldIgnored(t *testing.T) {
 
 func TestUpdateMe_ServerError(t *testing.T) {
 	svc := new(mockUserService)
-	h := NewUserHandler(svc)
+	h := NewUserHandler(svc, new(mockOTPVerifier))
 	r := userRouter(h)
 
 	svc.On("UpdateProfile", mock.Anything, "user-123", mock.Anything).Return(nil, assert.AnError)
@@ -200,7 +207,7 @@ func TestUpdateMe_ServerError(t *testing.T) {
 
 func TestGetProfile_Success(t *testing.T) {
 	svc := new(mockUserService)
-	h := NewUserHandler(svc)
+	h := NewUserHandler(svc, new(mockOTPVerifier))
 	r := userRouter(h)
 
 	profile := &model.PublicProfile{
@@ -220,7 +227,7 @@ func TestGetProfile_Success(t *testing.T) {
 
 func TestGetProfile_NotFound(t *testing.T) {
 	svc := new(mockUserService)
-	h := NewUserHandler(svc)
+	h := NewUserHandler(svc, new(mockOTPVerifier))
 	r := userRouter(h)
 
 	svc.On("GetPublicProfile", mock.Anything, "nonexistent").Return(nil, repository.ErrUserNotFound)
@@ -235,7 +242,7 @@ func TestGetProfile_NotFound(t *testing.T) {
 
 func TestGetProfile_ServerError(t *testing.T) {
 	svc := new(mockUserService)
-	h := NewUserHandler(svc)
+	h := NewUserHandler(svc, new(mockOTPVerifier))
 	r := userRouter(h)
 
 	svc.On("GetPublicProfile", mock.Anything, "user-456").Return(nil, assert.AnError)
@@ -251,7 +258,7 @@ func TestGetProfile_ServerError(t *testing.T) {
 
 func TestUploadAvatar_Success(t *testing.T) {
 	svc := new(mockUserService)
-	h := NewUserHandler(svc)
+	h := NewUserHandler(svc, new(mockOTPVerifier))
 	r := userRouter(h)
 
 	user := testUser()
@@ -269,7 +276,7 @@ func TestUploadAvatar_Success(t *testing.T) {
 }
 
 func TestUploadAvatar_MissingURL(t *testing.T) {
-	h := NewUserHandler(new(mockUserService))
+	h := NewUserHandler(new(mockUserService), new(mockOTPVerifier))
 	r := userRouter(h)
 
 	body := `{}`
@@ -284,7 +291,7 @@ func TestUploadAvatar_MissingURL(t *testing.T) {
 
 func TestUploadAvatar_ServerError(t *testing.T) {
 	svc := new(mockUserService)
-	h := NewUserHandler(svc)
+	h := NewUserHandler(svc, new(mockOTPVerifier))
 	r := userRouter(h)
 
 	svc.On("UpdateAvatar", mock.Anything, "user-123", "https://x.com/a.jpg").Return(nil, assert.AnError)
@@ -301,7 +308,7 @@ func TestUploadAvatar_ServerError(t *testing.T) {
 // --- Empty body edge case ---
 
 func TestUpdateMe_EmptyBody(t *testing.T) {
-	h := NewUserHandler(new(mockUserService))
+	h := NewUserHandler(new(mockUserService), new(mockOTPVerifier))
 	r := userRouter(h)
 
 	req := httptest.NewRequest("PUT", "/users/me", nil)
@@ -313,7 +320,7 @@ func TestUpdateMe_EmptyBody(t *testing.T) {
 }
 
 func TestUploadAvatar_EmptyBody(t *testing.T) {
-	h := NewUserHandler(new(mockUserService))
+	h := NewUserHandler(new(mockUserService), new(mockOTPVerifier))
 	r := userRouter(h)
 
 	req := httptest.NewRequest("POST", "/users/me/avatar", nil)
