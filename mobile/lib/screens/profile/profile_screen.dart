@@ -419,6 +419,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => context.push('/feedback-history'),
               ),
+              ListTile(
+                leading: const Text('🧩', style: TextStyle(fontSize: 22)),
+                title: const Text('Nhà phát triển'),
+                subtitle: const Text('Trường Sơn Connect'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/nha-phat-trien'),
+              ),
               // Theme color picker
               ListTile(
                 leading: Icon(Icons.palette_outlined, color: ref.watch(themeProvider).primary),

@@ -34,6 +34,7 @@ import '../screens/inbox/inbox_detail_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
 import '../screens/feedback/feedback_screen.dart';
 import '../screens/feedback/feedback_history_screen.dart';
+import '../screens/about/nha_phat_trien_screen.dart';
 import '../screens/splash_screen.dart';
 import '../widgets/main_shell.dart';
 
@@ -55,7 +56,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isAuth = authState.status == AuthStatus.authenticated;
       final loc = state.matchedLocation;
-      final publicRoutes = ['/splash', '/login', '/register', '/forgot-password'];
+      final publicRoutes = ['/splash', '/login', '/register', '/forgot-password', '/nha-phat-trien'];
 
       if (authState.status == AuthStatus.unknown) return null;
 
@@ -81,6 +82,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
       GoRoute(path: '/forgot-password', builder: (_, __) => const ForgotPasswordScreen()),
       GoRoute(path: '/select-role', builder: (_, __) => const RoleScreen()),
+      GoRoute(path: '/nha-phat-trien', name: 'nha-phat-trien', builder: (_, __) => const NhaPhatTrienScreen()),
       ShellRoute(
         builder: (_, __, child) => MainShell(child: child),
         routes: [

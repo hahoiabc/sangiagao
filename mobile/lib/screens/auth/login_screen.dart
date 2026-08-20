@@ -45,13 +45,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) context.go('/marketplace');
       return;
     } catch (e) {
-      String msg = 'Đăng nhập thất bại';
-      if (e is DioException && e.response?.data is Map) {
-        msg = e.response?.data['error'] ?? msg;
-      }
-      setState(() { _error = msg; });
+      setState(() { _error = _loginErrorMessage(e); });
     } finally {
       if (mounted) setState(() { _loading = false; });
+    }
+  }
+
+  String _loginErrorMessage(Object e) {
+    if (e is! DioException) return 'Đăng nhập thất bại. Thử lại sau.';
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.connectionError:
+        return 'Không kết nối được máy chủ. Kiểm tra mạng và thử lại.';
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+        return 'Mạng chậm, vui lòng thử lại.';
+      case DioExceptionType.badCertificate:
+        return 'Lỗi chứng chỉ SSL. Cập nhật ứng dụng / kiểm tra ngày giờ máy.';
+      case DioExceptionType.cancel:
+        return 'Đã huỷ. Thử lại.';
+      case DioExceptionType.badResponse:
+      case DioExceptionType.unknown:
+        final code = e.response?.statusCode ?? 0;
+        if (code == 401) return 'Sai số điện thoại hoặc mật khẩu.';
+        if (code == 403) return 'Tài khoản đã bị khoá. Liên hệ hỗ trợ.';
+        if (code == 429) return 'Thử quá nhiều lần. Đợi vài phút rồi thử lại.';
+        if (code >= 500) return 'Lỗi máy chủ, thử lại sau.';
+        if (e.response?.data is Map) {
+          final m = e.response?.data['error'];
+          if (m is String && m.isNotEmpty) return m;
+        }
+        if (code == 0) return 'Không kết nối được máy chủ. Kiểm tra mạng.';
+        return 'Đăng nhập thất bại (mã $code).';
     }
   }
 
@@ -163,6 +188,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     child: const Text('Đăng ký ngay', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ],
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => context.push('/nha-phat-trien'),
+                child: Text(
+                  'Xem Trường Sơn Connect ›',
+                  style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+                ),
               ),
             ],
           ),

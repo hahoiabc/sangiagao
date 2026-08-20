@@ -110,8 +110,10 @@ class TermsOfServiceScreen extends StatelessWidget {
       '8. Gói dịch vụ & Thanh toán',
       '• Gói dịch vụ cho phép người bán đăng tin trên sàn\n'
           '• Phí dịch vụ được công bố rõ ràng trước khi thanh toán\n'
-          '• Phí đã thanh toán không hoàn lại trừ trường hợp lỗi hệ thống\n'
-          '• Khi gói dịch vụ hết hạn, tin đăng sẽ bị ẩn cho đến khi gia hạn',
+          '• KHÔNG HOÀN TIỀN: Mọi khoản phí đã thanh toán thành công không được hoàn lại trong bất kỳ trường hợp nào (kể cả khi không sử dụng, hủy gói sớm, đóng tài khoản)\n'
+          '• Thanh toán qua App Store (iOS) / Google Play (Android): quy trình hoàn tiền do Apple/Google quyết định, không phải chúng tôi\n'
+          '• Khi gói dịch vụ hết hạn, tin đăng sẽ bị ẩn cho đến khi gia hạn\n'
+          '• Trường hợp lỗi hệ thống (thanh toán trùng/nhầm số tiền), liên hệ hỗ trợ trong 7 ngày để được xem xét',
     ),
     (
       '9. Xóa tài khoản',
