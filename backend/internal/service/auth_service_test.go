@@ -308,7 +308,7 @@ func TestSendOTP_Success(t *testing.T) {
 	smsMock := new(mockSMS)
 	svc := NewAuthService(userRepo, otpRepo, subRepo, newTestJWT(), smsMock)
 
-	otpRepo.On("CountRecent", mock.Anything, "0901234567", mock.Anything).Return(0, nil).Twice()
+	otpRepo.On("CountRecent", mock.Anything, "0901234567", mock.Anything).Return(0, nil).Times(3)
 	otpRepo.On("Create", mock.Anything, "0901234567", mock.Anything, mock.Anything).Return(nil)
 	smsMock.On("SendOTP", "0901234567", mock.AnythingOfType("string")).Return(nil)
 
@@ -350,6 +350,41 @@ func TestSendOTP_RateLimited(t *testing.T) {
 
 	err := svc.SendOTP(context.Background(), "0901234567")
 	assert.ErrorIs(t, err, ErrRateLimited)
+}
+
+// --- SendResetOTP (quên mật khẩu): chỉ gửi khi có tài khoản ---
+
+func TestSendResetOTP_UserNotFound_NoSend(t *testing.T) {
+	userRepo := new(mockUserRepo)
+	otpRepo := new(mockOTPRepo)
+	smsMock := new(mockSMS)
+	svc := NewAuthService(userRepo, otpRepo, nil, newTestJWT(), smsMock)
+
+	// SĐT không có tài khoản → KHÔNG gửi OTP, trả nil (thông báo chung, không rò tồn tại)
+	userRepo.On("GetByPhone", mock.Anything, "0901234567").Return((*model.User)(nil), repository.ErrUserNotFound)
+
+	err := svc.SendResetOTP(context.Background(), "0901234567")
+	require.NoError(t, err)
+	otpRepo.AssertNotCalled(t, "Create", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	smsMock.AssertNotCalled(t, "SendOTP", mock.Anything, mock.Anything)
+}
+
+func TestSendResetOTP_UserExists_Sends(t *testing.T) {
+	userRepo := new(mockUserRepo)
+	otpRepo := new(mockOTPRepo)
+	smsMock := new(mockSMS)
+	svc := NewAuthService(userRepo, otpRepo, nil, newTestJWT(), smsMock)
+
+	userRepo.On("GetByPhone", mock.Anything, "0901234567").Return(&model.User{ID: "u1"}, nil)
+	otpRepo.On("CountRecent", mock.Anything, "0901234567", mock.Anything).Return(0, nil).Times(3)
+	otpRepo.On("Create", mock.Anything, "0901234567", mock.Anything, mock.Anything).Return(nil)
+	smsMock.On("SendOTP", "0901234567", mock.AnythingOfType("string")).Return(nil)
+
+	err := svc.SendResetOTP(context.Background(), "0901234567")
+	require.NoError(t, err)
+	otpRepo.AssertExpectations(t)
+	time.Sleep(50 * time.Millisecond)
+	smsMock.AssertExpectations(t)
 }
 
 // --- VerifyOTP Tests ---

@@ -70,6 +70,17 @@ func (s *SpamService) CheckSendOTP(ctx context.Context, ip, deviceID string) err
 		return ErrIPOTPLimit
 	}
 
+	// IP / NGÀY: chặn kẻ xoay nhiều SĐT từ 1 IP để spam OTP hàng loạt.
+	oneDayAgo := time.Now().Add(-24 * time.Hour)
+	ipDayCount, err := s.repo.CountByIP(ctx, ip, "send_otp", oneDayAgo)
+	if err != nil {
+		slog.Error("spam check db error (fail-closed)", "err", err)
+		return ErrSpamCheckUnavailable
+	}
+	if ipDayCount >= 15 {
+		return ErrIPOTPLimit
+	}
+
 	if deviceID != "" {
 		devCount, err := s.repo.CountByDevice(ctx, deviceID, "send_otp", oneHourAgo)
 		if err != nil {

@@ -371,10 +371,10 @@ export async function completeRegister(data: {
   }>("/auth/complete-register", { method: "POST", body: JSON.stringify(data) });
 }
 
-export async function sendOTP(phone: string) {
+export async function sendOTP(phone: string, purpose?: string) {
   return request<{ message: string }>("/auth/send-otp", {
     method: "POST",
-    body: JSON.stringify({ phone }),
+    body: JSON.stringify(purpose ? { phone, purpose } : { phone }),
   });
 }
 

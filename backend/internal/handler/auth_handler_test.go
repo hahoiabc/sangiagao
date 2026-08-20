@@ -27,6 +27,11 @@ func (m *mockAuthService) SendOTP(ctx context.Context, phone string) error {
 	args := m.Called(ctx, phone)
 	return args.Error(0)
 }
+
+func (m *mockAuthService) SendResetOTP(ctx context.Context, phone string) error {
+	args := m.Called(ctx, phone)
+	return args.Error(0)
+}
 func (m *mockAuthService) VerifyOTP(ctx context.Context, phone, code string) (*service.VerifyOTPResult, error) {
 	args := m.Called(ctx, phone, code)
 	if args.Get(0) == nil {

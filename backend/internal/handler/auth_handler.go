@@ -58,7 +58,8 @@ func (h *AuthHandler) clearAuthCookies(c *gin.Context) {
 }
 
 type sendOTPRequest struct {
-	Phone string `json:"phone" binding:"required"`
+	Phone   string `json:"phone" binding:"required"`
+	Purpose string `json:"purpose"` // "reset" = quên mật khẩu (chỉ gửi OTP nếu SĐT có tài khoản)
 }
 
 func (h *AuthHandler) SendOTP(c *gin.Context) {
@@ -76,7 +77,13 @@ func (h *AuthHandler) SendOTP(c *gin.Context) {
 		return
 	}
 
-	err := h.authService.SendOTP(c.Request.Context(), req.Phone)
+	// "reset" (quên mật khẩu): chỉ gửi OTP nếu SĐT có tài khoản; phản hồi luôn chung.
+	var err error
+	if req.Purpose == "reset" {
+		err = h.authService.SendResetOTP(c.Request.Context(), req.Phone)
+	} else {
+		err = h.authService.SendOTP(c.Request.Context(), req.Phone)
+	}
 	h.spamService.LogAttempt(c.Request.Context(), ip, deviceID, req.Phone, "send_otp", err == nil)
 	if err != nil {
 		switch {
@@ -85,13 +92,20 @@ func (h *AuthHandler) SendOTP(c *gin.Context) {
 		case errors.Is(err, service.ErrOTPCooldown):
 			c.JSON(http.StatusTooManyRequests, gin.H{"error": "vui lòng chờ 60 giây trước khi gửi lại"})
 		case errors.Is(err, service.ErrRateLimited):
-			c.JSON(http.StatusTooManyRequests, gin.H{"error": "quá 3 lần gửi OTP trong 1 giờ, vui lòng thử lại sau"})
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "bạn đã gửi OTP quá nhiều lần, vui lòng thử lại sau"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to send OTP"})
 		}
 		return
 	}
 
+	if req.Purpose == "reset" {
+		c.JSON(http.StatusOK, gin.H{
+			"message":    "Nếu số điện thoại đã đăng ký, mã xác nhận đã được gửi.",
+			"expires_in": 300,
+		})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"message":    "OTP sent",
 		"expires_in": 300,

@@ -13,6 +13,7 @@ import (
 
 type AuthServiceInterface interface {
 	SendOTP(ctx context.Context, phone string) error
+	SendResetOTP(ctx context.Context, phone string) error
 	VerifyOTP(ctx context.Context, phone, code string) (*service.VerifyOTPResult, error)
 	RefreshToken(ctx context.Context, refreshToken string) (*jwtpkg.TokenPair, error)
 	CompleteRegister(ctx context.Context, phone, code, name, password, province, ward, address string) (*service.RegisterResult, error)

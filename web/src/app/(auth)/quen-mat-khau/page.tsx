@@ -32,7 +32,7 @@ export default function ForgotPasswordPage() {
     setError("");
     setLoading(true);
     try {
-      await sendOTP(phone);
+      await sendOTP(phone, "reset"); // chỉ gửi OTP nếu SĐT có tài khoản (server kiểm)
       setCooldown(60);
       setStep("reset");
     } catch (err) {

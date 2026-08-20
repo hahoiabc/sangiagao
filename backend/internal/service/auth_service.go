@@ -120,6 +120,15 @@ func (s *AuthService) SendOTP(ctx context.Context, phone string) error {
 		return ErrRateLimited
 	}
 
+	// Rate limit: max 6 OTP per phone per DAY (chống spam kéo dài qua nhiều giờ)
+	dayCount, err := s.otpRepo.CountRecent(ctx, phone, time.Now().Add(-24*time.Hour))
+	if err != nil {
+		return fmt.Errorf("count OTP day: %w", err)
+	}
+	if dayCount >= 6 {
+		return ErrRateLimited
+	}
+
 	code := generateOTP()
 	expiresAt := time.Now().Add(10 * time.Minute)
 
@@ -140,6 +149,24 @@ func (s *AuthService) SendOTP(ctx context.Context, phone string) error {
 	}
 
 	return nil
+}
+
+// SendResetOTP — gửi OTP cho luồng "QUÊN MẬT KHẨU": CHỈ gửi khi SĐT có tài khoản
+// (active; tài khoản đã xóa đã đổi phone_hash nên GetByPhone không thấy). Nếu không
+// có tài khoản → trả nil (im lặng "thành công") để KHÔNG rò tồn tại + KHÔNG tốn OTP
+// Zalo. Handler luôn trả cùng một thông báo chung. ResetPassword vẫn kiểm tồn tại
+// lần nữa nên không thể reset tài khoản không có.
+func (s *AuthService) SendResetOTP(ctx context.Context, phone string) error {
+	if !phoneRegex.MatchString(phone) {
+		return ErrInvalidPhone
+	}
+	if _, err := s.userRepo.GetByPhone(ctx, phone); err != nil {
+		if errors.Is(err, repository.ErrUserNotFound) {
+			return nil // không có tài khoản → không gửi, coi như thành công (thông báo chung)
+		}
+		return err
+	}
+	return s.SendOTP(ctx, phone)
 }
 
 type VerifyOTPResult struct {
