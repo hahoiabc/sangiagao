@@ -572,9 +572,16 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          '${_priceFormat.format(listing.pricePerKg)}đ/kg',
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.priceText),
+                        // Ép giá 1 dòng, tự co nhỏ nếu chật (chữ lớn/máy hẹp) thay vì rớt dòng.
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            '${_priceFormat.format(listing.pricePerKg)}đ/kg',
+                            maxLines: 1,
+                            softWrap: false,
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.priceText),
+                          ),
                         ),
                         Text(
                           '${_priceFormat.format(listing.quantityKg)} kg',
@@ -588,12 +595,12 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
                   FilledButton.icon(
                     onPressed: _startChat,
                     icon: const Icon(Icons.chat_bubble_outline, size: 18),
-                    label: const Text('Chat với người bán', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    label: const Text('Chat ngay', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       minimumSize: const Size(0, 48),
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
