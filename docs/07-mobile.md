@@ -136,7 +136,7 @@ flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
 ## C. Quy ước version
 
 - `mobile/pubspec.yaml` dòng `version: X.Y.Z+build`. Build number PHẢI tăng mỗi lần upload (Google từ chối nếu trùng mã build đã publish).
-- **Lịch sử:** 1.6.6(52) đã duyệt · **1.6.7 BỎ QUA** (lỡ dùng trên Apple) · 1.6.8(53) · **1.6.9(54)** đã XUẤT BẢN công khai Google Play (04/07) · **1.6.10(55)** gửi CẢ 2 nền tảng (05/07) · **1.6.11(56)** AAB fix Google Play Billing 8.0.0 (chỉ Android) · **1.6.12(57)** gửi CẢ 2 nền tảng (20/08): edge-to-edge (Android 15/16) + bảo mật đổi SĐT (verify OTP) + Trang Nhà phát triển + thông báo lỗi login. **Apple TỪ CHỐI lần đầu (Guideline 3.1.2)** → đã sửa METADATA + nộp lại cùng build 57 (chờ duyệt).
+- **Lịch sử:** 1.6.6(52) đã duyệt · **1.6.7 BỎ QUA** (lỡ dùng trên Apple) · 1.6.8(53) · **1.6.9(54)** đã XUẤT BẢN công khai Google Play (04/07) · **1.6.10(55)** gửi CẢ 2 nền tảng (05/07) · **1.6.11(56)** AAB fix Google Play Billing 8.0.0 (chỉ Android) · **1.6.12(57)** gửi CẢ 2 nền tảng (20/08): edge-to-edge (Android 15/16) + bảo mật đổi SĐT (verify OTP) + Trang Nhà phát triển + thông báo lỗi login. **Apple TỪ CHỐI lần đầu (Guideline 3.1.2)** → sửa METADATA + nộp lại cùng build 57 → **ĐÃ LIVE cả 2 nền tảng**.
 - Số kế tiếp khi build: **1.6.13+58**.
 
 ### ⚠️ BẪY Apple 3.1.2 — subscription cần link EULA Ở METADATA (không chỉ trong app)
