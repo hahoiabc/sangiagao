@@ -171,6 +171,32 @@ func (s *AdminService) DeleteUser(ctx context.Context, userID, callerRole string
 	return s.userRepo.DeleteUser(ctx, userID)
 }
 
+// ResetUserPassword — owner (hoặc nhân viên được cấp quyền users.reset_password)
+// đặt lại mật khẩu cho khách hàng (hỗ trợ quên mật khẩu, tạo tài khoản demo...).
+// CHẶN reset tài khoản nội bộ/owner/admin trừ khi người thực hiện là owner —
+// chống nhân viên cấp thấp chiếm tài khoản quản trị. Trả về user đích để handler
+// thu hồi token + ghi audit.
+func (s *AdminService) ResetUserPassword(ctx context.Context, targetUserID, newPassword, callerRole string) (*model.User, error) {
+	target, err := s.userRepo.GetByID(ctx, targetUserID)
+	if err != nil {
+		return nil, err
+	}
+	if (target.IsInternal || target.Role == "owner" || target.Role == "admin") && callerRole != "owner" {
+		return nil, ErrCannotModifyAdmin
+	}
+	if utf8.RuneCountInString(newPassword) < 6 {
+		return nil, ErrCreatePassword
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.userRepo.UpdatePasswordByID(ctx, targetUserID, string(hash)); err != nil {
+		return nil, err
+	}
+	return target, nil
+}
+
 func (s *AdminService) DeleteListing(ctx context.Context, listingID string) error {
 	return s.listingRepo.SoftDelete(ctx, listingID)
 }

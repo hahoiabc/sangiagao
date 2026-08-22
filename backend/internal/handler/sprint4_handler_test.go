@@ -197,6 +197,7 @@ func (m *mockNotifService) SendPushOnly(ctx context.Context, userID, title, body
 func (m *mockNotifService) SendSilentSync(ctx context.Context, userID string, data map[string]string) error {
 	return m.Called(ctx, userID, data).Error(0)
 }
+
 // --- AdminService Mock ---
 type mockAdminService struct{ mock.Mock }
 
@@ -271,6 +272,13 @@ func (m *mockAdminService) DeleteUser(ctx context.Context, userID, callerRole st
 }
 func (m *mockAdminService) CreateUser(ctx context.Context, phone, name, password, role string, isInternal bool) (*model.User, error) {
 	args := m.Called(ctx, phone, name, password, role, isInternal)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.User), args.Error(1)
+}
+func (m *mockAdminService) ResetUserPassword(ctx context.Context, targetUserID, newPassword, callerRole string) (*model.User, error) {
+	args := m.Called(ctx, targetUserID, newPassword, callerRole)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

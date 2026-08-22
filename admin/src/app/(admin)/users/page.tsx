@@ -63,6 +63,7 @@ const permissionGroups: PermissionGroup[] = [
       { key: "users.detail", label: "Xem chi tiết người dùng", defaults: { owner: true, admin: true, editor: false, aff: false, member: false, expired: false, guest: false } },
       { key: "users.block", label: "Khóa / mở khóa tài khoản", defaults: { owner: true, admin: true, editor: false, aff: false, member: false, expired: false, guest: false } },
       { key: "users.role", label: "Đổi vai trò người dùng", defaults: { owner: true, admin: true, editor: false, aff: false, member: false, expired: false, guest: false } },
+      { key: "users.reset_password", label: "Đặt lại mật khẩu khách hàng", defaults: { owner: true, admin: false, editor: false, aff: false, member: false, expired: false, guest: false } },
       { key: "users.batch_block", label: "Khóa hàng loạt", defaults: { owner: true, admin: true, editor: false, aff: false, member: false, expired: false, guest: false } },
     ],
   },

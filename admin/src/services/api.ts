@@ -341,6 +341,20 @@ export async function changeUserRole(token: string, userId: string, role: string
   });
 }
 
+export async function resetUserPassword(token: string, userId: string, newPassword: string) {
+  return request<{ message: string }>(`/admin/users/${userId}/reset-password`, {
+    token,
+    method: "POST",
+    body: JSON.stringify({ new_password: newPassword }),
+  });
+}
+
+// Quyền hiệu lực của chính admin đang đăng nhập (theo role) — để ẩn/hiện nút.
+export async function getMyPermissions(token: string): Promise<Record<string, boolean>> {
+  const res = await request<{ permissions: Record<string, boolean> }>("/permissions/me", { token });
+  return res.permissions ?? {};
+}
+
 export interface CreateUserInput {
   phone: string;
   name: string;

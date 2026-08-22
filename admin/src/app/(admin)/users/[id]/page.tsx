@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   getUserDetail, blockUser, unblockUser, activateSubscription, listUserListings, listUserSubscriptions, changeUserRole, deleteUser,
+  resetUserPassword, getMyPermissions,
   type User, type Listing, type Subscription,
 } from "@/services/api";
 
@@ -55,6 +56,12 @@ export default function UserDetailPage() {
   // Subscription dialog
   const [subDialog, setSubDialog] = useState(false);
   const [subDays, setSubDays] = useState("30");
+
+  // Reset password dialog (quyền users.reset_password)
+  const [resetPwDialog, setResetPwDialog] = useState(false);
+  const [newPw, setNewPw] = useState("");
+  const [resetting, setResetting] = useState(false);
+  const [canResetPw, setCanResetPw] = useState(false);
 
   const fetchUser = useCallback(async () => {
     if (!currentUser || !id) return;
@@ -98,6 +105,14 @@ export default function UserDetailPage() {
     fetchSubscriptions();
   }, [fetchUser, fetchListings, fetchSubscriptions]);
 
+  // Quyền của chính admin đang đăng nhập → ẩn/hiện nút "Đặt lại mật khẩu".
+  useEffect(() => {
+    if (!currentUser) return;
+    getMyPermissions("")
+      .then((p) => setCanResetPw(!!p["users.reset_password"]))
+      .catch(() => setCanResetPw(false));
+  }, [currentUser]);
+
   async function handleBlock() {
     if (!currentUser || !blockReason) return;
     try {
@@ -130,6 +145,21 @@ export default function UserDetailPage() {
       router.push("/users");
     } catch {
       toast.error("Xóa tài khoản thất bại");
+    }
+  }
+
+  async function handleResetPassword() {
+    if (!currentUser || newPw.length < 6) return;
+    setResetting(true);
+    try {
+      await resetUserPassword("", id, newPw);
+      toast.success("Đã đặt lại mật khẩu. Người dùng phải đăng nhập lại.");
+      setResetPwDialog(false);
+      setNewPw("");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Đặt lại mật khẩu thất bại");
+    } finally {
+      setResetting(false);
     }
   }
 
@@ -251,6 +281,11 @@ export default function UserDetailPage() {
           {currentUser?.id !== user.id && (currentUser?.role === "owner" || (currentUser?.role === "admin" && !["owner", "admin"].includes(user.role))) && (
             <Button variant="destructive" size="sm" onClick={() => setDeleteDialog(true)}>
               Xóa tài khoản
+            </Button>
+          )}
+          {canResetPw && currentUser?.id !== user.id && (currentUser?.role === "owner" || !["owner", "admin"].includes(user.role)) && (
+            <Button variant="outline" size="sm" onClick={() => setResetPwDialog(true)}>
+              Đặt lại mật khẩu
             </Button>
           )}
           {!["owner", "admin"].includes(user.role) && (
@@ -569,6 +604,33 @@ export default function UserDetailPage() {
           <DialogFooter>
             <Button variant="ghost" onClick={() => setDeleteDialog(false)}>Hủy</Button>
             <Button variant="destructive" onClick={handleDeleteUser}>Xóa vĩnh viễn</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={resetPwDialog} onOpenChange={(o) => { setResetPwDialog(o); if (!o) setNewPw(""); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Đặt lại mật khẩu cho {user.name || user.phone}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Input
+              type="text"
+              autoComplete="off"
+              placeholder="Mật khẩu mới (tối thiểu 6 ký tự)"
+              value={newPw}
+              onChange={(e) => setNewPw(e.target.value)}
+            />
+            <p className="text-sm text-muted-foreground">
+              ⚠ Người dùng sẽ bị đăng xuất khỏi mọi thiết bị và phải đăng nhập lại bằng mật khẩu mới này.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setResetPwDialog(false)}>Hủy</Button>
+            <Button onClick={handleResetPassword} disabled={newPw.length < 6 || resetting}>
+              {resetting ? "Đang đặt lại..." : "Đặt lại mật khẩu"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

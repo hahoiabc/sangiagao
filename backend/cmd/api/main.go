@@ -680,6 +680,7 @@ func main() {
 					adminOnly.PUT("/users/:id/block", middleware.RequirePermission(permissionService, "users.block"), adminHandler.BlockUser)
 					adminOnly.PUT("/users/:id/unblock", middleware.RequirePermission(permissionService, "users.block"), adminHandler.UnblockUser)
 					adminOnly.PUT("/users/:id/role", middleware.RequirePermission(permissionService, "users.role"), adminHandler.ChangeUserRole)
+					adminOnly.POST("/users/:id/reset-password", middleware.RequirePermission(permissionService, "users.reset_password"), adminHandler.ResetUserPassword)
 					adminOnly.POST("/users/batch-block", middleware.RequirePermission(permissionService, "users.batch_block"), adminHandler.BatchBlockUsers)
 					adminOnly.DELETE("/users/:id", middleware.RequirePermission(permissionService, "users.block"), adminHandler.DeleteUser)
 				}

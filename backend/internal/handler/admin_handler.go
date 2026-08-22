@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sangiagao/rice-marketplace/internal/middleware"
 	"github.com/sangiagao/rice-marketplace/internal/model"
+	"github.com/sangiagao/rice-marketplace/internal/repository"
 	"github.com/sangiagao/rice-marketplace/internal/service"
 	"github.com/sangiagao/rice-marketplace/pkg/cache"
 )
@@ -293,6 +294,40 @@ func (h *AdminHandler) CreateUser(c *gin.Context) {
 	h.logAudit(c.Request.Context(), callerID, "create_user", "user", user.ID,
 		map[string]interface{}{"role": req.Role, "is_internal": req.IsInternal})
 	c.JSON(http.StatusCreated, user)
+}
+
+type resetUserPasswordRequest struct {
+	NewPassword string `json:"new_password" binding:"required"`
+}
+
+// ResetUserPassword — owner/nhân viên có quyền users.reset_password đặt lại mật
+// khẩu cho khách. Guard chống chiếm tài khoản quản trị ở service. Thu hồi token
+// đích (buộc đăng nhập lại) + ghi audit.
+func (h *AdminHandler) ResetUserPassword(c *gin.Context) {
+	userID := c.Param("id")
+	var req resetUserPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Vui lòng nhập mật khẩu mới"})
+		return
+	}
+	callerRole := c.GetString("user_role")
+	if _, err := h.adminService.ResetUserPassword(c.Request.Context(), userID, req.NewPassword, callerRole); err != nil {
+		switch {
+		case errors.Is(err, service.ErrCreatePassword):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Mật khẩu phải có ít nhất 6 ký tự"})
+		case errors.Is(err, service.ErrCannotModifyAdmin):
+			c.JSON(http.StatusForbidden, gin.H{"error": "Chỉ chủ (owner) mới được đặt lại mật khẩu tài khoản quản trị/nội bộ"})
+		case errors.Is(err, repository.ErrUserNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": "Không tìm thấy tài khoản"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Đặt lại mật khẩu thất bại"})
+		}
+		return
+	}
+	// Thu hồi mọi token của user đích → buộc đăng nhập lại bằng mật khẩu mới.
+	middleware.RevokeUserTokens(h.cache, userID)
+	h.logAudit(c.Request.Context(), c.GetString("user_id"), "reset_password", "user", userID, nil)
+	c.JSON(http.StatusOK, gin.H{"message": "Đã đặt lại mật khẩu"})
 }
 
 type batchBlockUsersRequest struct {
