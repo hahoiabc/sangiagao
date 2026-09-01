@@ -1,8 +1,13 @@
-# 09 — Di trú VPS (chuyển sang nhà cung cấp MỚI)
+# 09 — Di trú VPS (VPS mới, GIỮ nhà cung cấp)
 
-> Chốt: **VPS mới hoàn toàn + đổi nhà cung cấp** (IP mới). KHÔNG resize tại chỗ.
-> Mục tiêu: **0 mất dữ liệu, downtime ~vài phút**. App mobile KHÔNG cần build lại
-> (dùng domain). Cutover nhẹ nhờ Cloudflare (chỉ đổi origin IP).
+> Chốt: **VPS MỚI cho sàn gạo, GIỮ nguyên nhà cung cấp cũ.** Ngày dự kiến **15/09/2026**.
+> KHÔNG resize tại chỗ. Mục tiêu: **0 mất dữ liệu, downtime ~vài phút**. App mobile
+> KHÔNG cần build lại (dùng domain). Cutover nhẹ nhờ Cloudflare (đổi origin IP).
+
+> ⭐ **VÌ CÙNG NCC → hỏi họ 2 điều có thể làm mọi thứ DỄ HƠN NHIỀU:**
+> 1. **Snapshot/clone VPS cũ sang VPS mới** — nhiều NCC làm giúp → khỏi backup/restore tay (bỏ qua bước B,C bên dưới).
+> 2. **Gán (reassign) IP cũ sang VPS mới** — nếu được thì KHỎI đổi gì ở Cloudflare, IP không đổi.
+> Nếu cả 2 đều được: di trú gần như bằng "clone + đổi IP", cực nhẹ. Nếu không, theo runbook đầy đủ.
 
 ## Bối cảnh + số liệu (đo 29/08/2026)
 - **Từ:** `14.225.213.73` (NCC cũ, 4 CPU / 8 GB). **Sang:** VPS mới **2 CPU / 4 GB / 40 GB SSD**.
