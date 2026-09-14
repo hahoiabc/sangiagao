@@ -122,6 +122,31 @@ func (s *SpamService) CheckLogin(ctx context.Context, ip, deviceID string) error
 	return nil
 }
 
+// LoginRetryAfter tính thời gian CÒN LẠI tới khi hết chặn login (cửa sổ trượt 1h,
+// ngưỡng 10). Chặn được gỡ khi lần sai thứ 10 (mới nhất) rớt khỏi mốc 1h →
+// mở lại = (thời điểm lần sai thứ 10) + 1h − now. Lấy MAX giữa IP và thiết bị.
+// Trả 0 nếu không còn bị chặn.
+func (s *SpamService) LoginRetryAfter(ctx context.Context, ip, deviceID string) time.Duration {
+	oneHourAgo := time.Now().Add(-1 * time.Hour)
+	var wait time.Duration
+	if t, ok, err := s.repo.NthRecentByIP(ctx, ip, "login_fail", 9, oneHourAgo); err == nil && ok {
+		if w := time.Until(t.Add(1 * time.Hour)); w > wait {
+			wait = w
+		}
+	}
+	if deviceID != "" {
+		if t, ok, err := s.repo.NthRecentByDevice(ctx, deviceID, "login_fail", 9, oneHourAgo); err == nil && ok {
+			if w := time.Until(t.Add(1 * time.Hour)); w > wait {
+				wait = w
+			}
+		}
+	}
+	if wait < 0 {
+		wait = 0
+	}
+	return wait
+}
+
 // CheckResetPassword: 3/IP/ngày, 3/device/ngày
 func (s *SpamService) CheckResetPassword(ctx context.Context, ip, deviceID string) error {
 	today := startOfDay()

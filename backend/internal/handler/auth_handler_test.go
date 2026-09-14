@@ -89,6 +89,12 @@ func (m *mockSpamRepo) CountByDevice(_ context.Context, _, _ string, _ time.Time
 func (m *mockSpamRepo) CountByDeviceAllTime(_ context.Context, _, _ string) (int, error) {
 	return 0, nil
 }
+func (m *mockSpamRepo) NthRecentByIP(_ context.Context, _, _ string, _ int, _ time.Time) (time.Time, bool, error) {
+	return time.Time{}, false, nil
+}
+func (m *mockSpamRepo) NthRecentByDevice(_ context.Context, _, _ string, _ int, _ time.Time) (time.Time, bool, error) {
+	return time.Time{}, false, nil
+}
 func (m *mockSpamRepo) Cleanup(_ context.Context, _ time.Time) (int, error) { return 0, nil }
 
 func testSpamService() *service.SpamService {

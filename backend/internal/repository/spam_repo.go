@@ -2,8 +2,10 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -45,6 +47,47 @@ func (r *SpamRepo) CountByDevice(ctx context.Context, deviceID, action string, s
 		deviceID, action, since,
 	).Scan(&count)
 	return count, err
+}
+
+// NthRecentByIP trả thời điểm của bản ghi mới-nhất-thứ (offset+1) khớp action
+// trong khoảng since→now (offset 0-based). Dùng tính thời gian mở lại chặn login
+// theo cửa sổ trượt. ok=false nếu chưa đủ số bản ghi.
+func (r *SpamRepo) NthRecentByIP(ctx context.Context, ip, action string, offset int, since time.Time) (time.Time, bool, error) {
+	var t time.Time
+	err := r.pool.QueryRow(ctx,
+		`SELECT created_at FROM auth_attempts
+		 WHERE ip_address = $1 AND action = $2 AND created_at > $3
+		 ORDER BY created_at DESC OFFSET $4 LIMIT 1`,
+		ip, action, since, offset,
+	).Scan(&t)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return time.Time{}, false, nil
+	}
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	return t, true, nil
+}
+
+// NthRecentByDevice — như NthRecentByIP nhưng theo device_id.
+func (r *SpamRepo) NthRecentByDevice(ctx context.Context, deviceID, action string, offset int, since time.Time) (time.Time, bool, error) {
+	if deviceID == "" {
+		return time.Time{}, false, nil
+	}
+	var t time.Time
+	err := r.pool.QueryRow(ctx,
+		`SELECT created_at FROM auth_attempts
+		 WHERE device_id = $1 AND action = $2 AND created_at > $3
+		 ORDER BY created_at DESC OFFSET $4 LIMIT 1`,
+		deviceID, action, since, offset,
+	).Scan(&t)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return time.Time{}, false, nil
+	}
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	return t, true, nil
 }
 
 func (r *SpamRepo) CountByDeviceAllTime(ctx context.Context, deviceID, action string) (int, error) {

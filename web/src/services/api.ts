@@ -132,14 +132,14 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     // Backend returns user-facing Vietnamese in body.error → use that as Error.message
-    throw new ApiError(res.status, body.error || "unknown", body.error || body.message || res.statusText);
+    throw new ApiError(res.status, body.error || "unknown", body.error || body.message || res.statusText, typeof body.retry_after === "number" ? body.retry_after : undefined);
   }
 
   return res.json();
 }
 
 export class ApiError extends Error {
-  constructor(public status: number, public code: string, message: string) {
+  constructor(public status: number, public code: string, message: string, public retryAfter?: number) {
     super(message);
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -18,15 +19,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _loading = false;
   bool _obscurePassword = true;
   String? _error;
+  int _retryAfter = 0; // giây còn lại tới khi hết chặn "thử quá nhiều lần"
+  Timer? _retryTimer;
 
   @override
   void dispose() {
+    _retryTimer?.cancel();
     _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
+  String _fmtCountdown(int s) => '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
+
+  // Lấy retry_after (giây) từ lỗi 429; 0 nếu không phải.
+  int _retryAfterFromError(Object e) {
+    if (e is DioException && e.response?.statusCode == 429 && e.response?.data is Map) {
+      final v = (e.response!.data as Map)['retry_after'];
+      if (v is num) return v.toInt();
+    }
+    return 0;
+  }
+
+  void _startRetryCountdown(int seconds) {
+    _retryTimer?.cancel();
+    setState(() => _retryAfter = seconds);
+    _retryTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) { t.cancel(); return; }
+      setState(() {
+        _retryAfter--;
+        if (_retryAfter <= 0) { _retryAfter = 0; t.cancel(); }
+      });
+    });
+  }
+
   Future<void> _login() async {
+    if (_retryAfter > 0) return;
     final phone = _phoneController.text.trim();
     final password = _passwordController.text;
 
@@ -45,7 +73,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) context.go('/marketplace');
       return;
     } catch (e) {
-      setState(() { _error = _loginErrorMessage(e); });
+      final ra = _retryAfterFromError(e);
+      if (ra > 0) {
+        _startRetryCountdown(ra);
+        setState(() { _error = null; });
+      } else {
+        setState(() { _error = _loginErrorMessage(e); });
+      }
     } finally {
       if (mounted) setState(() { _loading = false; });
     }
@@ -146,10 +180,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 width: double.infinity,
                 height: 48,
                 child: FilledButton(
-                  onPressed: _loading ? null : _login,
-                  child: Text(_loading ? 'Đang đăng nhập...' : 'Đăng nhập'),
+                  onPressed: (_loading || _retryAfter > 0) ? null : _login,
+                  child: Text(_retryAfter > 0
+                      ? 'Thử lại sau ${_fmtCountdown(_retryAfter)}'
+                      : (_loading ? 'Đang đăng nhập...' : 'Đăng nhập')),
                 ),
               ),
+              if (_retryAfter > 0) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.lock_clock_outlined, color: AppColors.error, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Sai mật khẩu quá nhiều lần. Thử lại sau ${_fmtCountdown(_retryAfter)}, hoặc dùng "Quên mật khẩu".',
+                          style: const TextStyle(color: AppColors.error, fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               if (_error != null) ...[
                 const SizedBox(height: 12),
                 Container(

@@ -284,6 +284,17 @@ func (h *AuthHandler) LoginPassword(c *gin.Context) {
 	deviceID := c.GetHeader("X-Device-ID")
 
 	if err := h.spamService.CheckLogin(c.Request.Context(), ip, deviceID); err != nil {
+		if errors.Is(err, service.ErrIPLoginBlocked) || errors.Is(err, service.ErrDeviceLoginBlocked) {
+			secs := int(h.spamService.LoginRetryAfter(c.Request.Context(), ip, deviceID).Seconds())
+			if secs < 1 {
+				secs = 1
+			}
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"error":       "Sai mật khẩu quá nhiều lần. Vui lòng thử lại sau, hoặc dùng \"Quên mật khẩu\".",
+				"retry_after": secs, // giây tới khi mở lại (client đếm ngược)
+			})
+			return
+		}
 		c.JSON(http.StatusTooManyRequests, gin.H{"error": err.Error()})
 		return
 	}

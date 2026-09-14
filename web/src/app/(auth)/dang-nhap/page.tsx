@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Wheat, Eye, EyeOff } from "lucide-react";
@@ -8,7 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth";
-import { loginPassword } from "@/services/api";
+import { loginPassword, ApiError } from "@/services/api";
+
+// Định dạng giây → "m:ss"
+function fmtCountdown(s: number) {
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
 
 export default function LoginPage() {
   const [phone, setPhone] = useState("");
@@ -16,11 +21,20 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [retryAfter, setRetryAfter] = useState(0); // giây còn lại tới khi hết chặn login
   const { login } = useAuth();
   const router = useRouter();
 
+  // Đếm ngược sống khi bị chặn "thử quá nhiều lần"
+  useEffect(() => {
+    if (retryAfter <= 0) return;
+    const id = setTimeout(() => setRetryAfter((s) => s - 1), 1000);
+    return () => clearTimeout(id);
+  }, [retryAfter]);
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
+    if (retryAfter > 0) return;
     setError("");
     setLoading(true);
     try {
@@ -28,7 +42,12 @@ export default function LoginPage() {
       login(result.user, result.tokens.access_token, result.tokens.refresh_token);
       router.push("/bang-gia");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Đăng nhập thất bại");
+      if (err instanceof ApiError && err.status === 429 && err.retryAfter && err.retryAfter > 0) {
+        setRetryAfter(err.retryAfter);
+        setError("");
+      } else {
+        setError(err instanceof Error ? err.message : "Đăng nhập thất bại");
+      }
     } finally {
       setLoading(false);
     }
@@ -71,8 +90,15 @@ export default function LoginPage() {
             </button>
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" className="w-full h-11" disabled={loading}>
-            {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+          {retryAfter > 0 && (
+            <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              Sai mật khẩu quá nhiều lần. Thử lại sau{" "}
+              <span className="font-semibold tabular-nums">{fmtCountdown(retryAfter)}</span>, hoặc dùng{" "}
+              <Link href="/quen-mat-khau" className="font-semibold underline">Quên mật khẩu</Link>.
+            </div>
+          )}
+          <Button type="submit" className="w-full h-11" disabled={loading || retryAfter > 0}>
+            {retryAfter > 0 ? `Thử lại sau ${fmtCountdown(retryAfter)}` : loading ? "Đang đăng nhập..." : "Đăng nhập"}
           </Button>
         </form>
         <div className="mt-4 text-center text-sm space-y-2">

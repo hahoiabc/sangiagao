@@ -169,6 +169,8 @@ type SpamRepository interface {
 	CountByIP(ctx context.Context, ip, action string, since time.Time) (int, error)
 	CountByDevice(ctx context.Context, deviceID, action string, since time.Time) (int, error)
 	CountByDeviceAllTime(ctx context.Context, deviceID, action string) (int, error)
+	NthRecentByIP(ctx context.Context, ip, action string, offset int, since time.Time) (time.Time, bool, error)
+	NthRecentByDevice(ctx context.Context, deviceID, action string, offset int, since time.Time) (time.Time, bool, error)
 	Cleanup(ctx context.Context, olderThan time.Time) (int, error)
 }
 
