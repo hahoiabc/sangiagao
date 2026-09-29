@@ -545,19 +545,29 @@ type PriceBoardRow struct {
 	RiceType     string
 	MinPrice     float64
 	ListingCount int
+	ImageURL     *string // ảnh tin RẺ NHẤT (có ảnh) trong nhóm; nil nếu không tin nào có ảnh
 }
 
-// GetPriceBoardData returns MIN(price_per_kg) and COUNT grouped by (category, rice_type).
+// GetPriceBoardData returns MIN(price_per_kg), COUNT và ảnh của tin rẻ nhất (có
+// ảnh) — grouped by (category, rice_type).
 func (r *ListingRepo) GetPriceBoardData(ctx context.Context) ([]PriceBoardRow, error) {
-	fresh := ""
-	if c := r.freshnessCond(ctx, ""); c != "" {
-		fresh = " AND " + c
+	freshL := ""
+	if c := r.freshnessCond(ctx, "l"); c != "" {
+		freshL = " AND " + c
+	}
+	freshL2 := ""
+	if c := r.freshnessCond(ctx, "l2"); c != "" {
+		freshL2 = " AND " + c
 	}
 	rows, err := r.pool.Query(ctx,
-		`SELECT category, rice_type, MIN(price_per_kg), COUNT(*)
-		 FROM listings
-		 WHERE status = 'active' AND category IS NOT NULL`+fresh+`
-		 GROUP BY category, rice_type`)
+		`SELECT l.category, l.rice_type, MIN(l.price_per_kg), COUNT(*),
+		   (SELECT l2.images->>0 FROM listings l2
+		     WHERE l2.category = l.category AND l2.rice_type = l.rice_type
+		       AND l2.status = 'active' AND l2.images != '[]'::jsonb`+freshL2+`
+		     ORDER BY l2.price_per_kg ASC LIMIT 1)
+		 FROM listings l
+		 WHERE l.status = 'active' AND l.category IS NOT NULL`+freshL+`
+		 GROUP BY l.category, l.rice_type`)
 	if err != nil {
 		return nil, err
 	}
@@ -566,7 +576,7 @@ func (r *ListingRepo) GetPriceBoardData(ctx context.Context) ([]PriceBoardRow, e
 	var result []PriceBoardRow
 	for rows.Next() {
 		var row PriceBoardRow
-		if err := rows.Scan(&row.Category, &row.RiceType, &row.MinPrice, &row.ListingCount); err != nil {
+		if err := rows.Scan(&row.Category, &row.RiceType, &row.MinPrice, &row.ListingCount, &row.ImageURL); err != nil {
 			return nil, err
 		}
 		result = append(result, row)

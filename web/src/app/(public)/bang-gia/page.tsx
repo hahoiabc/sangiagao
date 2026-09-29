@@ -135,7 +135,17 @@ export default function PriceBoardPage() {
                       <tbody>
                         {cat.products.map((p) => (
                           <tr key={p.product_key} className="border-b last:border-0 hover:bg-muted/50">
-                            <td className="py-3 pl-5 pr-4">
+                            {/* Ảnh tin rẻ nhất — cao bằng dòng, sát mép trái (không tăng chiều cao) */}
+                            <td className="p-0 w-14 align-middle">
+                              {p.image_url ? (
+                                <Image src={p.image_url} alt={p.product_label} width={56} height={44} className="h-11 w-14 object-cover" unoptimized />
+                              ) : (
+                                <div className="flex h-11 w-14 items-center justify-center bg-primary/5 text-muted-foreground/40">
+                                  <Wheat className="h-4 w-4" />
+                                </div>
+                              )}
+                            </td>
+                            <td className="py-3 pl-3 pr-4">
                               <div className="flex items-center gap-2">
                                 <span className="font-medium">{p.product_label}</span>
                                 {p.sponsor_logo && (

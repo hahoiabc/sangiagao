@@ -257,42 +257,54 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
                       border: Border.all(color: theme.colorScheme.outline, width: 1.2),
                     ),
                     constraints: const BoxConstraints(minHeight: 48),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    clipBehavior: Clip.antiAlias, // để ảnh bo theo góc dòng
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch, // ảnh cao BẰNG dòng
                       children: [
-                        // Sponsor logo (before product name)
-                        if (hasSponsor) ...[
-                          CachedNetworkImage(
-                            imageUrl: product.sponsorLogo!,
-                            width: 28,
-                            height: 28,
-                            fit: BoxFit.contain,
-                            errorWidget: (_, __, ___) => const SizedBox.shrink(),
-                          ),
-                          const SizedBox(width: 10),
-                        ],
-                        // Product name
+                        // Ảnh tin RẺ NHẤT — cao bằng dòng, sát mép trái (không tăng chiều cao dòng)
+                        _PriceThumb(imageUrl: product.imageUrl),
                         Expanded(
-                          child: Text(
-                            product.productLabel,
-                            style: const TextStyle(fontSize: 15, height: 1.3),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            child: Row(
+                              children: [
+                                // Sponsor logo (before product name)
+                                if (hasSponsor) ...[
+                                  CachedNetworkImage(
+                                    imageUrl: product.sponsorLogo!,
+                                    width: 22,
+                                    height: 22,
+                                    fit: BoxFit.contain,
+                                    errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
+                                // Product name
+                                Expanded(
+                                  child: Text(
+                                    product.productLabel,
+                                    style: const TextStyle(fontSize: 15, height: 1.3),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                // Price
+                                Text(
+                                  product.minPrice != null
+                                      ? '${_priceFormat.format(product.minPrice)}đ/kg'
+                                      : 'Chưa có giá',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: product.minPrice != null ? FontWeight.w600 : FontWeight.normal,
+                                    color: product.minPrice != null ? AppColors.priceText : AppColors.textHint,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                // Arrow icon
+                                const Icon(Icons.chevron_right, size: 22, color: AppColors.textHint),
+                              ],
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        // Price
-                        Text(
-                          product.minPrice != null
-                              ? '${_priceFormat.format(product.minPrice)}đ/kg'
-                              : 'Chưa có giá',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: product.minPrice != null ? FontWeight.w600 : FontWeight.normal,
-                            color: product.minPrice != null ? AppColors.priceText : AppColors.textHint,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        // Arrow icon
-                        const Icon(Icons.chevron_right, size: 22, color: AppColors.textHint),
                       ],
                     ),
                   ),
@@ -302,5 +314,33 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
             ],
           ),
         );
+  }
+}
+
+/// Ảnh loại gạo ở đầu dòng bảng giá — cao BẰNG dòng, sát mép trái, phủ (cover).
+/// Không tăng chiều cao dòng (chỉ chiếm phần trái). Thiếu ảnh → placeholder hạt gạo.
+class _PriceThumb extends StatelessWidget {
+  final String? imageUrl;
+  const _PriceThumb({this.imageUrl});
+
+  Widget _placeholder() => Container(
+        width: 54,
+        alignment: Alignment.center,
+        color: AppColors.primary.withValues(alpha: 0.06),
+        child: Icon(Icons.grain, size: 22, color: AppColors.textHint.withValues(alpha: 0.5)),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    if (imageUrl == null || imageUrl!.isEmpty) return _placeholder();
+    return SizedBox(
+      width: 54,
+      child: CachedNetworkImage(
+        imageUrl: imageUrl!,
+        fit: BoxFit.cover,
+        placeholder: (_, __) => Container(color: AppColors.primary.withValues(alpha: 0.05)),
+        errorWidget: (_, __, ___) => _placeholder(),
+      ),
+    );
   }
 }

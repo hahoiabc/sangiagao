@@ -6,6 +6,7 @@ type PriceBoardEntry struct {
 	MinPrice     *float64 `json:"min_price"`
 	ListingCount int      `json:"listing_count"`
 	SponsorLogo  *string  `json:"sponsor_logo,omitempty"`
+	ImageURL     *string  `json:"image_url,omitempty"` // ảnh tin RẺ NHẤT (có ảnh) của loại này
 }
 
 type PriceBoardCategory struct {

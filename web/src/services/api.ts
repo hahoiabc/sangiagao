@@ -274,6 +274,7 @@ export interface PriceBoardEntry {
   min_price: number | null;
   listing_count: number;
   sponsor_logo?: string;
+  image_url?: string; // ảnh tin rẻ nhất của loại này
 }
 
 export interface PriceBoardCategory {

@@ -526,11 +526,12 @@ func (s *ListingService) GetPriceBoard(ctx context.Context) (*model.PriceBoardRe
 	type priceInfo struct {
 		MinPrice     float64
 		ListingCount int
+		ImageURL     *string
 	}
 	lookup := make(map[string]priceInfo)
 	for _, r := range rows {
 		key := r.Category + ":" + r.RiceType
-		lookup[key] = priceInfo{MinPrice: r.MinPrice, ListingCount: r.ListingCount}
+		lookup[key] = priceInfo{MinPrice: r.MinPrice, ListingCount: r.ListingCount, ImageURL: r.ImageURL}
 	}
 
 	// Get active sponsors
@@ -565,6 +566,7 @@ func (s *ListingService) GetPriceBoard(ctx context.Context) (*model.PriceBoardRe
 				price := info.MinPrice
 				entry.MinPrice = &price
 				entry.ListingCount = info.ListingCount
+				entry.ImageURL = info.ImageURL
 			}
 			if sponsorMap != nil {
 				if logo, ok := sponsorMap[p.Key]; ok {

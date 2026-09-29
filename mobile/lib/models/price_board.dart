@@ -4,6 +4,7 @@ class PriceBoardEntry {
   final double? minPrice;
   final int listingCount;
   final String? sponsorLogo;
+  final String? imageUrl; // ảnh tin rẻ nhất của loại này
 
   const PriceBoardEntry({
     required this.productKey,
@@ -11,6 +12,7 @@ class PriceBoardEntry {
     this.minPrice,
     this.listingCount = 0,
     this.sponsorLogo,
+    this.imageUrl,
   });
 
   factory PriceBoardEntry.fromJson(Map<String, dynamic> json) => PriceBoardEntry(
@@ -19,6 +21,7 @@ class PriceBoardEntry {
         minPrice: json['min_price'] != null ? (json['min_price'] as num).toDouble() : null,
         listingCount: json['listing_count'] as int? ?? 0,
         sponsorLogo: json['sponsor_logo'] as String?,
+        imageUrl: json['image_url'] as String?,
       );
 }
 
