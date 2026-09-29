@@ -10,7 +10,7 @@ void main() {
         'title': 'Gao ST25',
         'rice_type': 'ST25',
         'province': 'Soc Trang',
-        'district': 'Thanh Tri',  // backend still sends 'district' key
+        'ward': 'Thanh Tri',  // VN 2 cấp: tỉnh + phường (đã bỏ cấp huyện)
         'quantity_kg': 1000.0,
         'price_per_kg': 25000.0,
         'description': 'Gao ngon nhat the gioi',

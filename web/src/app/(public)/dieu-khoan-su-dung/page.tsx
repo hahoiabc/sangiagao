@@ -97,8 +97,10 @@ export default function TermsOfServicePage() {
           <ul className="list-disc pl-6 space-y-1">
             <li>Gói dịch vụ cho phép người bán đăng tin trên sàn</li>
             <li>Phí dịch vụ được công bố rõ ràng trước khi thanh toán</li>
-            <li>Phí đã thanh toán không hoàn lại trừ trường hợp lỗi hệ thống</li>
+            <li><strong>KHÔNG HOÀN TIỀN</strong>: Mọi khoản phí gói dịch vụ đã thanh toán thành công đều <strong>không được hoàn lại</strong> trong bất kỳ trường hợp nào (kể cả khi không sử dụng, hủy gói sớm, hoặc đóng tài khoản)</li>
+            <li>Đối với thanh toán qua App Store (iOS) hoặc Google Play (Android): quy trình hoàn tiền do Apple/Google quyết định và tuân theo chính sách riêng của họ — SanGiaGao.vn không can thiệp được</li>
             <li>Khi gói dịch vụ hết hạn, tin đăng sẽ bị ẩn cho đến khi gia hạn</li>
+            <li>Trường hợp lỗi hệ thống dẫn đến thanh toán trùng/nhầm số tiền, vui lòng liên hệ hỗ trợ trong vòng 7 ngày để được xem xét</li>
           </ul>
         </section>
 

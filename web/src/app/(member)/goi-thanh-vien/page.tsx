@@ -184,7 +184,6 @@ export default function SubscriptionPage() {
         <CardContent>
           <div className="grid grid-cols-2 gap-4">
             {activePlans.map((plan) => {
-              const pricePerMonth = Math.round(plan.amount / plan.months);
               // Prefer list_amount from backend ("Giá niêm yết"). Fall back to
               // 1-month base × months for older plans without the column set.
               const listPrice = plan.list_amount && plan.list_amount > plan.amount
@@ -208,14 +207,9 @@ export default function SubscriptionPage() {
                       {formatCurrency(listPrice)}
                     </p>
                   )}
-                  <p className="text-2xl font-bold text-primary mb-1">
+                  <p className="text-2xl font-bold text-primary mb-3">
                     {formatCurrency(plan.amount)}
                   </p>
-                  {plan.months > 1 && (
-                    <p className="text-xs text-muted-foreground mb-3">
-                      ~ {formatCurrency(pricePerMonth)}/tháng
-                    </p>
-                  )}
                   <Button
                     className="w-full mt-3 gap-2"
                     onClick={() => handlePayment(plan.months)}
