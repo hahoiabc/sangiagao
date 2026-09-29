@@ -168,10 +168,22 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
                             ),
                           ),
                         ),
+                      // Đơn vị giá — ghi 1 LẦN ở đầu (đã bỏ "đ/kg" mỗi dòng để tên+giá hiện đủ)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline, size: 14, color: AppColors.textHint),
+                            const SizedBox(width: 4),
+                            Text('Đơn giá: đồng/kg (đ/kg)',
+                                style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          ],
+                        ),
+                      ),
                       // Price board list
                       Expanded(
                         child: ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
                           itemCount: _data!.categories.length,
                           separatorBuilder: (_, __) => const SizedBox(height: 24),
                           itemBuilder: (context, index) {
@@ -279,25 +291,33 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
                                   ),
                                   const SizedBox(width: 8),
                                 ],
-                                // Product name
+                                // Product name — tự thu vừa khít, KHÔNG cắt "..."
                                 Expanded(
-                                  child: Text(
-                                    product.productLabel,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 15, height: 1.3),
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      product.productLabel,
+                                      maxLines: 1,
+                                      softWrap: false,
+                                      style: const TextStyle(fontSize: 15, height: 1.3),
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(width: 12),
-                                // Price
-                                Text(
-                                  product.minPrice != null
-                                      ? '${_priceFormat.format(product.minPrice)}đ/kg'
-                                      : 'Chưa có giá',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: product.minPrice != null ? FontWeight.w600 : FontWeight.normal,
-                                    color: product.minPrice != null ? AppColors.priceText : AppColors.textHint,
+                                const SizedBox(width: 10),
+                                // Price — SỐ THUẦN (đơn vị đ/kg ghi ở đầu bảng); FittedBox chống tràn
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    product.minPrice != null
+                                        ? _priceFormat.format(product.minPrice)
+                                        : 'Chưa có giá',
+                                    maxLines: 1,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: product.minPrice != null ? FontWeight.w600 : FontWeight.normal,
+                                      color: product.minPrice != null ? AppColors.priceText : AppColors.textHint,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 4),
@@ -326,7 +346,7 @@ class _PriceThumb extends StatelessWidget {
   const _PriceThumb({this.imageUrl});
 
   Widget _placeholder() => Container(
-        width: 54,
+        width: 46,
         alignment: Alignment.center,
         color: AppColors.primary.withValues(alpha: 0.06),
         child: Icon(Icons.grain, size: 22, color: AppColors.textHint.withValues(alpha: 0.5)),
@@ -336,7 +356,7 @@ class _PriceThumb extends StatelessWidget {
   Widget build(BuildContext context) {
     if (imageUrl == null || imageUrl!.isEmpty) return _placeholder();
     return SizedBox(
-      width: 54,
+      width: 46,
       child: CachedNetworkImage(
         imageUrl: imageUrl!,
         fit: BoxFit.cover,

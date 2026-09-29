@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getPriceBoard, getSlogan, getSloganColor, type PriceBoardResponse } from "@/services/api";
 import { useAuth } from "@/lib/auth";
 import { useThemeColor } from "@/lib/theme-color";
-import { formatPrice, timeAgo } from "@/lib/utils";
+import { timeAgo } from "@/lib/utils";
 
 export default function PriceBoardPage() {
   const { user } = useAuth();
@@ -100,9 +100,10 @@ export default function PriceBoardPage() {
       {/* Price Board */}
       <section className="mx-auto max-w-7xl px-4 py-8">
         {data && (
-          <p className="text-sm text-muted-foreground mb-4">
-            Cập nhật: {timeAgo(data.updated_at)}
-          </p>
+          <div className="mb-4 flex items-center justify-between text-sm text-muted-foreground">
+            <span>Cập nhật: {timeAgo(data.updated_at)}</span>
+            <span>Đơn giá: đồng/kg (đ/kg)</span>
+          </div>
         )}
 
         {loading ? (
@@ -155,11 +156,11 @@ export default function PriceBoardPage() {
                             </td>
                             <td className="py-3 px-4 text-right">
                               {p.min_price ? (
-                                <span className="font-semibold text-primary">
-                                  {formatPrice(p.min_price)}
+                                <span className="font-semibold text-primary whitespace-nowrap">
+                                  {new Intl.NumberFormat("vi-VN").format(p.min_price)}
                                 </span>
                               ) : (
-                                <span className="text-muted-foreground">Chưa có giá</span>
+                                <span className="text-muted-foreground whitespace-nowrap">Chưa có giá</span>
                               )}
                             </td>
                             <td className="py-3 pl-4 pr-5 text-center">
