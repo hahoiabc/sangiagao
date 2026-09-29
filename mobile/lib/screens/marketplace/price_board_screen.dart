@@ -256,7 +256,7 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: theme.colorScheme.outline, width: 1.2),
                     ),
-                    constraints: const BoxConstraints(minHeight: 48),
+                    height: 48, // cố định (bằng minHeight cũ) → chặn chiều cao cho stretch hợp lệ
                     clipBehavior: Clip.antiAlias, // để ảnh bo theo góc dòng
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch, // ảnh cao BẰNG dòng
@@ -283,6 +283,8 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
                                 Expanded(
                                   child: Text(
                                     product.productLabel,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(fontSize: 15, height: 1.3),
                                   ),
                                 ),
