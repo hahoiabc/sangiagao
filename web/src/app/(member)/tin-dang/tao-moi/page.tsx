@@ -319,12 +319,6 @@ export default function CreateListingPage() {
                   )}
                 </div>
 
-                {isItem && (
-                  <p className="text-xs text-muted-foreground -mt-2">
-                    Mặt hàng tính theo <b>đ/{unit}</b>.
-                  </p>
-                )}
-
                 {!isItem && (
                 <div>
                   <label className="text-sm font-medium mb-1 block">Vụ mùa</label>

@@ -239,11 +239,6 @@ export default function EditListingPage() {
                 min="1"
                 required
               />
-              {isItem && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Mặt hàng tính theo đ/{unit}.
-                </p>
-              )}
             </div>
 
             {!isItem && (
