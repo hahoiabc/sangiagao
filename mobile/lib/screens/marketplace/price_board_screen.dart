@@ -168,14 +168,15 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
                             ),
                           ),
                         ),
-                      // Đơn vị giá — ghi 1 LẦN ở đầu (đã bỏ "đ/kg" mỗi dòng để tên+giá hiện đủ)
+                      // Đơn vị giá ghi theo TỪNG NHÓM (ở header mỗi danh mục) vì khác nhau
+                      // (gạo đ/kg, vận chuyển đ/km, máy móc đếm tin...).
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                         child: Row(
                           children: [
                             Icon(Icons.info_outline, size: 14, color: AppColors.textHint),
                             const SizedBox(width: 4),
-                            Text('Đơn giá: đồng/kg (đ/kg)',
+                            Text('Đơn giá ghi theo từng nhóm',
                                 style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                           ],
                         ),
@@ -243,7 +244,7 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
                   ),
                 ),
                 Text(
-                  '${cat.products.length} SP',
+                  '${cat.aggregatePrice ? "đ/${cat.unit} · " : ""}${cat.products.length} SP',
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.white.withValues(alpha: 0.7),
@@ -259,6 +260,13 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
                 final i = entry.key;
                 final product = entry.value;
                 final hasSponsor = product.sponsorLogo != null;
+                // Hiển thị giá theo cờ gộp-giá: true=min đ/unit; false=đếm tin ("N tin").
+                final bool hasValue = cat.aggregatePrice
+                    ? product.minPrice != null
+                    : product.listingCount > 0;
+                final String priceText = cat.aggregatePrice
+                    ? (product.minPrice != null ? _priceFormat.format(product.minPrice) : 'Chưa có giá')
+                    : (product.listingCount > 0 ? '${product.listingCount} tin' : 'Chưa có tin');
                 return InkWell(
                   onTap: () => _viewListings(cat.categoryKey, product.productKey),
                   child: Container(
@@ -305,18 +313,16 @@ class _PriceBoardScreenState extends ConsumerState<PriceBoardScreen> {
                                   ),
                                 ),
                                 const SizedBox(width: 10),
-                                // Price — SỐ THUẦN (đơn vị đ/kg ghi ở đầu bảng); FittedBox chống tràn
+                                // Giá min (đ/unit) HOẶC đếm tin — theo cờ gộp-giá; FittedBox chống tràn
                                 FittedBox(
                                   fit: BoxFit.scaleDown,
                                   child: Text(
-                                    product.minPrice != null
-                                        ? _priceFormat.format(product.minPrice)
-                                        : 'Chưa có giá',
+                                    priceText,
                                     maxLines: 1,
                                     style: TextStyle(
                                       fontSize: 15,
-                                      fontWeight: product.minPrice != null ? FontWeight.w600 : FontWeight.normal,
-                                      color: product.minPrice != null ? AppColors.priceText : AppColors.textHint,
+                                      fontWeight: hasValue ? FontWeight.w600 : FontWeight.normal,
+                                      color: hasValue ? AppColors.priceText : AppColors.textHint,
                                     ),
                                   ),
                                 ),

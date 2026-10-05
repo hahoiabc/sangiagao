@@ -24,6 +24,8 @@ class _EditListingScreenState extends ConsumerState<EditListingScreen> {
   Listing? _listing;
   List<String> _images = [];
   String? _newLocalPath;
+  bool _isItem = false; // danh mục mặt hàng (máy móc/xe) → giá đ/unit, ẩn số lượng/mùa vụ
+  String _unit = 'kg';
 
   final _priceCtrl = TextEditingController();
   final _quantityCtrl = TextEditingController();
@@ -41,9 +43,24 @@ class _EditListingScreenState extends ConsumerState<EditListingScreen> {
     try {
       final detail = await ref.read(apiServiceProvider).getListingDetail(widget.listingId);
       final l = detail.listing;
+      // Tra kiểu + đơn vị của danh mục tin này (quyết định ràng buộc giá + nhãn/ẩn field).
+      bool isItem = false;
+      String unit = 'kg';
+      try {
+        final cats = await ref.read(apiServiceProvider).getProductCatalog();
+        for (final c in cats) {
+          if (c.key == l.category) {
+            isItem = c.isItem;
+            unit = c.unit;
+            break;
+          }
+        }
+      } catch (_) {}
       if (mounted) {
         setState(() {
           _listing = l;
+          _isItem = isItem;
+          _unit = unit;
           _images = List<String>.from(l.images);
           _priceCtrl.text = l.pricePerKg.toStringAsFixed(0);
           _quantityCtrl.text = l.quantityKg.toStringAsFixed(0);
@@ -127,31 +144,40 @@ class _EditListingScreenState extends ConsumerState<EditListingScreen> {
   Future<void> _submit() async {
     final price = double.tryParse(_priceCtrl.text.trim());
     final qty = double.tryParse(_quantityCtrl.text.trim());
-    if (price == null || price <= 5000 || price >= 99000) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Giá phải từ 5,001 đến 98,999 đ/kg')),
-      );
-      return;
-    }
-    if (qty == null || qty <= 500 || qty >= 100000000) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Số lượng phải từ 501 đến 99,999,999 kg')),
-      );
-      return;
-    }
-    final season = _seasonCtrl.text.trim();
-    if (season.isNotEmpty) {
-      final parts = season.split('/');
-      if (parts.length == 3) {
-        final d = int.tryParse(parts[0]) ?? 0;
-        final m = int.tryParse(parts[1]) ?? 0;
-        final y = int.tryParse(parts[2]) ?? 0;
-        final picked = DateTime(y, m, d);
-        if (picked.isAfter(DateTime.now())) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Mùa vụ phải trước ngày hiện tại')),
-          );
-          return;
+    if (_isItem) {
+      if (price == null || price <= 0 || price >= 100000000000) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Giá phải lớn hơn 0')),
+        );
+        return;
+      }
+    } else {
+      if (price == null || price <= 5000 || price >= 99000) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Giá phải từ 5,001 đến 98,999 đ/kg')),
+        );
+        return;
+      }
+      if (qty == null || qty <= 500 || qty >= 100000000) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Số lượng phải từ 501 đến 99,999,999 kg')),
+        );
+        return;
+      }
+      final season = _seasonCtrl.text.trim();
+      if (season.isNotEmpty) {
+        final parts = season.split('/');
+        if (parts.length == 3) {
+          final d = int.tryParse(parts[0]) ?? 0;
+          final m = int.tryParse(parts[1]) ?? 0;
+          final y = int.tryParse(parts[2]) ?? 0;
+          final picked = DateTime(y, m, d);
+          if (picked.isAfter(DateTime.now())) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Mùa vụ phải trước ngày hiện tại')),
+            );
+            return;
+          }
         }
       }
     }
@@ -160,10 +186,12 @@ class _EditListingScreenState extends ConsumerState<EditListingScreen> {
     try {
       final data = <String, dynamic>{
         'price_per_kg': price,
-        'quantity_kg': qty,
+        'quantity_kg': _isItem ? 1 : qty, // mặt hàng ẩn số lượng → ngầm 1
       };
-      final season = _seasonCtrl.text.trim();
-      if (season.isNotEmpty) data['harvest_season'] = season;
+      if (!_isItem) {
+        final season = _seasonCtrl.text.trim();
+        if (season.isNotEmpty) data['harvest_season'] = season;
+      }
       final desc = _descCtrl.text.trim();
       if (desc.isNotEmpty) data['description'] = desc;
 
@@ -367,41 +395,41 @@ class _EditListingScreenState extends ConsumerState<EditListingScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // Price
+                      // Price (đ/đơn vị theo danh mục)
                       TextField(
                         controller: _priceCtrl,
-                        decoration: const InputDecoration(
-                          labelText: 'Giá (đ/kg)',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: 'Giá (đ/$_unit)',
+                          border: const OutlineInputBorder(),
                         ),
                         keyboardType: TextInputType.number,
                       ),
                       const SizedBox(height: 12),
 
-                      // Quantity
-                      TextField(
-                        controller: _quantityCtrl,
-                        decoration: const InputDecoration(
-                          labelText: 'Số lượng (kg)',
-                          border: OutlineInputBorder(),
+                      // Quantity + Mùa gặt — chỉ nông sản (mặt hàng ẩn)
+                      if (!_isItem) ...[
+                        TextField(
+                          controller: _quantityCtrl,
+                          decoration: const InputDecoration(
+                            labelText: 'Số lượng (kg)',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
                         ),
-                        keyboardType: TextInputType.number,
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Harvest season
-                      TextField(
-                        controller: _seasonCtrl,
-                        readOnly: true,
-                        onTap: _pickDate,
-                        decoration: const InputDecoration(
-                          labelText: 'Mùa gặt',
-                          hintText: 'Chọn ngày gặt',
-                          border: OutlineInputBorder(),
-                          suffixIcon: Icon(Icons.calendar_today, size: 18),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _seasonCtrl,
+                          readOnly: true,
+                          onTap: _pickDate,
+                          decoration: const InputDecoration(
+                            labelText: 'Mùa gặt',
+                            hintText: 'Chọn ngày gặt',
+                            border: OutlineInputBorder(),
+                            suffixIcon: Icon(Icons.calendar_today, size: 18),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
+                        const SizedBox(height: 12),
+                      ],
 
                       // Description
                       TextField(

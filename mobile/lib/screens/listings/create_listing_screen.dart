@@ -32,11 +32,18 @@ class _ProductForm {
     descCtrl.dispose();
   }
 
+  bool get _isItem => category?.isItem ?? false;
+
   bool get isValid {
     if (product == null) return false;
     final price = double.tryParse(priceCtrl.text.trim());
+    if (price == null) return false;
+    if (_isItem) {
+      // Mặt hàng: giá chỉ cần > 0 (số lượng ẩn → ngầm 1).
+      return price > 0 && price < 100000000000;
+    }
     final qty = double.tryParse(quantityCtrl.text.trim());
-    if (price == null || qty == null) return false;
+    if (qty == null) return false;
     if (price <= 5000 || price >= 99000) return false;
     if (qty <= 500 || qty >= 100000000) return false;
     return true;
@@ -45,6 +52,12 @@ class _ProductForm {
   String? get validationError {
     if (product == null) return 'Chưa chọn sản phẩm';
     final price = double.tryParse(priceCtrl.text.trim());
+    if (_isItem) {
+      if (price == null || price <= 0 || price >= 100000000000) {
+        return '${product!.label}: Giá phải lớn hơn 0';
+      }
+      return null; // mặt hàng: bỏ qua số lượng + mùa vụ
+    }
     final qty = double.tryParse(quantityCtrl.text.trim());
     if (price == null || price <= 5000 || price >= 99000) {
       return '${product!.label}: Giá phải từ 5,001 đến 98,999 đ/kg';
@@ -76,16 +89,19 @@ class _ProductForm {
   Map<String, dynamic>? toPayload() {
     if (product == null || category == null) return null;
     final price = double.tryParse(priceCtrl.text.trim());
+    if (price == null || price <= 0) return null;
     final qty = double.tryParse(quantityCtrl.text.trim());
-    if (price == null || qty == null || price <= 0 || qty <= 0) return null;
+    if (!_isItem && (qty == null || qty <= 0)) return null;
     final map = <String, dynamic>{
       'category': category!.key,
       'rice_type': product!.key,
       'price_per_kg': price,
-      'quantity_kg': qty,
+      'quantity_kg': _isItem ? 1 : qty, // mặt hàng ẩn số lượng → ngầm 1
     };
-    final season = seasonCtrl.text.trim();
-    if (season.isNotEmpty) map['harvest_season'] = season;
+    if (!_isItem) {
+      final season = seasonCtrl.text.trim();
+      if (season.isNotEmpty) map['harvest_season'] = season;
+    }
     final desc = descCtrl.text.trim();
     if (desc.isNotEmpty) map['description'] = desc;
     return map;
@@ -534,48 +550,51 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
             ],
             const SizedBox(height: 16),
 
-            // Price + Quantity
+            // Price (+ Quantity cho nông sản)
             Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: form.priceCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Giá (đ/kg)',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: 'Giá (đ/${form.category?.unit ?? 'kg'})',
+                      border: const OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.number,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: form.quantityCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Số lượng (kg)',
-                      border: OutlineInputBorder(),
+                if (!(form.category?.isItem ?? false)) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: form.quantityCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Số lượng (kg)',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.number,
                     ),
-                    keyboardType: TextInputType.number,
                   ),
-                ),
+                ],
               ],
             ),
             const SizedBox(height: 12),
 
-            // Season
-            TextField(
-              controller: form.seasonCtrl,
-              readOnly: true,
-              decoration: InputDecoration(
-                labelText: 'Mùa gặt',
-                border: const OutlineInputBorder(),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.calendar_today, size: 20),
-                  onPressed: () => _pickDate(form),
+            // Season (chỉ nông sản — mặt hàng ẩn)
+            if (!(form.category?.isItem ?? false))
+              TextField(
+                controller: form.seasonCtrl,
+                readOnly: true,
+                decoration: InputDecoration(
+                  labelText: 'Mùa gặt',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.calendar_today, size: 20),
+                    onPressed: () => _pickDate(form),
+                  ),
                 ),
+                onTap: () => _pickDate(form),
               ),
-              onTap: () => _pickDate(form),
-            ),
             const SizedBox(height: 12),
 
             // Description

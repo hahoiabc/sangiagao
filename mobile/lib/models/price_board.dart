@@ -28,17 +28,23 @@ class PriceBoardEntry {
 class PriceBoardCategory {
   final String categoryKey;
   final String categoryLabel;
+  final String unit; // kg | cái | km...
+  final bool aggregatePrice; // true=hiện min đ/unit; false=đếm tin
   final List<PriceBoardEntry> products;
 
   const PriceBoardCategory({
     required this.categoryKey,
     required this.categoryLabel,
+    this.unit = 'kg',
+    this.aggregatePrice = true,
     required this.products,
   });
 
   factory PriceBoardCategory.fromJson(Map<String, dynamic> json) => PriceBoardCategory(
         categoryKey: json['category_key'] as String,
         categoryLabel: json['category_label'] as String,
+        unit: json['unit'] as String? ?? 'kg',
+        aggregatePrice: json['aggregate_price'] as bool? ?? true,
         // null-safe: danh mục không có sản phẩm → products có thể null → [] (chống crash)
         products: ((json['products'] as List<dynamic>?) ?? const [])
             .map((e) => PriceBoardEntry.fromJson(e as Map<String, dynamic>))
