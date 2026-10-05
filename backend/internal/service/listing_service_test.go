@@ -221,6 +221,33 @@ func testCatalog() []model.RiceCategory {
 	}
 }
 
+// Chống tái diễn: danh mục KHÔNG khai sản phẩm (vd MAYMOC/XeGe) từng làm products=null
+// → crash web `.length` + app parse. Bảng giá phải BỎ QUA chúng và products KHÔNG BAO GIỜ nil.
+func TestGetPriceBoard_SkipsEmptyCategoryAndNeverNilProducts(t *testing.T) {
+	repo := new(mockListingRepo)
+	catRepo := new(mockCatalogRepo)
+	svc := NewListingService(repo, nil, nil, catRepo)
+
+	catalog := []model.RiceCategory{
+		{Key: "gao_deo_thom", Label: "Gạo dẻo thơm", Products: []model.RiceProduct{
+			{Key: "st_25", Label: "ST25", Category: "gao_deo_thom"},
+		}},
+		{Key: "MAYMOC", Label: "Máy móc", Products: nil}, // danh mục rỗng sản phẩm
+	}
+	catRepo.On("GetCatalogForAPI", mock.Anything).Return(catalog, nil)
+	repo.On("GetPriceBoardData", mock.Anything).Return([]repository.PriceBoardRow{
+		{Category: "gao_deo_thom", RiceType: "st_25", MinPrice: 28000, ListingCount: 3},
+	}, nil)
+
+	res, err := svc.GetPriceBoard(context.Background())
+	assert.NoError(t, err)
+	assert.Len(t, res.Categories, 1, "danh mục rỗng sản phẩm phải bị bỏ qua")
+	assert.Equal(t, "gao_deo_thom", res.Categories[0].CategoryKey)
+	for _, c := range res.Categories {
+		assert.NotNil(t, c.Products, "products không được nil (chống crash client)")
+	}
+}
+
 func TestListingCreate_Success(t *testing.T) {
 	repo := new(mockListingRepo)
 	catRepo := new(mockCatalogRepo)
