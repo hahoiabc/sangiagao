@@ -241,7 +241,7 @@ export default function EditListingPage() {
               />
               {isItem && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  Mặt hàng tính theo đ/{unit}. Ghi tình trạng/đời/đơn vị khác… trong Mô tả.
+                  Mặt hàng tính theo đ/{unit}.
                 </p>
               )}
             </div>

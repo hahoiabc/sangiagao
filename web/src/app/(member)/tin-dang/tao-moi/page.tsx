@@ -321,7 +321,7 @@ export default function CreateListingPage() {
 
                 {isItem && (
                   <p className="text-xs text-muted-foreground -mt-2">
-                    Mặt hàng tính theo <b>đ/{unit}</b>. Ghi rõ <b>tình trạng (mới/cũ), đời/năm, đơn vị khác</b>… trong phần Mô tả bên dưới.
+                    Mặt hàng tính theo <b>đ/{unit}</b>.
                   </p>
                 )}
 
