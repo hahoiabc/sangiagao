@@ -119,7 +119,7 @@ export default function PriceBoardPage() {
           </div>
         ) : data ? (
           <div className="space-y-6">
-            {data.categories.map((cat) => (
+            {data.categories.filter((cat) => (cat.products?.length ?? 0) > 0).map((cat) => (
               <Card key={cat.category_key} className="py-0 gap-0 overflow-hidden">
                 <CardHeader className="py-4 px-5" style={{ background: `linear-gradient(to right, ${currentTheme.hexDark}, ${currentTheme.hex})` }}>
                   <CardTitle className="text-base flex items-center gap-3 text-white">

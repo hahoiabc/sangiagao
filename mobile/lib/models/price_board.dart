@@ -39,7 +39,8 @@ class PriceBoardCategory {
   factory PriceBoardCategory.fromJson(Map<String, dynamic> json) => PriceBoardCategory(
         categoryKey: json['category_key'] as String,
         categoryLabel: json['category_label'] as String,
-        products: (json['products'] as List<dynamic>)
+        // null-safe: danh mục không có sản phẩm → products có thể null → [] (chống crash)
+        products: ((json['products'] as List<dynamic>?) ?? const [])
             .map((e) => PriceBoardEntry.fromJson(e as Map<String, dynamic>))
             .toList(),
       );

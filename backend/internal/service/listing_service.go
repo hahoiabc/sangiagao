@@ -553,9 +553,10 @@ func (s *ListingService) GetPriceBoard(ctx context.Context) (*model.PriceBoardRe
 	}
 
 	// Build response from DB catalog
-	var categories []model.PriceBoardCategory
+	categories := make([]model.PriceBoardCategory, 0, len(dbCatalog))
 	for _, cat := range dbCatalog {
-		var products []model.PriceBoardEntry
+		// products RỖNG (không nil) → JSON "[]" không "null" (chống crash client `.length`/parse).
+		products := make([]model.PriceBoardEntry, 0, len(cat.Products))
 		for _, p := range cat.Products {
 			entry := model.PriceBoardEntry{
 				ProductKey:   p.Key,
@@ -574,6 +575,11 @@ func (s *ListingService) GetPriceBoard(ctx context.Context) (*model.PriceBoardRe
 				}
 			}
 			products = append(products, entry)
+		}
+		// Bỏ qua danh mục KHÔNG có sản phẩm nào (vd MAYMOC/XeGe thêm vào catalog nhưng
+		// chưa khai loại) — vô nghĩa trên bảng giá + trước đây gây products=null → crash.
+		if len(products) == 0 {
+			continue
 		}
 		categories = append(categories, model.PriceBoardCategory{
 			CategoryKey:   cat.Key,
