@@ -26,7 +26,7 @@ func (h *ListingHandler) Create(c *gin.Context) {
 
 	var req model.CreateListingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: category, rice_type, quantity_kg, price_per_kg are required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: category, rice_type, price_per_kg are required"})
 		return
 	}
 
