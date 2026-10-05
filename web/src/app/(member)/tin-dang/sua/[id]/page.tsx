@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getListingDetail, updateListing, uploadImagePresigned, addListingImage, removeListingImage, type ListingDetail } from "@/services/api";
+import { getListingDetail, updateListing, uploadImagePresigned, addListingImage, removeListingImage, getProductCatalog, type ListingDetail, type RiceCategory } from "@/services/api";
 import { ListingImage } from "@/components/listing-image";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
@@ -31,6 +31,16 @@ export default function EditListingPage() {
   const [harvestSeason, setHarvestSeason] = useState("");
   const [description, setDescription] = useState("");
   const [images, setImages] = useState<string[]>([]);
+  const [categories, setCategories] = useState<RiceCategory[]>([]);
+
+  // Kiểu + đơn vị của danh mục tin này (quyết định ràng buộc giá + nhãn/ẩn field).
+  const cat = categories.find((c) => c.key === listing?.category);
+  const isItem = (cat?.kind || "nong_san") === "mat_hang";
+  const unit = cat?.unit || "kg";
+
+  useEffect(() => {
+    getProductCatalog().then(setCategories).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (id) {
@@ -93,15 +103,22 @@ export default function EditListingPage() {
 
     const price = Number(pricePerKg);
     const qty = Number(quantityKg);
-    if (!price || price <= 5000 || price >= 99000) {
-      toast.error("Giá phải từ 5,001 đến 98,999 đ/kg");
-      return;
+    if (isItem) {
+      if (!price || price <= 0 || price >= 100_000_000_000) {
+        toast.error("Giá phải lớn hơn 0");
+        return;
+      }
+    } else {
+      if (!price || price <= 5000 || price >= 99000) {
+        toast.error("Giá phải từ 5,001 đến 98,999 đ/kg");
+        return;
+      }
+      if (!qty || qty <= 500 || qty >= 100000000) {
+        toast.error("Số lượng phải từ 501 đến 99,999,999 kg");
+        return;
+      }
     }
-    if (!qty || qty <= 500 || qty >= 100000000) {
-      toast.error("Số lượng phải từ 501 đến 99,999,999 kg");
-      return;
-    }
-    if (harvestSeason.trim()) {
+    if (!isItem && harvestSeason.trim()) {
       const parts = harvestSeason.split("/");
       if (parts.length === 3) {
         const picked = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
@@ -213,17 +230,23 @@ export default function EditListingPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-sm font-medium mb-1 block">Giá (đ/kg)</label>
+              <label className="text-sm font-medium mb-1 block">Giá (đ/{unit})</label>
               <Input
                 type="number"
                 value={pricePerKg}
                 onChange={(e) => setPricePerKg(e.target.value)}
-                placeholder="VD: 15000"
+                placeholder={isItem ? "VD: 8000000" : "VD: 15000"}
                 min="1"
                 required
               />
+              {isItem && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Mặt hàng tính theo đ/{unit}. Ghi tình trạng/đời/đơn vị khác… trong Mô tả.
+                </p>
+              )}
             </div>
 
+            {!isItem && (
             <div>
               <label className="text-sm font-medium mb-1 block">Số lượng (kg)</label>
               <Input
@@ -235,7 +258,9 @@ export default function EditListingPage() {
                 required
               />
             </div>
+            )}
 
+            {!isItem && (
             <div>
               <label className="text-sm font-medium mb-1 block">Vụ mùa</label>
               <div className="flex gap-2">
@@ -283,6 +308,7 @@ export default function EditListingPage() {
                 </select>
               </div>
             </div>
+            )}
 
             <div>
               <label className="text-sm font-medium mb-1 block">Mô tả thêm</label>

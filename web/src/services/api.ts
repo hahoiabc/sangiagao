@@ -297,6 +297,8 @@ export interface RiceProduct {
 export interface RiceCategory {
   key: string;
   label: string;
+  kind?: string; // "nong_san" | "mat_hang"
+  unit?: string; // "kg" | "cái" | "km" | "chiếc"...
   products: RiceProduct[];
 }
 

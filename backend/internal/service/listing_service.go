@@ -329,9 +329,20 @@ func (s *ListingService) Update(ctx context.Context, userID, id string, req *mod
 	if listing.UserID != userID {
 		return nil, ErrNotListingOwner
 	}
-	// Chốt chặn giá khi sửa (nếu có đổi giá) — khớp Create + form client.
-	if req.PricePerKG != nil && !validPricePerKG(*req.PricePerKG) {
-		return nil, ErrInvalidPrice
+	// Chốt chặn giá khi sửa (nếu có đổi giá) — theo KIỂU danh mục của tin (khớp Create).
+	if req.PricePerKG != nil {
+		cat := ""
+		if listing.Category != nil {
+			cat = *listing.Category
+		}
+		kind, _ := s.categoryKindUnit(ctx, cat)
+		if kind == model.CategoryKindItem {
+			if !validItemPrice(*req.PricePerKG) {
+				return nil, ErrInvalidItemPrice
+			}
+		} else if !validPricePerKG(*req.PricePerKG) {
+			return nil, ErrInvalidPrice
+		}
 	}
 	updated, err := s.listingRepo.Update(ctx, id, req)
 	if err == nil {

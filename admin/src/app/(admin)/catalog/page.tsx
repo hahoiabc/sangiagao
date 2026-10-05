@@ -48,7 +48,12 @@ function SortableCategoryRow({ cat, products, openEditCat, handleDeleteCat }: {
           <GripVertical className="h-4 w-4" />
         </button>
       </TableCell>
-      <TableCell className="text-sm font-medium">{cat.label}</TableCell>
+      <TableCell className="text-sm font-medium">
+        {cat.label}
+        {cat.kind === "mat_hang" && (
+          <span className="ml-2 text-xs font-normal text-muted-foreground">· Mặt hàng (đ/{cat.unit || "?"})</span>
+        )}
+      </TableCell>
       <TableCell className="text-sm">{cat.sort_order}</TableCell>
       <TableCell>
         <Badge variant={cat.is_active ? "default" : "secondary"}>
@@ -115,6 +120,8 @@ export default function CatalogPage() {
   const [catKey, setCatKey] = useState("");
   const [catLabel, setCatLabel] = useState("");
   const [catIcon, setCatIcon] = useState("");
+  const [catKind, setCatKind] = useState("nong_san");
+  const [catUnit, setCatUnit] = useState("kg");
   const [catSortOrder, setCatSortOrder] = useState(0);
   const [catIsActive, setCatIsActive] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -213,11 +220,11 @@ export default function CatalogPage() {
 
   // Category CRUD
   function openCreateCat() {
-    setEditingCat(null); setCatKey(""); setCatLabel(""); setCatIcon(""); setCatSortOrder(0); setCatIsActive(true);
+    setEditingCat(null); setCatKey(""); setCatLabel(""); setCatIcon(""); setCatKind("nong_san"); setCatUnit("kg"); setCatSortOrder(0); setCatIsActive(true);
     setShowCatForm(true);
   }
   function openEditCat(cat: CatalogCategory) {
-    setEditingCat(cat); setCatKey(cat.key); setCatLabel(cat.label); setCatIcon(cat.icon); setCatSortOrder(cat.sort_order); setCatIsActive(cat.is_active);
+    setEditingCat(cat); setCatKey(cat.key); setCatLabel(cat.label); setCatIcon(cat.icon); setCatKind(cat.kind || "nong_san"); setCatUnit(cat.unit || "kg"); setCatSortOrder(cat.sort_order); setCatIsActive(cat.is_active);
     setShowCatForm(true);
   }
   async function handleCatSubmit() {
@@ -225,9 +232,9 @@ export default function CatalogPage() {
     setSubmitting(true);
     try {
       if (editingCat) {
-        await updateCatalogCategory("", editingCat.id, { label: catLabel, icon: catIcon, sort_order: catSortOrder, is_active: catIsActive });
+        await updateCatalogCategory("", editingCat.id, { label: catLabel, icon: catIcon, kind: catKind, unit: catUnit, sort_order: catSortOrder, is_active: catIsActive });
       } else {
-        await createCatalogCategory("", { key: catKey, label: catLabel, icon: catIcon || undefined });
+        await createCatalogCategory("", { key: catKey, label: catLabel, icon: catIcon || undefined, kind: catKind, unit: catUnit });
       }
       toast.success(editingCat ? "Đã cập nhật danh mục" : "Đã thêm danh mục");
       setShowCatForm(false); fetchData();
@@ -416,6 +423,40 @@ export default function CatalogPage() {
               <label className="text-sm font-medium">Icon</label>
               <input className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-sm" value={catIcon} onChange={e => setCatIcon(e.target.value)} placeholder="vd: rice_bowl" />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium">Kiểu *</label>
+                <select
+                  className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={catKind}
+                  onChange={e => {
+                    const k = e.target.value;
+                    setCatKind(k);
+                    // Gợi ý đơn vị theo kiểu
+                    if (k === "nong_san") setCatUnit("kg");
+                    else if (catUnit === "kg") setCatUnit("cái");
+                  }}
+                >
+                  <option value="nong_san">Nông sản (giá đ/kg, số lượng kg)</option>
+                  <option value="mat_hang">Mặt hàng (máy móc/xe — giá đ/đơn vị)</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Đơn vị giá *</label>
+                <input
+                  className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-60"
+                  value={catUnit}
+                  onChange={e => setCatUnit(e.target.value)}
+                  disabled={catKind === "nong_san"}
+                  placeholder="vd: cái, km, chiếc, bộ"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground -mt-1">
+              {catKind === "nong_san"
+                ? "Nông sản: giá 5.000–99.000đ/kg, người đăng nhập số lượng (kg)."
+                : "Mặt hàng: giá chỉ cần > 0 (đến 100 tỷ), ẩn số lượng/mùa vụ/chứng nhận. Người bán tự ghi tình trạng, đơn vị khác… trong mô tả."}
+            </p>
             {editingCat && (
               <>
                 <div>

@@ -47,6 +47,11 @@ export default function CreateListingPage() {
     getProductCatalog().then(setCategories).catch(() => {});
   }, []);
 
+  // Kiểu + đơn vị của danh mục đang chọn (quyết định ràng buộc giá/số lượng + nhãn).
+  const catOf = (key: string) => categories.find((c) => c.key === key);
+  const kindOf = (key: string) => catOf(key)?.kind || "nong_san";
+  const unitOf = (key: string) => catOf(key)?.unit || "kg";
+
   useEffect(() => {
     return () => {
       forms.forEach((f) => f.images.forEach((img) => URL.revokeObjectURL(img.preview)));
@@ -124,21 +129,30 @@ export default function CreateListingPage() {
     // Validate all forms
     for (let i = 0; i < forms.length; i++) {
       const f = forms[i];
-      if (!f.category || !f.rice_type || !f.quantity_kg || !f.price_per_kg) {
+      const isItem = kindOf(f.category) === "mat_hang";
+      // Mặt hàng KHÔNG bắt buộc số lượng (ẩn ô); nông sản thì bắt buộc.
+      if (!f.category || !f.rice_type || !f.price_per_kg || (!isItem && !f.quantity_kg)) {
         toast.error(`Sản phẩm ${i + 1}: Vui lòng điền đầy đủ thông tin bắt buộc`);
         return;
       }
       const price = Number(f.price_per_kg);
       const qty = Number(f.quantity_kg);
-      if (price <= 5000 || price >= 99000) {
-        toast.error(`Sản phẩm ${i + 1}: Giá phải từ 5,001 đến 98,999 đ/kg`);
-        return;
+      if (isItem) {
+        if (price <= 0 || price >= 100_000_000_000) {
+          toast.error(`Sản phẩm ${i + 1}: Giá phải lớn hơn 0`);
+          return;
+        }
+      } else {
+        if (price <= 5000 || price >= 99000) {
+          toast.error(`Sản phẩm ${i + 1}: Giá phải từ 5,001 đến 98,999 đ/kg`);
+          return;
+        }
+        if (qty <= 500 || qty >= 100000000) {
+          toast.error(`Sản phẩm ${i + 1}: Số lượng phải từ 501 đến 99,999,999 kg`);
+          return;
+        }
       }
-      if (qty <= 500 || qty >= 100000000) {
-        toast.error(`Sản phẩm ${i + 1}: Số lượng phải từ 501 đến 99,999,999 kg`);
-        return;
-      }
-      if (f.harvest_season) {
+      if (!isItem && f.harvest_season) {
         const parts = f.harvest_season.split("/");
         if (parts.length === 3) {
           const picked = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
@@ -229,6 +243,8 @@ export default function CreateListingPage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {forms.map((form, fi) => {
           const selectedCat = categories.find((c) => c.key === form.category);
+          const isItem = (selectedCat?.kind || "nong_san") === "mat_hang";
+          const unit = selectedCat?.unit || "kg";
           return (
             <Card key={fi}>
               <CardHeader className="pb-3">
@@ -260,7 +276,7 @@ export default function CreateListingPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-sm font-medium mb-1 block">Loại gạo *</label>
+                    <label className="text-sm font-medium mb-1 block">{isItem ? "Loại *" : "Loại gạo *"}</label>
                     <select
                       value={form.rice_type}
                       onChange={(e) => updateForm(fi, "rice_type", e.target.value)}
@@ -268,7 +284,7 @@ export default function CreateListingPage() {
                       required
                       disabled={!form.category}
                     >
-                      <option value="">Chọn loại gạo</option>
+                      <option value="">{isItem ? "Chọn loại" : "Chọn loại gạo"}</option>
                       {selectedCat?.products.map((p) => (
                         <option key={p.key} value={p.key}>{p.label}</option>
                       ))}
@@ -276,31 +292,40 @@ export default function CreateListingPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className={isItem ? "" : "grid grid-cols-2 gap-4"}>
                   <div>
-                    <label className="text-sm font-medium mb-1 block">Giá (đ/kg) *</label>
+                    <label className="text-sm font-medium mb-1 block">Giá (đ/{unit}) *</label>
                     <Input
                       type="number"
                       value={form.price_per_kg}
                       onChange={(e) => updateForm(fi, "price_per_kg", e.target.value)}
-                      placeholder="VD: 15000"
+                      placeholder={isItem ? "VD: 8000000" : "VD: 15000"}
                       required
                       min="1"
                     />
                   </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">Số lượng (kg) *</label>
-                    <Input
-                      type="number"
-                      value={form.quantity_kg}
-                      onChange={(e) => updateForm(fi, "quantity_kg", e.target.value)}
-                      placeholder="VD: 1000"
-                      required
-                      min="1"
-                    />
-                  </div>
+                  {!isItem && (
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">Số lượng (kg) *</label>
+                      <Input
+                        type="number"
+                        value={form.quantity_kg}
+                        onChange={(e) => updateForm(fi, "quantity_kg", e.target.value)}
+                        placeholder="VD: 1000"
+                        required
+                        min="1"
+                      />
+                    </div>
+                  )}
                 </div>
 
+                {isItem && (
+                  <p className="text-xs text-muted-foreground -mt-2">
+                    Mặt hàng tính theo <b>đ/{unit}</b>. Ghi rõ <b>tình trạng (mới/cũ), đời/năm, đơn vị khác</b>… trong phần Mô tả bên dưới.
+                  </p>
+                )}
+
+                {!isItem && (
                 <div>
                   <label className="text-sm font-medium mb-1 block">Vụ mùa</label>
                   <div className="flex gap-2">
@@ -348,6 +373,7 @@ export default function CreateListingPage() {
                     </select>
                   </div>
                 </div>
+                )}
 
                 <div>
                   <label className="text-sm font-medium mb-1 block">Mô tả</label>

@@ -515,6 +515,8 @@ export interface CatalogCategory {
   key: string;
   label: string;
   icon: string;
+  kind: string; // "nong_san" | "mat_hang"
+  unit: string; // "kg" | "cái" | "km" | "chiếc"...
   sort_order: number;
   is_active: boolean;
   created_at: string;
@@ -536,11 +538,11 @@ export async function listCatalogCategories(token: string) {
   return request<CatalogCategory[]>("/admin/catalog/categories", { token });
 }
 
-export async function createCatalogCategory(token: string, data: { key: string; label: string; icon?: string }) {
+export async function createCatalogCategory(token: string, data: { key: string; label: string; icon?: string; kind?: string; unit?: string }) {
   return request<CatalogCategory>("/admin/catalog/categories", { token, method: "POST", body: JSON.stringify(data) });
 }
 
-export async function updateCatalogCategory(token: string, id: string, data: { label?: string; icon?: string; sort_order?: number; is_active?: boolean }) {
+export async function updateCatalogCategory(token: string, id: string, data: { label?: string; icon?: string; kind?: string; unit?: string; sort_order?: number; is_active?: boolean }) {
   return request<CatalogCategory>(`/admin/catalog/categories/${id}`, { token, method: "PUT", body: JSON.stringify(data) });
 }
 
