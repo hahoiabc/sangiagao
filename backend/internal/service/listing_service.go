@@ -645,11 +645,12 @@ func (s *ListingService) GetPriceBoard(ctx context.Context) (*model.PriceBoardRe
 			continue
 		}
 		categories = append(categories, model.PriceBoardCategory{
-			CategoryKey:   cat.Key,
-			CategoryLabel: cat.Label,
-			Kind:          cat.Kind,
-			Unit:          cat.Unit,
-			Products:      products,
+			CategoryKey:    cat.Key,
+			CategoryLabel:  cat.Label,
+			Kind:           cat.Kind,
+			Unit:           cat.Unit,
+			AggregatePrice: cat.AggregatePrice,
+			Products:       products,
 		})
 	}
 

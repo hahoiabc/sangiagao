@@ -13,8 +13,9 @@ type CatalogCategory struct {
 	Key       string    `json:"key"`
 	Label     string    `json:"label"`
 	Icon      string    `json:"icon"`
-	Kind      string    `json:"kind"` // nong_san | mat_hang
-	Unit      string    `json:"unit"` // kg | cái | km | chiếc...
+	Kind      string    `json:"kind"`            // nong_san | mat_hang
+	Unit      string    `json:"unit"`            // kg | cái | km | chiếc...
+	AggregatePrice bool  `json:"aggregate_price"` // true=hiện min đ/unit; false=đếm tin (Cách B)
 	SortOrder int       `json:"sort_order"`
 	IsActive  bool      `json:"is_active"`
 	CreatedAt time.Time `json:"created_at"`
@@ -38,6 +39,7 @@ type CreateCategoryRequest struct {
 	Icon  string `json:"icon"`
 	Kind  string `json:"kind" binding:"omitempty,oneof=nong_san mat_hang"` // mặc định nong_san
 	Unit  string `json:"unit"`                                             // mặc định kg
+	AggregatePrice *bool `json:"aggregate_price"`                           // mặc định true
 }
 
 type UpdateCategoryRequest struct {
@@ -45,6 +47,7 @@ type UpdateCategoryRequest struct {
 	Icon      *string `json:"icon"`
 	Kind      *string `json:"kind" binding:"omitempty,oneof=nong_san mat_hang"`
 	Unit      *string `json:"unit"`
+	AggregatePrice *bool `json:"aggregate_price"`
 	SortOrder *int    `json:"sort_order"`
 	IsActive  *bool   `json:"is_active"`
 }

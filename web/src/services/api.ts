@@ -280,6 +280,9 @@ export interface PriceBoardEntry {
 export interface PriceBoardCategory {
   category_key: string;
   category_label: string;
+  kind?: string; // "nong_san" | "mat_hang"
+  unit?: string; // "kg" | "cái" | "km"...
+  aggregate_price?: boolean; // true=hiện min đ/unit; false=đếm tin
   products: PriceBoardEntry[];
 }
 

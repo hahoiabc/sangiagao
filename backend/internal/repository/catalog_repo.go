@@ -20,7 +20,7 @@ func NewCatalogRepo(pool *pgxpool.Pool) *CatalogRepo {
 
 func (r *CatalogRepo) ListCategories(ctx context.Context) ([]*model.CatalogCategory, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, key, label, icon, kind, unit, sort_order, is_active, created_at, updated_at
+		`SELECT id, key, label, icon, kind, unit, aggregate_price, sort_order, is_active, created_at, updated_at
 		 FROM rice_categories ORDER BY sort_order, key`)
 	if err != nil {
 		return nil, err
@@ -30,7 +30,7 @@ func (r *CatalogRepo) ListCategories(ctx context.Context) ([]*model.CatalogCateg
 	var cats []*model.CatalogCategory
 	for rows.Next() {
 		c := &model.CatalogCategory{}
-		if err := rows.Scan(&c.ID, &c.Key, &c.Label, &c.Icon, &c.Kind, &c.Unit, &c.SortOrder, &c.IsActive, &c.CreatedAt, &c.UpdatedAt); err != nil {
+		if err := rows.Scan(&c.ID, &c.Key, &c.Label, &c.Icon, &c.Kind, &c.Unit, &c.AggregatePrice, &c.SortOrder, &c.IsActive, &c.CreatedAt, &c.UpdatedAt); err != nil {
 			return nil, err
 		}
 		cats = append(cats, c)
@@ -55,14 +55,18 @@ func (r *CatalogRepo) CreateCategory(ctx context.Context, req *model.CreateCateg
 	if unit == "" {
 		unit = "kg"
 	}
+	agg := true
+	if req.AggregatePrice != nil {
+		agg = *req.AggregatePrice
+	}
 
 	c := &model.CatalogCategory{}
 	err := r.pool.QueryRow(ctx,
-		`INSERT INTO rice_categories (key, label, icon, kind, unit, sort_order)
-		 VALUES ($1, $2, $3, $4, $5, $6)
-		 RETURNING id, key, label, icon, kind, unit, sort_order, is_active, created_at, updated_at`,
-		req.Key, req.Label, icon, kind, unit, maxOrder+1,
-	).Scan(&c.ID, &c.Key, &c.Label, &c.Icon, &c.Kind, &c.Unit, &c.SortOrder, &c.IsActive, &c.CreatedAt, &c.UpdatedAt)
+		`INSERT INTO rice_categories (key, label, icon, kind, unit, aggregate_price, sort_order)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7)
+		 RETURNING id, key, label, icon, kind, unit, aggregate_price, sort_order, is_active, created_at, updated_at`,
+		req.Key, req.Label, icon, kind, unit, agg, maxOrder+1,
+	).Scan(&c.ID, &c.Key, &c.Label, &c.Icon, &c.Kind, &c.Unit, &c.AggregatePrice, &c.SortOrder, &c.IsActive, &c.CreatedAt, &c.UpdatedAt)
 	return c, err
 }
 
@@ -74,12 +78,13 @@ func (r *CatalogRepo) UpdateCategory(ctx context.Context, id string, req *model.
 			icon = COALESCE($3, icon),
 			kind = COALESCE($4, kind),
 			unit = COALESCE($5, unit),
-			sort_order = COALESCE($6, sort_order),
-			is_active = COALESCE($7, is_active)
+			aggregate_price = COALESCE($6, aggregate_price),
+			sort_order = COALESCE($7, sort_order),
+			is_active = COALESCE($8, is_active)
 		 WHERE id = $1
-		 RETURNING id, key, label, icon, kind, unit, sort_order, is_active, created_at, updated_at`,
-		id, req.Label, req.Icon, req.Kind, req.Unit, req.SortOrder, req.IsActive,
-	).Scan(&c.ID, &c.Key, &c.Label, &c.Icon, &c.Kind, &c.Unit, &c.SortOrder, &c.IsActive, &c.CreatedAt, &c.UpdatedAt)
+		 RETURNING id, key, label, icon, kind, unit, aggregate_price, sort_order, is_active, created_at, updated_at`,
+		id, req.Label, req.Icon, req.Kind, req.Unit, req.AggregatePrice, req.SortOrder, req.IsActive,
+	).Scan(&c.ID, &c.Key, &c.Label, &c.Icon, &c.Kind, &c.Unit, &c.AggregatePrice, &c.SortOrder, &c.IsActive, &c.CreatedAt, &c.UpdatedAt)
 	return c, err
 }
 
@@ -223,11 +228,12 @@ func (r *CatalogRepo) GetCatalogForAPI(ctx context.Context) ([]model.RiceCategor
 			})
 		}
 		result = append(result, model.RiceCategory{
-			Key:      c.Key,
-			Label:    c.Label,
-			Kind:     c.Kind,
-			Unit:     c.Unit,
-			Products: products,
+			Key:            c.Key,
+			Label:          c.Label,
+			Kind:           c.Kind,
+			Unit:           c.Unit,
+			AggregatePrice: c.AggregatePrice,
+			Products:       products,
 		})
 	}
 	return result, nil

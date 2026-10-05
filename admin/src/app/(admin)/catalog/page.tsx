@@ -122,6 +122,7 @@ export default function CatalogPage() {
   const [catIcon, setCatIcon] = useState("");
   const [catKind, setCatKind] = useState("nong_san");
   const [catUnit, setCatUnit] = useState("kg");
+  const [catAggregatePrice, setCatAggregatePrice] = useState(true);
   const [catSortOrder, setCatSortOrder] = useState(0);
   const [catIsActive, setCatIsActive] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -220,11 +221,11 @@ export default function CatalogPage() {
 
   // Category CRUD
   function openCreateCat() {
-    setEditingCat(null); setCatKey(""); setCatLabel(""); setCatIcon(""); setCatKind("nong_san"); setCatUnit("kg"); setCatSortOrder(0); setCatIsActive(true);
+    setEditingCat(null); setCatKey(""); setCatLabel(""); setCatIcon(""); setCatKind("nong_san"); setCatUnit("kg"); setCatAggregatePrice(true); setCatSortOrder(0); setCatIsActive(true);
     setShowCatForm(true);
   }
   function openEditCat(cat: CatalogCategory) {
-    setEditingCat(cat); setCatKey(cat.key); setCatLabel(cat.label); setCatIcon(cat.icon); setCatKind(cat.kind || "nong_san"); setCatUnit(cat.unit || "kg"); setCatSortOrder(cat.sort_order); setCatIsActive(cat.is_active);
+    setEditingCat(cat); setCatKey(cat.key); setCatLabel(cat.label); setCatIcon(cat.icon); setCatKind(cat.kind || "nong_san"); setCatUnit(cat.unit || "kg"); setCatAggregatePrice(cat.aggregate_price ?? true); setCatSortOrder(cat.sort_order); setCatIsActive(cat.is_active);
     setShowCatForm(true);
   }
   async function handleCatSubmit() {
@@ -232,9 +233,9 @@ export default function CatalogPage() {
     setSubmitting(true);
     try {
       if (editingCat) {
-        await updateCatalogCategory("", editingCat.id, { label: catLabel, icon: catIcon, kind: catKind, unit: catUnit, sort_order: catSortOrder, is_active: catIsActive });
+        await updateCatalogCategory("", editingCat.id, { label: catLabel, icon: catIcon, kind: catKind, unit: catUnit, aggregate_price: catAggregatePrice, sort_order: catSortOrder, is_active: catIsActive });
       } else {
-        await createCatalogCategory("", { key: catKey, label: catLabel, icon: catIcon || undefined, kind: catKind, unit: catUnit });
+        await createCatalogCategory("", { key: catKey, label: catLabel, icon: catIcon || undefined, kind: catKind, unit: catUnit, aggregate_price: catAggregatePrice });
       }
       toast.success(editingCat ? "Đã cập nhật danh mục" : "Đã thêm danh mục");
       setShowCatForm(false); fetchData();
@@ -432,9 +433,9 @@ export default function CatalogPage() {
                   onChange={e => {
                     const k = e.target.value;
                     setCatKind(k);
-                    // Gợi ý đơn vị theo kiểu
-                    if (k === "nong_san") setCatUnit("kg");
-                    else if (catUnit === "kg") setCatUnit("cái");
+                    // Gợi ý đơn vị + cách hiện bảng giá theo kiểu
+                    if (k === "nong_san") { setCatUnit("kg"); setCatAggregatePrice(true); }
+                    else { if (catUnit === "kg") setCatUnit("cái"); setCatAggregatePrice(false); }
                   }}
                 >
                   <option value="nong_san">Nông sản (giá đ/kg, số lượng kg)</option>
@@ -457,6 +458,19 @@ export default function CatalogPage() {
                 ? "Nông sản: giá 5.000–99.000đ/kg, người đăng nhập số lượng (kg)."
                 : "Mặt hàng: giá chỉ cần > 0 (đến 100 tỷ), ẩn số lượng/mùa vụ/chứng nhận. Người bán tự ghi tình trạng, đơn vị khác… trong mô tả."}
             </p>
+            {catKind === "mat_hang" && (
+              <div className="rounded-md border border-input p-3 space-y-1">
+                <label className="flex items-center gap-2 text-sm font-medium">
+                  <input type="checkbox" checked={catAggregatePrice} onChange={e => setCatAggregatePrice(e.target.checked)} />
+                  Hiện giá thấp nhất trên bảng giá
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  {catAggregatePrice
+                    ? `Bảng giá hiện "Từ X đ/${catUnit || "?"}" (hợp khi mọi tin cùng đơn vị, vd vận chuyển đ/km).`
+                    : "Bảng giá chỉ ĐẾM TIN (\"N tin → Xem\"), không gộp giá — hợp khi đơn vị đa dạng (máy móc: cái/bộ). Giá nằm trong từng tin."}
+                </p>
+              </div>
+            )}
             {editingCat && (
               <>
                 <div>

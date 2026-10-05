@@ -102,7 +102,7 @@ export default function PriceBoardPage() {
         {data && (
           <div className="mb-4 flex items-center justify-between text-sm text-muted-foreground">
             <span>Cập nhật: {timeAgo(data.updated_at)}</span>
-            <span>Đơn giá: đồng/kg (đ/kg)</span>
+            <span>Đơn giá ghi theo từng nhóm</span>
           </div>
         )}
 
@@ -127,7 +127,9 @@ export default function PriceBoardPage() {
                       <Wheat className="h-4.5 w-4.5 text-white" />
                     </span>
                     <span className="flex-1 tracking-wide">{cat.category_label}</span>
-                    <span className="text-xs font-normal text-white/70">{cat.products.length} SP</span>
+                    <span className="text-xs font-normal text-white/70">
+                      {cat.aggregate_price !== false && `đ/${cat.unit || "kg"} · `}{cat.products.length} SP
+                    </span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -155,7 +157,11 @@ export default function PriceBoardPage() {
                               </div>
                             </td>
                             <td className="py-3 px-4 text-right">
-                              {p.min_price ? (
+                              {cat.aggregate_price === false ? (
+                                <span className="text-muted-foreground whitespace-nowrap text-sm">
+                                  {p.listing_count > 0 ? `${p.listing_count} tin` : "Chưa có tin"}
+                                </span>
+                              ) : p.min_price ? (
                                 <span className="font-semibold text-primary whitespace-nowrap">
                                   {new Intl.NumberFormat("vi-VN").format(p.min_price)}
                                 </span>

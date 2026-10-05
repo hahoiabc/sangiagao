@@ -4,8 +4,9 @@ package model
 type RiceCategory struct {
 	Key      string        `json:"key"`
 	Label    string        `json:"label"`
-	Kind     string        `json:"kind"` // nong_san | mat_hang (xem CategoryKind*)
-	Unit     string        `json:"unit"` // kg | cái | km...
+	Kind     string        `json:"kind"`            // nong_san | mat_hang (xem CategoryKind*)
+	Unit     string        `json:"unit"`            // kg | cái | km...
+	AggregatePrice bool    `json:"aggregate_price"` // true=min đ/unit; false=đếm tin
 	Products []RiceProduct `json:"products"`
 }
 
