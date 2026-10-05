@@ -221,6 +221,41 @@ func testCatalog() []model.RiceCategory {
 	}
 }
 
+// Mặt hàng (máy móc/xe): CHO giá cao (triệu+) + ẩn số lượng → ngầm 1.
+func TestListingCreate_ItemCategory_HighPriceOK_QuantityDefaults1(t *testing.T) {
+	repo := new(mockListingRepo)
+	catRepo := new(mockCatalogRepo)
+	svc := NewListingService(repo, nil, nil, catRepo)
+
+	catalog := []model.RiceCategory{
+		{Key: "MAYMOC", Label: "Máy móc", Kind: model.CategoryKindItem, Unit: "cái", Products: []model.RiceProduct{
+			{Key: "may_xay", Label: "Máy xay xát", Category: "MAYMOC"},
+		}},
+	}
+	req := &model.CreateListingRequest{Title: "Máy xay", Category: "MAYMOC", RiceType: "may_xay", PricePerKG: 8_000_000, QuantityKG: 0}
+	catRepo.On("GetCatalogForAPI", mock.Anything).Return(catalog, nil)
+	repo.On("CountTodayByUserAndType", mock.Anything, "user-1", "may_xay").Return(0, nil)
+	repo.On("Create", mock.Anything, "user-1", req).Return(sampleListing("user-1"), nil)
+
+	_, err := svc.Create(context.Background(), "user-1", req)
+	assert.NoError(t, err)
+	assert.Equal(t, 1.0, req.QuantityKG, "mặt hàng ẩn số lượng → ngầm 1")
+}
+
+// Nông sản CHẶN giá kiểu mặt hàng (triệu/kg vô lý cho gạo).
+func TestListingCreate_CommodityRejectsItemPrice(t *testing.T) {
+	repo := new(mockListingRepo)
+	catRepo := new(mockCatalogRepo)
+	svc := NewListingService(repo, nil, nil, catRepo)
+
+	catRepo.On("GetCatalogForAPI", mock.Anything).Return(testCatalog(), nil)
+	repo.On("CountTodayByUserAndType", mock.Anything, "user-1", "st_25").Return(0, nil)
+	req := &model.CreateListingRequest{Title: "X", Category: "gao_deo_thom", RiceType: "st_25", PricePerKG: 8_000_000, QuantityKG: 500}
+
+	_, err := svc.Create(context.Background(), "user-1", req)
+	assert.ErrorIs(t, err, ErrInvalidPrice)
+}
+
 // Chống tái diễn: danh mục KHÔNG khai sản phẩm (vd MAYMOC/XeGe) từng làm products=null
 // → crash web `.length` + app parse. Bảng giá phải BỎ QUA chúng và products KHÔNG BAO GIỜ nil.
 func TestGetPriceBoard_SkipsEmptyCategoryAndNeverNilProducts(t *testing.T) {

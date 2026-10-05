@@ -4,6 +4,8 @@ package model
 type RiceCategory struct {
 	Key      string        `json:"key"`
 	Label    string        `json:"label"`
+	Kind     string        `json:"kind"` // nong_san | mat_hang (xem CategoryKind*)
+	Unit     string        `json:"unit"` // kg | cái | km...
 	Products []RiceProduct `json:"products"`
 }
 

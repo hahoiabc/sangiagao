@@ -39,6 +39,8 @@ var ErrInvalidCategory = errors.New("phân loại gạo không hợp lệ")
 var ErrInvalidProduct = errors.New("loại gạo không hợp lệ hoặc không thuộc phân loại đã chọn")
 var ErrDailyLimitReached = errors.New("loại gạo này đã đăng tối đa 3 lần hôm nay")
 var ErrInvalidPrice = errors.New("giá phải trên 5.000đ và dưới 99.000đ mỗi kg")
+var ErrInvalidItemPrice = errors.New("giá không hợp lệ")
+var ErrInvalidQuantity = errors.New("số lượng phải lớn hơn 0")
 
 const maxPerProductPerDay = 3
 
@@ -47,11 +49,18 @@ const maxPerProductPerDay = 3
 const (
 	minPricePerKG = 5000.0
 	maxPricePerKG = 99000.0
+	// Mặt hàng (máy móc/xe/ghe): chỉ cần > 0, trần "vệ sinh" 100 tỷ để bắt gõ nhầm.
+	maxItemPrice = 100_000_000_000.0
 )
 
 // validPricePerKG: hợp lệ khi 5.000 < giá < 99.000 (khớp client).
 func validPricePerKG(p float64) bool {
 	return p > minPricePerKG && p < maxPricePerKG
+}
+
+// validItemPrice: mặt hàng chỉ cần > 0 và < trần vệ sinh.
+func validItemPrice(p float64) bool {
+	return p > 0 && p < maxItemPrice
 }
 
 // catalogCache holds in-memory catalog data to avoid DB queries on every listing create.
@@ -60,6 +69,8 @@ type catalogCache struct {
 	categories    map[string]bool            // category_key → exists
 	products      map[string]map[string]bool // category_key → product_key → exists
 	productLabels map[string]string          // product_key → label
+	catKind       map[string]string          // category_key → kind (nong_san|mat_hang)
+	catUnit       map[string]string          // category_key → unit (kg|cái|km...)
 	loadedAt      time.Time
 }
 
@@ -109,6 +120,9 @@ func (s *ListingService) priceboardCacheKey(ctx context.Context) string {
 
 // loadCatalogCache loads catalog data into memory. Thread-safe, skips if cache is fresh.
 func (s *ListingService) loadCatalogCache(ctx context.Context) {
+	if s.catalogRepo == nil {
+		return
+	}
 	s.catCache.mu.RLock()
 	if !s.catCache.loadedAt.IsZero() && time.Since(s.catCache.loadedAt) < catalogCacheTTL {
 		s.catCache.mu.RUnlock()
@@ -132,9 +146,13 @@ func (s *ListingService) loadCatalogCache(ctx context.Context) {
 	categories := make(map[string]bool)
 	products := make(map[string]map[string]bool)
 	labels := make(map[string]string)
+	kinds := make(map[string]string)
+	units := make(map[string]string)
 
 	for _, cat := range catalog {
 		categories[cat.Key] = true
+		kinds[cat.Key] = cat.Kind
+		units[cat.Key] = cat.Unit
 		products[cat.Key] = make(map[string]bool)
 		for _, p := range cat.Products {
 			products[cat.Key][p.Key] = true
@@ -145,6 +163,8 @@ func (s *ListingService) loadCatalogCache(ctx context.Context) {
 	s.catCache.categories = categories
 	s.catCache.products = products
 	s.catCache.productLabels = labels
+	s.catCache.catKind = kinds
+	s.catCache.catUnit = units
 	s.catCache.loadedAt = time.Now()
 }
 
@@ -169,6 +189,23 @@ func (s *ListingService) validateCatalog(ctx context.Context, categoryKey, produ
 	}
 	label := s.catCache.productLabels[productKey]
 	return catOK, prodOK, label
+}
+
+// categoryKindUnit trả kiểu + đơn vị của danh mục (từ cache). Mặc định nong_san/kg nếu
+// thiếu (an toàn: nông sản là ràng buộc CHẶT hơn).
+func (s *ListingService) categoryKindUnit(ctx context.Context, categoryKey string) (kind, unit string) {
+	s.loadCatalogCache(ctx)
+	s.catCache.mu.RLock()
+	defer s.catCache.mu.RUnlock()
+	kind = s.catCache.catKind[categoryKey]
+	unit = s.catCache.catUnit[categoryKey]
+	if kind == "" {
+		kind = model.CategoryKindCommodity
+	}
+	if unit == "" {
+		unit = "kg"
+	}
+	return kind, unit
 }
 
 // --- Seller operations ---
@@ -208,10 +245,25 @@ func (s *ListingService) Create(ctx context.Context, userID string, req *model.C
 		return nil, ErrDailyLimitReached
 	}
 
-	// Chốt chặn giá ở BACKEND (khớp form web/app): 5.000 < giá < 99.000 đ/kg.
-	// Client đã chặn nhưng backend PHẢI enforce để tránh thao túng bảng giá qua API.
-	if !validPricePerKG(req.PricePerKG) {
-		return nil, ErrInvalidPrice
+	// Kiểu danh mục quyết định ràng buộc giá/số lượng (enforce ở BACKEND; client cũng chặn).
+	kind, _ := s.categoryKindUnit(ctx, req.Category)
+	if kind == model.CategoryKindItem {
+		// Mặt hàng (máy móc/xe/ghe): giá chỉ cần > 0 (trần vệ sinh 100 tỷ).
+		if !validItemPrice(req.PricePerKG) {
+			return nil, ErrInvalidItemPrice
+		}
+		// Form mặt hàng ẩn ô số lượng → ngầm 1.
+		if req.QuantityKG <= 0 {
+			req.QuantityKG = 1
+		}
+	} else {
+		// Nông sản (gạo...): 5.000 < giá < 99.000 đ/kg + số lượng (kg) bắt buộc.
+		if !validPricePerKG(req.PricePerKG) {
+			return nil, ErrInvalidPrice
+		}
+		if req.QuantityKG <= 0 {
+			return nil, ErrInvalidQuantity
+		}
 	}
 
 	// Validate category and product from in-memory cache (avoids 2-3 DB queries per create)
@@ -584,6 +636,8 @@ func (s *ListingService) GetPriceBoard(ctx context.Context) (*model.PriceBoardRe
 		categories = append(categories, model.PriceBoardCategory{
 			CategoryKey:   cat.Key,
 			CategoryLabel: cat.Label,
+			Kind:          cat.Kind,
+			Unit:          cat.Unit,
 			Products:      products,
 		})
 	}

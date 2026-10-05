@@ -12,6 +12,8 @@ type PriceBoardEntry struct {
 type PriceBoardCategory struct {
 	CategoryKey   string            `json:"category_key"`
 	CategoryLabel string            `json:"category_label"`
+	Kind          string            `json:"kind"` // nong_san (gộp giá đ/unit) | mat_hang (Cách B: đếm tin)
+	Unit          string            `json:"unit"` // đơn vị giá: kg | cái | km...
 	Products      []PriceBoardEntry `json:"products"`
 }
 

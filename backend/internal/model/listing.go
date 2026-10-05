@@ -42,7 +42,9 @@ type CreateListingRequest struct {
 	RiceType       string  `json:"rice_type" binding:"required,max=50"`
 	Province       *string `json:"province" binding:"omitempty,max=100"`
 	Ward           *string `json:"ward" binding:"omitempty,max=100"`
-	QuantityKG     float64 `json:"quantity_kg" binding:"required,gt=0"`
+	// quantity_kg: nông sản BẮT BUỘC > 0; mặt hàng (máy móc/xe) ẩn ô này → có thể trống,
+	// service tự đặt = 1. Enforce theo kind ở service (không ép ở binding nữa).
+	QuantityKG     float64 `json:"quantity_kg" binding:"omitempty,gte=0"`
 	PricePerKG     float64 `json:"price_per_kg" binding:"required,gt=0"`
 	HarvestSeason  *string `json:"harvest_season" binding:"omitempty,max=100"`
 	Description    *string `json:"description" binding:"omitempty,max=2000"`
